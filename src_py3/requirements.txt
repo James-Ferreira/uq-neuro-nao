@@ -1,0 +1,9 @@
+Flask
+SpeechRecognition
+google-cloud-speech
+google-auth
+whisper-ai
+ollama
+torch
+torchvision
+torchaudio

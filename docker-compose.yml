@@ -1,0 +1,41 @@
+services:
+  py2:
+    build: ./src
+    command: python2 -i main.py 
+    volumes:
+      - ./src:/src
+    working_dir: /src 
+    tty: true
+    stdin_open: true
+    networks:
+      - my_network
+
+  touch:
+    build: ./src
+    command: python2 -i main_touch.py 
+    volumes:
+      - ./src:/src
+    working_dir: /src 
+    network_mode: host
+    # networks:
+    #   lan:
+    #     ipv4_address: 192.168.0.31
+
+  py3:
+    build: ./src_transcribe
+    networks:
+      - my_network
+
+# networks:
+#   my_network:
+#     driver: bridge
+
+# networks:
+#   lan:
+#     driver: macvlan
+#     driver_opts:
+#       parent: eth0
+#     ipam:
+#       config:
+#         - subnet: 192.168.0.0/24
+#           gateway: 192.168.0.1
