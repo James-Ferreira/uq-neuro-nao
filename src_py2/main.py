@@ -3,15 +3,8 @@ from game.loop import Loop
 from game.team import Team
 from game.player import Player, Variant
 from game.robot_player import RobotPlayer
-from robot.robot import Robot
 from robot.orchestrate import Orchestrate
-from robot.transcribe import transcribe_file
 from conditions import all_conditions
-
-import threading
-# import sys
-# import logging
-# logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 
 def play_password(robot_1, robot_2):
 

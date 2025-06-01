@@ -1,0 +1,39 @@
+{
+    "tasks": [
+        {
+            "label": "Run Local",
+            "type": "shell",
+            "command": "python2 -i src/main.py",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "Run Py2 (NAO Robot Controller)",
+            "type": "shell",
+            "command": "docker compose build py2 && docker compose run --rm --name py2 py2",
+            "options": {
+                "cwd": "${workspaceFolder}/0_jimmys_realm"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "Run Py3 (AI Server)",
+            "type": "shell",
+            "command": "docker compose build py3 && docker compose run --rm --name py3 py3",
+            "options": {
+                "cwd": "${workspaceFolder}/0_jimmys_realm"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        }
+    ]
+}
+

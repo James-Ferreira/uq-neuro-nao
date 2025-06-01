@@ -264,13 +264,6 @@ class MotionManager:
             print('Current posture, {}, is incompatible with requested animation.'.format(current_posture))
             return
 
-######## UTIL ########
-L_ELBOW_ROLL_RANGE = (-1.5446, -0.0349)
-R_ELBOW_ROLL_RANGE = (0.0349, 1.5446)
-NEGATE_JOINTS = {
-    "HeadYaw", "LShoulderRoll", "LElbowYaw", "LWristYaw",
-    "RShoulderRoll", "RElbowYaw", "RWristYaw"
-}
 
 def range_map(x, old_min, old_max, new_min, new_max):
     """
@@ -290,6 +283,13 @@ def mirror_joint_names(names):
     return mirrored
 
 def transform_angles_by_joint_name(joint_names, joint_angles):
+    L_ELBOW_ROLL_RANGE = (-1.5446, -0.0349)
+    R_ELBOW_ROLL_RANGE = (0.0349, 1.5446)
+    NEGATE_JOINTS = {
+    "HeadYaw", "LShoulderRoll", "LElbowYaw", "LWristYaw",
+    "RShoulderRoll", "RElbowYaw", "RWristYaw"
+    }
+    
     angles_copy = copy.deepcopy(joint_angles)
 
     for i, jname in enumerate(joint_names):

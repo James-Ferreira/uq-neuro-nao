@@ -13,9 +13,9 @@ class Robot:
         self.usrnme = usrnme
         self.initialize_proxies()
 
-        if name == "192.168.0.183":
+        if name == "192.168.0.183": #classact
             self.dialog_off()
-        elif name == "192.168.0.79" or name == "192.168.0.78":
+        elif name == "192.168.0.79" or name == "192.168.0.78": #metalhead
             self.aware_off()
 
         #clas.tts.say("{}".format(clas.name))
@@ -28,15 +28,6 @@ class Robot:
         self.am = AudioManager(self)
         self.broker = ALBroker("broker-{}".format(name), "0.0.0.0", 0, self.ip, self.port)
         self.tm = TouchModule(self, "touch_{}".format(name))
-
-        # self.broker = None
-        # self.touch_module = None
-        # self.start_touch_module()
-
-    # def start_touch_module(self):
-    #     self.broker = ALBroker("pythonBroker", "0.0.0.0", 0, self.ip, self.port)
-    #     self.touch_module = TouchManager(self)
-    #     print("TouchModule initialized and running.")
 
     def initialize_proxies(self): 
         self.animation = ALProxy("ALAnimationPlayer", self.ip, self.port)
