@@ -3,7 +3,7 @@
         {
             "label": "Run Local",
             "type": "shell",
-            "command": "python2 -i src/main.py",
+            "command": "python2 -i ${workspaceFolder}/src_py2/main.py",
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -14,7 +14,7 @@
             "type": "shell",
             "command": "docker compose build py2 && docker compose run --rm --name py2 py2",
             "options": {
-                "cwd": "${workspaceFolder}/0_jimmys_realm"
+                "cwd": "${workspaceFolder}/src_py2"
             },
             "group": {
                 "kind": "build",
@@ -26,7 +26,7 @@
             "type": "shell",
             "command": "docker compose build py3 && docker compose run --rm --name py3 py3",
             "options": {
-                "cwd": "${workspaceFolder}/0_jimmys_realm"
+                "cwd": "${workspaceFolder}/src_py3"
             },
             "presentation": {
                 "reveal": "always",

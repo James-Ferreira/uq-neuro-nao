@@ -1,9 +1,9 @@
 services:
   py2:
-    build: ./src
+    build: ./src_py2
     command: python2 -i main.py 
     volumes:
-      - ./src:/src
+      - ./src_py2:/src
     working_dir: /src 
     tty: true
     stdin_open: true
@@ -11,7 +11,7 @@ services:
       - my_network
 
   py3:
-    build: ./src_transcribe
+    build: ./src_py3
     networks:
       - my_network
 

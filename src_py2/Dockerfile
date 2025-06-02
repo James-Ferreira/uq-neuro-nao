@@ -23,7 +23,7 @@ RUN curl https://bootstrap.pypa.io/pip/2.7/get-pip.py -o get-pip2.py && \
     rm get-pip2.py
 
 # install python requirements
-COPY ./requirements-py2.txt /requirements-py2.txt
-RUN python2 -m pip install --no-cache-dir -r /requirements-py2.txt
+COPY ./requirements.txt /requirements.txt
+RUN python2 -m pip install --no-cache-dir -r /requirements.txt
  
 RUN apt-get install -y netcat tcpdump
