@@ -55,6 +55,8 @@ class Orchestrate(object):
 
         self.robot_1.robot.mm.use_motion_library("head_touch_up")
         self.robot_1.robot.mm.use_motion_library("head_touch_down_snoozy")
+        self.robot_1.robot.leds.post.fadeRGB("FaceLeds", 0xFFFFF, 0.1)
+        self.robot_1.robot.leds.post.fadeRGB("ChestLeds", 0xFFFFFF, 0.1)
         self.robot_2.robot.tts.post.say("Oh {}. Wake up.".format(self.robot_1.name))
         self.robot_2.robot.mm.use_motion_library("head_touch_up_2")
         self.robot_1.robot.leds.post.fadeRGB("FaceLeds", 0xFFFFFF, 0.1)
