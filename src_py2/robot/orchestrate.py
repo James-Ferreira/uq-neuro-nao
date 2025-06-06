@@ -208,11 +208,11 @@ class Orchestrate(object):
         self.robot_1.robot.mm.use_motion_library("outro_3")
 
         if self.robot_1.team_condition == 'O':
-            self.robot_1.robot.tts.say("Oh Experimenter.  Can you give us a spin?")
+            self.robot_1.robot.tts.say("Oh Experimenter. Can you give us a spin?")
 
         self.robot_1.robot.tm.wait_for_touch_activate()
 
-        self.robot_1.tts.post.say("Well, {}, it was a great pleasure playing with you today".format(participant_1_name))
+        self.robot_1.tts.post.say("Well, {}, it was a great pleasure playing with you today.".format(participant_1_name))
         self.robot_1.robot.mm.use_motion_library("outro_4")
         self.robot_2.robot.mm.use_motion_library("outro_5")
         
