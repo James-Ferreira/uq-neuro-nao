@@ -55,7 +55,9 @@ class Orchestrate(object):
 
         self.robot_1.robot.mm.use_motion_library("head_touch_up")
         self.robot_1.robot.mm.use_motion_library("head_touch_down_snoozy")
-        self.robot_2.robot.tts.post.say("Oh {}. Wake up.".format(self.robot_1.name))
+        self.robot_1.robot.leds.post.fadeRGB("FaceLeds", 0xFFFFF, 0.1)
+        self.robot_1.robot.leds.post.fadeRGB("ChestLeds", 0xFFFFFF, 0.1)
+        self.robot_2.robot.tts.post.say("Oh: {}. Wake up.".format(self.robot_1.name))
         self.robot_2.robot.mm.use_motion_library("head_touch_up_2")
         self.robot_1.robot.leds.post.fadeRGB("FaceLeds", 0xFFFFFF, 0.1)
         self.robot_1.robot.leds.post.fadeRGB("ChestLeds", 0xFFFFFF, 0.1)
@@ -68,7 +70,7 @@ class Orchestrate(object):
         self.robot_2.robot.tts.post.say("Greetings.")
         self.robot_2.robot.mm.use_motion_library("welcome_2_greetings")
 
-        self.robot_1.robot.tts.post.say("My name is {}".format(self.robot_1.name))
+        self.robot_1.robot.tts.post.say("My name is: {}".format(self.robot_1.name))
         self.robot_1.robot.mm.use_motion_library("welcome_1_my_name_is")
 
         self.robot_1.robot.tts.post.say("What is your name? Dear human")
@@ -88,7 +90,7 @@ class Orchestrate(object):
         self.robot_1.robot.mm.sit_gently()
         self.robot_1.robot.tts.say("I am looking forward to playing with you")
        
-        self.robot_2.robot.tts.post.say("and I am: {}. At your service".format(self.robot_2.name))
+        self.robot_2.robot.tts.post.say("And I am: {}. At your service".format(self.robot_2.name))
         self.robot_2.robot.mm.use_motion_library("at_your_service")
         self.robot_2.robot.tts.post.say("May I enquire what your name is")
         self.robot_2.robot.mm.use_motion_library("check_name") 
@@ -110,7 +112,7 @@ class Orchestrate(object):
         self.robot_1.robot.tts.post.say("So, {}, lets get to know each other a little bit.".format(participant_1_name))
         self.robot_1.robot.mm.use_motion_library("lets_get_to_know_each_other")
         
-        self.robot_1.robot.tts.post.say("{} and I are from Frantsi pani fornia.  Where are you from".format(self.robot_2.name))
+        self.robot_1.robot.tts.post.say("{} and I are from Frantsi pani fornia. Where are you from?".format(self.robot_2.name))
         self.robot_1.robot.mm.use_motion_library("where_are_you_from")
         
         participant_1_place = self.robot_1.robot.am.listen_until_confirmed() 
@@ -119,10 +121,10 @@ class Orchestrate(object):
             self.robot_1.robot.tts.post.say("Nice. I hope I can escape this dundge atory some day and see something of {}".format(participant_1_place))
             self.robot_1.robot.mm.use_motion_library("lives_in_brisbane")
         else:
-            self.robot_1.robot.tts.post.say("{}, ah, that must be a nice place to live".format(participant_1_place))
+            self.robot_1.robot.tts.post.say("{}, ah, that must be a nice place to live.".format(participant_1_place))
             self.robot_1.robot.mm.use_motion_library("nice_place_to_live")
         
-        self.robot_1.robot.tts.post.say("And what is one of your favorite hobbies, {}".format(participant_1_name))
+        self.robot_1.robot.tts.post.say("And what is one of your favorite hobbies, {}.".format(participant_1_name))
         self.robot_1.robot.mm.use_motion_library("what_are_your_hobbies")
         
         participant_1_hobby = self.robot_1.robot.am.listen_until_confirmed() 
@@ -142,14 +144,14 @@ class Orchestrate(object):
         self.robot_2.robot.mm.use_motion_library("my_hobby_is_catching_fly")
         self.robot_2.robot.mm.catch_fly()
         
-        self.robot_1.robot.tts.post.say("{} is really athletic.  My hobby is playing puppets.  This is my latest routine.".format(self.robot_2.name))
+        self.robot_1.robot.tts.post.say("{} is really athletic. My hobby is playing puppets. This is my latest routine.".format(self.robot_2.name))
         self.robot_1.robot.mm.use_motion_library("my_hobby_is_playing_puppets")
         self.robot_1.robot.mm.puppet_show()
         
         self.robot_2.robot.tts.post.say("{} is very talented.".format(self.robot_1.name))
         self.robot_2.robot.mm.use_motion_library("very_talented")
 
-        self.robot_2.robot.tts.post.say("But, oh, {}, I forgot to ask where you are from".format(participant_2_name))
+        self.robot_2.robot.tts.post.say("But, oh, {}, I forgot to ask where you are from.".format(participant_2_name))
         self.robot_2.robot.mm.use_motion_library("where_are_you_from")
         
         participant_2_place = self.robot_2.robot.am.listen_until_confirmed() 
@@ -158,10 +160,10 @@ class Orchestrate(object):
             self.robot_2.robot.tts.post.say("That's where I live, or so I'm told. It must be nice to live here, if you can get outside to explore. once in a while.")
             self.robot_2.robot.mm.use_motion_library("brisbane_is_where_I_live")
         else:
-            self.robot_2.robot.tts.post.say("Wow. I would sure like to go to {} one day".format(participant_2_place))
+            self.robot_2.robot.tts.post.say("Wow. I would sure like to go to {} one day.".format(participant_2_place))
             self.robot_2.robot.mm.use_motion_library("i_would_like_to_visit")
 
-        self.robot_2.robot.tts.post.say("{}, {} is from {} and enjoys {}".format(self.robot_1.name, participant_2_name, participant_2_place, participant_2_hobby))
+        self.robot_2.robot.tts.post.say("{}, {} is from {} and enjoys {}.".format(self.robot_1.name, participant_2_name, participant_2_place, participant_2_hobby))
         self.robot_2.robot.mm.use_motion_library("enjoys_hobby")
 
         if self.robot_1.team_condition == "P":
@@ -214,7 +216,7 @@ class Orchestrate(object):
         self.robot_1.robot.mm.use_motion_library("outro_3")
 
         if self.robot_1.team_condition == 'O':
-            self.robot_1.robot.tts.say("Oh Experimenter.  Can you give us a spin?")
+            self.robot_1.robot.tts.say("Oh Experimenter. Can you give us a spin?")
 
         self.robot_1.robot.tm.wait_for_touch_activate()
 
