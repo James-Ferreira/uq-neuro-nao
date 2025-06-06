@@ -57,7 +57,7 @@ class Orchestrate(object):
         self.robot_1.robot.mm.use_motion_library("head_touch_down_snoozy")
         self.robot_1.robot.leds.post.fadeRGB("FaceLeds", 0xFFFFF, 0.1)
         self.robot_1.robot.leds.post.fadeRGB("ChestLeds", 0xFFFFFF, 0.1)
-        self.robot_2.robot.tts.post.say("Oh {}. Wake up.".format(self.robot_1.name))
+        self.robot_2.robot.tts.post.say("Oh: {}. Wake up.".format(self.robot_1.name))
         self.robot_2.robot.mm.use_motion_library("head_touch_up_2")
         self.robot_1.robot.leds.post.fadeRGB("FaceLeds", 0xFFFFFF, 0.1)
         self.robot_1.robot.leds.post.fadeRGB("ChestLeds", 0xFFFFFF, 0.1)
@@ -70,7 +70,7 @@ class Orchestrate(object):
         self.robot_2.robot.tts.post.say("Greetings.")
         self.robot_2.robot.mm.use_motion_library("welcome_2_greetings")
 
-        self.robot_1.robot.tts.post.say("My name is {}".format(self.robot_1.name))
+        self.robot_1.robot.tts.post.say("My name is: {}".format(self.robot_1.name))
         self.robot_1.robot.mm.use_motion_library("welcome_1_my_name_is")
 
         self.robot_1.robot.tts.post.say("What is your name? Dear human")
@@ -86,7 +86,7 @@ class Orchestrate(object):
         self.robot_1.robot.mm.sit_gently()
         self.robot_1.robot.tts.say("I am looking forward to playing with you")
        
-        self.robot_2.robot.tts.post.say("and I am: {}. At your service".format(self.robot_2.name))
+        self.robot_2.robot.tts.post.say("And I am: {}. At your service".format(self.robot_2.name))
         self.robot_2.robot.mm.use_motion_library("at_your_service")
         self.robot_2.robot.tts.post.say("May I enquire what your name is")
         self.robot_2.robot.mm.use_motion_library("check_name") 
