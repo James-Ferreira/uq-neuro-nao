@@ -11,7 +11,8 @@ class Save(object):
         self.max_turns = max_turns
         self.current_round = 1
         self.current_turn = 1
-
+        self.start_time = 0
+        self.end_time = 0
         self.rounds = {
             i: Round(i, team1, team2) for i in range(1, max_rounds + 1)
         }

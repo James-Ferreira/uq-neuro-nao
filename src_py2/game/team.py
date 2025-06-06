@@ -2,6 +2,7 @@ from game.player import Player, Roles, Variant
 from robot_player import RobotPlayer
 from robot.audio_manager import sound_library
 import time
+import random
 
 class Team(object):
     def __init__(self, team_name, players):
@@ -52,15 +53,40 @@ class Team(object):
         isRobotGuesser = isinstance(guesser, RobotPlayer)
         isRobotHinter = isinstance(hinter, RobotPlayer)
 
+        #todo: announce hinter order
+        # if already_hinted.length == 0:
+            #if isRobotHinter:
+                # hinter.robot.tts.say("The hinters will be: {}: that's me, and: {}.  I will hint first".format(hinter.robot.name, other_team_hinter.name))
+            # elif otherTeamRobotHinter
+                # other_team_hinter.tts.say("The hinters will be: {} and: {}: that's me.  {} will hint first".format(hinter.exp_name, other_team_hinter.exp_name, hinter.exp_name))
+            # elif isRobotGuesser:
+                # guesser.tts.say("The {} hinters {} will be: {} and: {}.  {} will hint first.".format(bit_1, bit_2, hinter.exp_name, other_team_hinter.exp_name, hinter.exp_name))
+        # todo: if there is a Robot on the inactive team, it should turn to look in the direction of the active team
+
         if isRobotHinter:
-            #todo: robot points at active team
-            # hinter.robot.tts.say("Experimenter. Please show me the target word")
-            #todo: robot looks at screen
-            
-            # todo: if other_hinter is Robot: other_hinter.say('Please let me see the target word, too')
+            if already_hinted.length == 0:
+                duration = random.uniform(2,5)
+                hinter.robot.tts.say("Experimenter. Please show me the target word. Touch my head when you are ready for me to scan.")
+                hinter.robot.tm.wait_for_touch_activate()
+                hinter.robot.leds.rotateEyes(0x33ECFF, 0.5, duration)
+                hinter.robot.tts.say("I see the target word")
+                #todo: I see the target word in quadrant x; touch hand to confirm
+
+                #todo: other team looks at word quadrants
+                #if hinter.team_condition == "P":
+                   # print("Partnered Condition: todo")
+                    # if otherTeamHinterIsRobotL
+                    #   otherHinter.robot.tts.say("Please let me see the target word, too.  Touch my head when you are ready for me to scan.")  
+                    #    otherHinter.robot.tm.wait_for_touch_activate()
+                    #    otherHinter.robot.leds.rotateEyes(0x33ECFF, 0.5, duration)
+                    #    otherHinter.robot.tts.say("I see the target word in quadrant x; touch hand to confirm
+                    # elif otherTeamHinterIsHuman:
+                    #   hinter.tts.say("Thank you.  Now you can show the target word to: {}, too:  Touch my head when you are ready to continue.".format(other_team_hinter.exp_name))
+                    #   hinter.robot.tm.wait_for_touch_activate()
 
             if isRobotGuesser:
                 guesser.robot.tts.say("{}. I am ready to guess".format(hinter.name))
+                guesser.robot.mm.use_motion_library("ready_to_guess")
 
             hinter.robot.tts.say("Ok {}, I shall think about your hint".format(guesser.name))
             # hinter.robot.audio_player.post.playFile(sound_library["thinking"])
@@ -130,7 +156,8 @@ class Team(object):
         if not isRobotGuesser:
             if isRobotHinter:
                 hinter.robot.tts.say("You have 5 seconds to think of your guess")
-                # hinter.robot.audio_player.playFile(sound_library["human_thinking"])
+                # todo: figure out the start_pos time of this file
+                # hinter.robot.audio_player.playFileFromPosition(sound_library["thinking"], start, vol, 0)
                 transcript = hinter.robot.am.listen_until_confirmed(5)
                 return transcript
             
@@ -152,7 +179,7 @@ class Team(object):
                 guesser.robot.tts.say("Oh thats disappointing")
                 return False
             else:
-                # guesser.robot.audio_player.playFile(sound_library["correct_sound_a"])
+                guesser.robot.audio_player.playFile(sound_library["correct_sound_a"])
                 guesser.robot.tts.say("Woohoo!")
                 return True
 

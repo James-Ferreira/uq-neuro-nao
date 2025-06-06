@@ -123,6 +123,7 @@ class TouchModule(ALModule):
         self.processing_touch = False
 
     def wait_for_touch_activate(self):
+        print("waiting for head touch activate")
         with self._lock_activate:
             self._awaiting_activate = True
             self._activate_result   = None

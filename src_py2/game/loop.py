@@ -7,10 +7,9 @@ from termcolor import colored
 from game.robot_player import RobotPlayer
 
 class Loop:
-    def __init__(self, initial_state, save, orchestrate):
+    def __init__(self, initial_state, save):
         self.current_state = initial_state
         self.save = save
-        self.orchestrate = orchestrate
         self.states = {
             "initialise": self.initialise,
             "hint": self.hint,
@@ -18,20 +17,11 @@ class Loop:
             "evaluate": self.evaluate,
             "end_of_game": self.end_of_game,
         }
-        self.p1_name = ""
-        self.p2_name = ""
 
     def initialise(self):
-        print("🔸 initialising, waiting for head touch activation")
-        #todo: set game start time
+        self.save.start_time = time.time()
         #todo: word quadrants
-        #todo: demo round
-        p1_name, p2_name = self.orchestrate.simple_welcome()
-        self.orchestrate.simple_hobby(p1_name, p2_name)
 
-        # hacky to get p1 and p2 name ovewr to outro, without looking through team obj
-        self.p1_name = p1_name
-        self.p2_name = p2_name
         return "hint"
 
     def hint(self):
@@ -108,9 +98,9 @@ class Loop:
     def end_of_game(self):
         # pprint.pprint(self.save.get_summary(), depth=5)
         #todo: set game end time
+        self.save.end_time = time.time()
+
         print(self.save.get_final())
-        
-        self.orchestrate.simple_outro(self.p1_name, self.p2_name)
         return None
 
     def run(self):

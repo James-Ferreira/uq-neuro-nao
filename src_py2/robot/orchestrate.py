@@ -6,47 +6,47 @@ class Orchestrate(object):
         self.robot_1 = robot_1
         self.robot_2 = robot_2
  
-        self.lines = {
-            "welcome" : [
-                "Hello, and welcome to the experiment.",
-                "Greetings."
-            ],
+        # self.lines = {
+        #     "welcome" : [
+        #         "Hello, and welcome to the experiment.",
+        #         "Greetings."
+        #     ],
 
-            "my name is" : [
-                "My name is: {}".format(self.robot_1.exp_name),
-                "And I am: {}.  At your service.".format(self.robot_2.exp_name)
-            ],
+        #     "my name is" : [
+        #         "My name is: {}".format(self.robot_1.name),
+        #         "And I am: {}.  At your service.".format(self.robot_2.name)
+        #     ],
 
-            "what is your name?" : [
-                "What is your name? dear human.",
-                "May I enquire what your name is?"
-                ],
+        #     "what is your name?" : [
+        #         "What is your name? dear human.",
+        #         "May I enquire what your name is?"
+        #         ],
 
-            "is name pronunciation correct?" : [
-                "{}: Am I saying that right?".format(self.participant_1.exp_name),
-                "Is: {} satisfactory?".format(self.participant_2.exp_name)
-            ],
+        #     "is name pronunciation correct?" : [
+        #         "{}: Am I saying that right?".format(self.participant_1.name),
+        #         "Is: {} satisfactory?".format(self.participant_2.name)
+        #     ],
 
-            "first apology" : [
-                "Oh, I apologize for my ah kweerd robot voice.  Can you say your name again?",
-                "My sin shere aporlogies for my pronounciazion.  Please let me hear your name again."
-            ],    
+        #     "first apology" : [
+        #         "Oh, I apologize for my ah kweerd robot voice.  Can you say your name again?",
+        #         "My sin shere aporlogies for my pronounciazion.  Please let me hear your name again."
+        #     ],    
 
-            "final apology" : [
-                "Well, shoot. Hopefully you don't take offense, and you know what I mean when I say: {}".format(self.participant_1.exp_name),
-                "Oh dear. Well, I do my best and no more.  I hope you can live with it, if I call you: {}".format(self.participant_2.exp_name)
-            ],
+        #     "final apology" : [
+        #         "Well, shoot. Hopefully you don't take offense, and you know what I mean when I say: {}".format(self.participant_1.name),
+        #         "Oh dear. Well, I do my best and no more.  I hope you can live with it, if I call you: {}".format(self.participant_2.name)
+        #     ],
 
-            "an honor to shake your hand" : [
-                "It would be a great honor for me to shake your hand.",
-                "Meeting you is a grandiose honor for me, I assure you.  May I shake your hand?"
-            ],
+        #     "an honor to shake your hand" : [
+        #         "It would be a great honor for me to shake your hand.",
+        #         "Meeting you is a grandiose honor for me, I assure you.  May I shake your hand?"
+        #     ],
 
-            "looking forward": [
-                "I am looking forward to playing with you.",
-                "I am exceedingly eager to play with you."
-            ]
-        }
+        #     "looking forward": [
+        #         "I am looking forward to playing with you.",
+        #         "I am exceedingly eager to play with you."
+        #     ]
+        # }
 
     def simple_welcome(self):
         player_type = "partner" if self.robot_1.team_condition == 'P' else "opponent"
@@ -262,3 +262,11 @@ class Orchestrate(object):
         else:
             print('Current posture 1, {0}, or current posture 2, {1}, is incompatible with requested animation.'.format(current_posture1, current_posture2))
             return
+        
+    def repose(self):
+        self.robot_1.robot.mm.repose(False)
+        self.robot_2.robot.mm.repose(False)
+
+    def sit(self):
+        self.robot_1.robot.mm.sit()
+        self.robot_2.robot.mm.sit()

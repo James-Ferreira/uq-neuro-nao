@@ -6,33 +6,40 @@ from game.robot_player import RobotPlayer
 from robot.orchestrate import Orchestrate
 from conditions import all_conditions
 
-def play_password(robot_1, robot_2):
+def play_password(robot_1, robot_2, hasDemo):
+    orchestrate = Orchestrate(robot_1, robot_2)
+    orchestrate.sit()
+    orchestrate.repose()
 
-    robot_1.robot.mm.sit()
-    robot_2.robot.mm.sit()
-
-    words = ["apple", "banana", "cherry", "donut", "elephant", "flower"]
+    p1_name, p2_name = orchestrate.simple_welcome()
+    orchestrate.simple_hobby(p1_name, p2_name)
 
     team_1 = Team("Team_1", [
             robot_1,
-            Player("Conradical", Variant.AUTO)])
+            Player(p1_name, Variant.AUTO)])
 
     team_2 = Team("Team_2", [
             robot_2,
-            Player("Jacobius", Variant.AUTO)])
+            Player(p2_name, Variant.AUTO)])
 
-    robot_1.robot.mm.repose(False)
-    robot_2.robot.mm.repose(False)
+    if (hasDemo):
+        robot_1.robot.tts.post.say("We will begin with a demonstration to ensure that you understand how to play")
+        demo_words = ["arachnid", "bumblebee", "cryptid", "dove"]
+        demo_save = Save(team_1, team_2, demo_words, 1, 2)
+        demo_game = Loop("initialise", demo_save)
+        demo_game.run()
+        robot_1.robot.tts.post.say("That was the end of the demonstration.  Hopefully you now understand how to play our word-guessing game, and you are ready to compete for victory.  The scores will now be reset to zero.")
+        orchestrate.repose()
 
-    orchestrate = Orchestrate(robot_1, robot_2)
-
+    words = ["crab", "tennis", "wig", "bottle", "leaf", "king", "wheel", "lip", "pocket", "comet", "stadium", "cord"] 
     save = Save(team_1, team_2, words)
-    game = Loop("initialise", save, orchestrate)
+    game = Loop("initialise", save)
 
     game.run()
+    orchestrate.simple_outro(p1_name, p2_name)
+    orchestrate.repose()
 
 if __name__ == "__main__":
-    # todo: run a demo game
     # todo: robot asks to look at quadrants
 
     condition_index = 0 # todo: incremenet me after a game
@@ -79,10 +86,13 @@ if __name__ == "__main__":
 
     print("Please select an option or exit for free play")
     print("0. Play Password Game")
+    print("1. Play Password Game w/ Demo ")
     choice = raw_input("Enter the number of your choice: ")
 
     try:
         if choice == "0":
-            play_password(robot_1, robot_2)
+            play_password(robot_1, robot_2, False)
+        if choice == "1":
+            play_password(robot_1, robot_2, True)
     except Exception as e:
         print("Exception: ", e)
