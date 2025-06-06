@@ -152,10 +152,10 @@ class Orchestrate(object):
             self.robot_2.robot.tts.post.say("{} is where I live, or so I'm told. It must be nice to live here, if you can get outside to explore. once in a while.".format(participant_2_place))
             self.robot_2.robot.mm.use_motion_library("brisbane_is_where_I_live")
         else:
-            self.robot_2.robot.tts.post.say("Wow. I would sure like to go to {} one day".format(participant_2_place))
+            self.robot_2.robot.tts.post.say("Wow. I would sure like to go to {} one day.".format(participant_2_place))
             self.robot_2.robot.mm.use_motion_library("i_would_like_to_visit")
 
-        self.robot_2.robot.tts.post.say("{}, {} is from {} and enjoys {}".format(self.robot_1.name, participant_2_name, participant_2_place, participant_2_hobby))
+        self.robot_2.robot.tts.post.say("{}, {} is from {} and enjoys {}.".format(self.robot_1.name, participant_2_name, participant_2_place, participant_2_hobby))
         self.robot_2.robot.mm.use_motion_library("enjoys_hobby")
 
         if self.robot_1.team_condition == "P":
@@ -185,7 +185,7 @@ class Orchestrate(object):
             self.robot_2.robot.mm.use_motion_library("what_was_opponents_hobby")
             self.robot_1.robot.tts.post.say("{}".format(participant_1_hobby))
             self.robot_1.robot.mm.use_motion_library("say_hobby")
-            self.robot_2.robot.tts.post.say("Oh my.  I would have to argue that my hobby of catching flies is a good deal more interesting than {}".format(participant_1_hobby))
+            self.robot_2.robot.tts.post.say("Oh my. I would have to argue that my hobby of catching flies is a good deal more interesting than {}.".format(participant_1_hobby))
             self.robot_2.robot.mm.use_motion_library("catching_flies_more_interesting")
 
         self.robot_2.robot.mm.bob_n_speak(robot_2_opinion)
