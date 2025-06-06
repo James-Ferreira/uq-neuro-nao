@@ -83,7 +83,7 @@ class AudioManager:
                     "I heard {}. Is that correct? "
                     "Press my hand for yes, and feet for no.".format(cleaned_input))
                 
-                confirmed = self.robot.tm.wait_for_touch_confirm(timeout=15)
+                confirmed = self.robot.tm.wait_for_touch_confirm()
 
                 if confirmed:
                     self.robot.tts.say("Confirmed.")
@@ -111,7 +111,7 @@ class AudioManager:
                 self.robot.tts.post.say(
                 "I heard {}. Is that correct? "
                 "Press my hand for yes, and my feet for no.".format(input))
-                confirmed = self.robot.tm.wait_for_touch_confirm(timeout=15)
+                confirmed = self.robot.tm.wait_for_touch_confirm()
                 if not confirmed:
                     self.robot.tts.say("REJECTED")
                     continue

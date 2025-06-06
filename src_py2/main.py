@@ -37,7 +37,6 @@ def play_password(robot_1, robot_2, hasDemo):
 
     game.run()
     orchestrate.simple_outro(p1_name, p2_name)
-    orchestrate.repose()
 
 if __name__ == "__main__":
     # todo: robot asks to look at quadrants

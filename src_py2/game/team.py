@@ -64,7 +64,7 @@ class Team(object):
         # todo: if there is a Robot on the inactive team, it should turn to look in the direction of the active team
 
         if isRobotHinter:
-            if already_hinted.length == 0:
+            if len(already_hinted) == 0:
                 duration = random.uniform(2,5)
                 hinter.robot.tts.say("Experimenter. Please show me the target word. Touch my head when you are ready for me to scan.")
                 hinter.robot.tm.wait_for_touch_activate()
@@ -102,7 +102,7 @@ class Team(object):
                 confirmed = False
                 while not confirmed:
                     hinter.robot.tts.say("Do you understand the hint? Press my hand for yes, and feet for no.")
-                    confirmed = hinter.robot.tm.wait_for_touch_confirm(timeout=15)
+                    confirmed = hinter.robot.tm.wait_for_touch_confirm()
 
                     if not confirmed:
                         hinter.robot.tts.say("Okay, let me spell it out for you.")
@@ -142,7 +142,7 @@ class Team(object):
                 confirmed = False
                 while not confirmed:
                     guesser.robot.tts.say("Do you understand the guess? Press my hand for yes, and feet for no.")
-                    confirmed = guesser.robot.tm.wait_for_touch_confirm(timeout=15)
+                    confirmed = guesser.robot.tm.wait_for_touch_confirm()
 
                     if not confirmed:
                         guesser.robot.tts.say("Okay, let me spell it out for you.")
@@ -174,7 +174,7 @@ class Team(object):
         if isRobotGuesser:
             guesser.robot.tts.say("Is {} the right word?".format(guess))
             guesser.robot.tts.say("Press me hand for yes, or my feet for no.")
-            confirmed = guesser.robot.tm.wait_for_touch_confirm(timeout=15)
+            confirmed = guesser.robot.tm.wait_for_touch_confirm()
             if not confirmed:
                 guesser.robot.tts.say("Oh thats disappointing")
                 return False
