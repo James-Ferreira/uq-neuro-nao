@@ -14,7 +14,6 @@ class AudioManager:
         user_input = raw_input("Please enter a value for pitch: ") # type: ignore (suppressess superfluous warning)
         self.robot.tts.setParameter("pitchShift", float(user_input))
 
-
     def set_pitch(self, value):
         self.robot.tts.setParameter("pitchShift", float(value))
 
@@ -29,7 +28,6 @@ class AudioManager:
         try:
             self.robot.audio_player.post.playFile(sound_library["start_listening"])
             self.robot.tts.say("I'm listening")
-            
 
             self.robot.leds.post.fadeRGB("AllLeds", 0xFF0000, 0.1)
             audio_path = "/tmp/recorded_speech.wav"
@@ -81,7 +79,7 @@ class AudioManager:
 
                 self.robot.tts.post.say(
                     "I heard {}. Is that correct? "
-                    "Press my hand for yes, and feet for no.".format(cleaned_input))
+                    "Press my hand for yes, or my foot for no.".format(cleaned_input))
                 
                 confirmed = self.robot.tm.wait_for_touch_confirm()
 
@@ -110,7 +108,7 @@ class AudioManager:
 
                 self.robot.tts.post.say(
                 "I heard {}. Is that correct? "
-                "Press my hand for yes, and my feet for no.".format(input))
+                "Press my hand for yes, or my foot for no.".format(input))
                 confirmed = self.robot.tm.wait_for_touch_confirm()
                 if not confirmed:
                     self.robot.tts.say("REJECTED")

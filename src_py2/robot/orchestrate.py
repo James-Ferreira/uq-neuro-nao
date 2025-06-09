@@ -197,7 +197,6 @@ class Orchestrate(object):
         self.repose()
 
     def wave_bye(self):
-        
         # Generate a random integer between 1 and 100
         random_number = random.randint(1, 100)
         if random_number % 2 == 0:
@@ -282,7 +281,6 @@ class Orchestrate(object):
             elif isActiveGuesserRobot:
                 active_guesser.robot.tts.say("The hinters will be: {} and: {}.  {} will hint first.".format(active_hinter.name, inactive_hinter.name, active_hinter.name))
 
-
     def before_guess(self, active_team, inactive_team):
         inactive_hinter = inactive_team.get_hinter()
         inactive_guesser = inactive_team.get_guesser()
@@ -311,7 +309,7 @@ class Orchestrate(object):
         isActuallyCorrectString = "correct" if isActuallyCorrect else "incorrect"
 
         if isActiveGuesserRobot:
-            active_guesser.robot.tts.post.say("Is {} the right word? Press my hand for yes, or my feet for no.".format(guess))
+            active_guesser.robot.tts.post.say("Is {} the right word? Press my hand for yes, or my foot for no.".format(guess))
             isClaimedToBeCorrect = active_guesser.robot.tm.wait_for_touch_confirm()
             
             if isClaimedToBeCorrect and isActuallyCorrect:
@@ -323,7 +321,6 @@ class Orchestrate(object):
                 active_guesser.robot.tts.say("How disappointing!") #todo: sad options
                 return "incorrect"
 
-            
             isFalsePositive = isClaimedToBeCorrect and not isActuallyCorrect
             isFalseNegative = not isClaimedToBeCorrect and isActuallyCorrect
 
