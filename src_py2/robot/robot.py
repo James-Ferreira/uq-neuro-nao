@@ -1,6 +1,6 @@
 from naoqi import ALProxy, ALProxy, ALBroker
 import paramiko
-from touch_manager import TouchModule, TouchMode
+from touch_manager import TouchModule
 from motion_manager import MotionManager
 from audio_manager import AudioManager
 
@@ -15,7 +15,7 @@ class Robot:
 
         if name == "192.168.0.183": #classact
             self.dialog_off()
-        elif name == "192.168.0.79" or name == "192.168.0.78": #metalhead
+        elif name == "192.168.0.78" or name == "192.168.0.79": #metalhead
             self.aware_off()
 
         #clas.tts.say("{}".format(clas.name))
@@ -125,3 +125,7 @@ class Robot:
             # Cleanup
             sftp.close()
             ssh.close()
+
+    def speak_and_move(self, message, motion_key):
+        self.tts.post.say(message)
+        self.mm.use_motion_library(motion_key)

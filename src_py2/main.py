@@ -6,7 +6,7 @@ from game.robot_player import RobotPlayer
 from robot.orchestrate import Orchestrate
 from conditions import all_conditions
 
-def play_password(robot_1, robot_2, hasDemo):
+def play_password(robot_1, robot_2, hasDemo, game_condition):
     orchestrate = Orchestrate(robot_1, robot_2)
     orchestrate.sit()
     orchestrate.repose()
@@ -15,36 +15,34 @@ def play_password(robot_1, robot_2, hasDemo):
     orchestrate.simple_hobby(p1_name, p2_name)
 
     team_1 = Team("Team_1", [
-            robot_1,
+            Player(p1_name, Variant.AUTO),
             Player(p1_name, Variant.AUTO)])
 
     team_2 = Team("Team_2", [
-            robot_2,
+            Player(p1_name, Variant.AUTO),
             Player(p2_name, Variant.AUTO)])
 
     if (hasDemo):
         robot_1.robot.tts.post.say("We will begin with a demonstration to ensure that you understand how to play")
         demo_words = ["arachnid", "bumblebee", "cryptid", "dove"]
-        demo_save = Save(team_1, team_2, demo_words, 1, 2)
-        demo_game = Loop("initialise", demo_save)
+        demo_save = Save(team_1, team_2, demo_words, 1, 2, game_condition)
+        demo_game = Loop("initialise", demo_save, orchestrate)
         demo_game.run()
         robot_1.robot.tts.post.say("That was the end of the demonstration.  Hopefully you now understand how to play our word-guessing game, and you are ready to compete for victory.  The scores will now be reset to zero.")
         orchestrate.repose()
 
     words = ["crab", "tennis", "wig", "bottle", "leaf", "king", "wheel", "lip", "pocket", "comet", "stadium", "cord"] 
-    save = Save(team_1, team_2, words)
-    game = Loop("initialise", save)
+
+    save = Save(team_1, team_2, words, game_condition)
+    game = Loop("initialise", save, orchestrate)
 
     game.run()
     orchestrate.simple_outro(p1_name, p2_name)
 
 if __name__ == "__main__":
-    # todo: robot asks to look at quadrants
+    condition_index = 0 # incremenet for different game conditions
+    game_condition = all_conditions[condition_index]
 
-    condition_index = 0 # todo: incremenet me after a game
-    game_condition = all_conditions[condition_index] #todo: print out at the end of a game
-
-    print(game_condition)
     team_condition = game_condition['team_condition']
 
     robot_1_identifier = game_condition['robot']
@@ -56,8 +54,8 @@ if __name__ == "__main__":
     robot_2_pitch = 1 if robot_1_pitch == 0.85 else 0.85
     robot_2_orientation = "L" if robot_1_orientation == "R" else "R"
 
-    robot_1_ip = "192.168.0.183" if robot_1_identifier == 'clas' else '192.168.0.79'
-    robot_2_ip = "192.168.0.79" if robot_1_identifier == 'clas' else '192.168.0.183'
+    robot_1_ip = "192.168.0.183" if robot_1_identifier == 'clas' else '192.168.0.78'
+    robot_2_ip = "192.168.0.78" if robot_1_identifier == 'clas' else '192.168.0.183'
 
     # if robot_1 is on the right, robot_1's motions should be reversed and robot_2s shouldnt be
     robot_1_motion_reverse = robot_1_orientation == 'R'
@@ -90,8 +88,8 @@ if __name__ == "__main__":
 
     try:
         if choice == "0":
-            play_password(robot_1, robot_2, False)
+            play_password(robot_1, robot_2, False, game_condition)
         if choice == "1":
-            play_password(robot_1, robot_2, True)
+            play_password(robot_1, robot_2, True, game_condition)
     except Exception as e:
         print("Exception: ", e)

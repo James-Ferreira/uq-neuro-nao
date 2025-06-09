@@ -1,0 +1,112 @@
+{
+    "duration": 1.9848670959472656, 
+    "config": {
+        "max_rounds": 3, 
+        "max_turns": 3
+    }, 
+    "rounds": {
+        "1": {
+            "target_word": "crab", 
+            "round_number": 1, 
+            "team_1": {
+                "team_name": "Team_1", 
+                "score": 0, 
+                "guesses": [
+                    "guess1", 
+                    "crab"
+                ], 
+                "hints": [
+                    "hint1", 
+                    "hint1"
+                ]
+            }, 
+            "team_2": {
+                "team_name": "Team_2", 
+                "score": 0, 
+                "guesses": [
+                    "guess1"
+                ], 
+                "hints": [
+                    "hint1"
+                ]
+            }
+        }, 
+        "2": {
+            "target_word": "tennis", 
+            "round_number": 2, 
+            "team_1": {
+                "team_name": "Team_1", 
+                "score": 1, 
+                "guesses": [
+                    "tennis"
+                ], 
+                "hints": [
+                    "hint1"
+                ]
+            }, 
+            "team_2": {
+                "team_name": "Team_2", 
+                "score": 0, 
+                "guesses": [
+                    "guess1"
+                ], 
+                "hints": [
+                    "hint1"
+                ]
+            }
+        }, 
+        "3": {
+            "target_word": "wig", 
+            "round_number": 3, 
+            "team_1": {
+                "team_name": "Team_1", 
+                "score": 2, 
+                "guesses": [
+                    "wig"
+                ], 
+                "hints": [
+                    "hint1"
+                ]
+            }, 
+            "team_2": {
+                "team_name": "Team_2", 
+                "score": 0, 
+                "guesses": [], 
+                "hints": []
+            }
+        }
+    }, 
+    "rejected": [], 
+    "teams": {
+        "team_1": {
+            "players": [
+                {
+                    "variant": "AUTO", 
+                    "name": "Billy"
+                }, 
+                {
+                    "variant": "AUTO", 
+                    "name": "Billy"
+                }
+            ], 
+            "outcome": "win", 
+            "score": 3, 
+            "name": "Team_1"
+        }, 
+        "team_2": {
+            "players": [
+                {
+                    "variant": "AUTO", 
+                    "name": "Billy"
+                }, 
+                {
+                    "variant": "AUTO", 
+                    "name": "Bob"
+                }
+            ], 
+            "outcome": "lose", 
+            "score": 0, 
+            "name": "Team_2"
+        }
+    }
+}

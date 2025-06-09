@@ -1,58 +1,16 @@
 # -*- coding: utf-8 -*-
 import random
+from game.robot_player import RobotPlayer
 
 class Orchestrate(object):
     def __init__(self, robot_1, robot_2):
         self.robot_1 = robot_1
         self.robot_2 = robot_2
- 
-        # self.lines = {
-        #     "welcome" : [
-        #         "Hello, and welcome to the experiment.",
-        #         "Greetings."
-        #     ],
-
-        #     "my name is" : [
-        #         "My name is: {}".format(self.robot_1.name),
-        #         "And I am: {}.  At your service.".format(self.robot_2.name)
-        #     ],
-
-        #     "what is your name?" : [
-        #         "What is your name? dear human.",
-        #         "May I enquire what your name is?"
-        #         ],
-
-        #     "is name pronunciation correct?" : [
-        #         "{}: Am I saying that right?".format(self.participant_1.name),
-        #         "Is: {} satisfactory?".format(self.participant_2.name)
-        #     ],
-
-        #     "first apology" : [
-        #         "Oh, I apologize for my ah kweerd robot voice.  Can you say your name again?",
-        #         "My sin shere aporlogies for my pronounciazion.  Please let me hear your name again."
-        #     ],    
-
-        #     "final apology" : [
-        #         "Well, shoot. Hopefully you don't take offense, and you know what I mean when I say: {}".format(self.participant_1.name),
-        #         "Oh dear. Well, I do my best and no more.  I hope you can live with it, if I call you: {}".format(self.participant_2.name)
-        #     ],
-
-        #     "an honor to shake your hand" : [
-        #         "It would be a great honor for me to shake your hand.",
-        #         "Meeting you is a grandiose honor for me, I assure you.  May I shake your hand?"
-        #     ],
-
-        #     "looking forward": [
-        #         "I am looking forward to playing with you.",
-        #         "I am exceedingly eager to play with you."
-        #     ]
-        # }
 
     def simple_welcome(self):
         player_type = "partner" if self.robot_1.team_condition == 'P' else "opponent"
 
         self.robot_1.robot.tm.wait_for_touch_activate()
-
         self.robot_1.robot.mm.use_motion_library("head_touch_up")
         self.robot_1.robot.mm.use_motion_library("head_touch_down_snoozy")
         self.robot_1.robot.leds.post.fadeRGB("FaceLeds", 0xFFFFF, 0.1)
@@ -278,3 +236,61 @@ class Orchestrate(object):
     def sit(self):
         self.robot_1.robot.mm.sit()
         self.robot_2.robot.mm.sit()
+
+
+    def before_hint(self, active_team, inactive_team, already_hinted):
+        active_hinter = active_team.get_hinter()
+        active_guesser = active_team.get_guesser()
+        inactive_hinter = inactive_team.get_hinter()
+        inactive_guesser = inactive_team.get_guesser()
+
+        isActiveGuesserRobot = isinstance(active_guesser, RobotPlayer)
+        isActiveHinterRobot = isinstance(active_hinter, RobotPlayer)
+        isInactiveHinterRobot = isinstance(inactive_hinter, RobotPlayer)
+        isInactiveGuesserRobot = isinstance(inactive_hinter, RobotPlayer)
+
+        if isInactiveHinterRobot:
+            turn = 'turn_head_right' if inactive_hinter.orientation == 'L' else 'turn_head_left'
+            inactive_hinter.robot.mm.use_motion_library(turn)
+        if isInactiveGuesserRobot:
+            turn = 'turn_head_right' if inactive_guesser.orientation == 'L' else 'turn_head_left'
+            inactive_guesser.robot.mm.use_motion_library(turn)
+
+        if len(already_hinted) == 0:
+            if isActiveHinterRobot:
+                active_hinter.robot.robot.tts.say("The hinters will be: {}: that's me, and: {}.  I will hint first".format(active_hinter.name, inactive_hinter.name))
+
+                duration = random.uniform(2,5)
+                active_hinter.robot.tts.say("Experimenter. Please show me the target word. Touch my head when you are ready for me to scan.")
+                active_hinter.robot.tm.wait_for_touch_activate()
+                active_hinter.robot.leds.rotateEyes(0x33ECFF, 0.5, duration)
+                active_hinter.robot.tts.say("I see the target word")
+
+                if active_hinter.team_condition == "P":
+                    if isInactiveHinterRobot:
+                        inactive_hinter.robot.tts.say("Please let me see the target word, too.  Touch my head when you are ready for me to scan.")  
+                        inactive_hinter.robot.tm.wait_for_touch_activate()
+                        inactive_hinter.robot.leds.rotateEyes(0x33ECFF, 0.5, duration)
+                        inactive_hinter.robot.tts.say("I see the target word")
+                    else:
+                      active_hinter.tts.say("Thank you.  Now you can show the target word to: {}, too:  Touch my head when you are ready to continue.".format(inactive_hinter.name))
+                      active_hinter.robot.tm.wait_for_touch_activate()
+            elif isInactiveHinterRobot:
+                inactive_hinter.robot.tts.say("The hinters will be: {} and: {}: that's me.  {} will hint first".format(active_hinter.name, inactive_hinter.name, active_hinter.name))
+            elif isActiveGuesserRobot:
+                active_guesser.robot.tts.say("The hinters will be: {} and: {}.  {} will hint first.".format(active_hinter.name, inactive_hinter.name, active_hinter.name))
+
+
+    def before_guess(self, active_team, inactive_team):
+        inactive_hinter = inactive_team.get_hinter()
+        inactive_guesser = inactive_team.get_guesser()
+
+        isInactiveHinterRobot = isinstance(inactive_hinter, RobotPlayer)
+        isInactiveGuesserRobot = isinstance(inactive_hinter, RobotPlayer)
+
+        if isInactiveHinterRobot:
+            turn = 'turn_head_right' if inactive_hinter.orientation == 'L' else 'turn_head_left'
+            inactive_hinter.robot.mm.use_motion_library(turn)
+        if isInactiveGuesserRobot:
+            turn = 'turn_head_right' if inactive_guesser.orientation == 'L' else 'turn_head_left'
+            inactive_guesser.robot.mm.use_motion_library(turn)

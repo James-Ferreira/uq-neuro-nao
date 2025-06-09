@@ -7,9 +7,10 @@ from termcolor import colored
 from game.robot_player import RobotPlayer
 
 class Loop:
-    def __init__(self, initial_state, save):
+    def __init__(self, initial_state, save, orchestrate):
         self.current_state = initial_state
         self.save = save
+        self.orchestrate = orchestrate
         self.states = {
             "initialise": self.initialise,
             "hint": self.hint,
@@ -20,22 +21,26 @@ class Loop:
 
     def initialise(self):
         self.save.start_time = time.time()
-        #todo: word quadrants
-
         return "hint"
 
     def hint(self):
         self.save.pprint_state()
 
         active_team = self.save.get_active_team()
+        inactive_team = self.save.get_inactive_team()
+
+        already_hinted = self.save.get_curr_round_hints()
+        already_guessed = self.save.get_curr_round_guesses()
         try:
-            hint = active_team.produce_hint(self.save.get_target_word(), self.save.get_curr_round_hints(), self.save.get_curr_round_guesses())
+            self.orchestrate.before_hint(active_team, inactive_team, already_hinted)
+
+            hint = active_team.produce_hint(self.save.get_target_word(), already_hinted, already_guessed)
             self.save.record_hint(active_team.team_name, hint)
 
-            print("Hint of '{}' by {} from {}".format(
-            hint,
+            print("[{}] {} hinted '{}'".format(
+            active_team.team_name,
             active_team.get_hinter().name,
-            active_team.team_name
+            hint,
             ))
 
             return "guess"
@@ -44,15 +49,21 @@ class Loop:
             return "hint"
 
     def guess(self):
+        active_team = self.save.get_active_team()
+        inactive_team = self.save.get_inactive_team()
+
+        already_hinted = self.save.get_curr_round_hints()
+        already_guessed = self.save.get_curr_round_guesses()
         try:
             active_team = self.save.get_active_team()
-            guess = active_team.produce_guess(self.save.get_target_word(), self.save.get_curr_round_hints(), self.save.get_curr_round_guesses())
+            self.orchestrate.before_guess(active_team, inactive_team)
+            guess = active_team.produce_guess(self.save.get_target_word(), already_hinted, already_guessed)
             self.save.record_guess(active_team.team_name, guess)
 
-            print("Guess of '{}' by {} from {}".format(
-            guess,
+            print("[{}] {} guessed '{}'".format(
+            active_team.team_name,
             active_team.get_guesser().name,
-            active_team.team_name
+            guess,
             ))
 
             return "evaluate"
@@ -61,7 +72,7 @@ class Loop:
             return "hint"
 
     def evaluate(self):
-        #todo: false reject / false confirmation handling 
+        #todo: false reject / false confirmation handling
         active_team = self.save.get_active_team()
         guess = self.save.get_latest_guess()
         isCorrect = active_team.produce_evaluation(self.save.get_target_word(), guess)
@@ -96,11 +107,8 @@ class Loop:
         return "hint"
 
     def end_of_game(self):
-        # pprint.pprint(self.save.get_summary(), depth=5)
-        #todo: set game end time
         self.save.end_time = time.time()
-
-        print(self.save.get_final())
+        self.save.export_save()
         return None
 
     def run(self):

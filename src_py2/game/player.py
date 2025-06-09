@@ -40,3 +40,4 @@ class Player(object):
             return guess
         
         return target_word if random.random() < 0.5 else "guess1"
+    
