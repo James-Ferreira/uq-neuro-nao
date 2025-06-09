@@ -1,71 +1,28 @@
 {
-    "duration": 1.9848670959472656, 
+    "duration": 65.83, 
     "config": {
-        "max_rounds": 3, 
-        "max_turns": 3
+        "max_rounds": 1, 
+        "max_turns": 2, 
+        "game_condition": {
+            "exp_name": "Zork", 
+            "team_condition": "O", 
+            "orientation": "L", 
+            "robot": "clas", 
+            "pitch": 0.85
+        }
     }, 
     "rounds": {
         "1": {
-            "target_word": "crab", 
+            "target_word": "arachnid", 
             "round_number": 1, 
-            "team_1": {
-                "team_name": "Team_1", 
-                "score": 0, 
-                "guesses": [
-                    "guess1", 
-                    "crab"
-                ], 
-                "hints": [
-                    "hint1", 
-                    "hint1"
-                ]
-            }, 
-            "team_2": {
-                "team_name": "Team_2", 
-                "score": 0, 
-                "guesses": [
-                    "guess1"
-                ], 
-                "hints": [
-                    "hint1"
-                ]
-            }
-        }, 
-        "2": {
-            "target_word": "tennis", 
-            "round_number": 2, 
             "team_1": {
                 "team_name": "Team_1", 
                 "score": 1, 
                 "guesses": [
-                    "tennis"
+                    "arachnid"
                 ], 
                 "hints": [
-                    "hint1"
-                ]
-            }, 
-            "team_2": {
-                "team_name": "Team_2", 
-                "score": 0, 
-                "guesses": [
-                    "guess1"
-                ], 
-                "hints": [
-                    "hint1"
-                ]
-            }
-        }, 
-        "3": {
-            "target_word": "wig", 
-            "round_number": 3, 
-            "team_1": {
-                "team_name": "Team_1", 
-                "score": 2, 
-                "guesses": [
-                    "wig"
-                ], 
-                "hints": [
-                    "hint1"
+                    "Spider"
                 ]
             }, 
             "team_2": {
@@ -82,26 +39,26 @@
             "players": [
                 {
                     "variant": "AUTO", 
-                    "name": "Billy"
+                    "name": "Zork"
                 }, 
                 {
                     "variant": "AUTO", 
-                    "name": "Billy"
+                    "name": "Jimmy"
                 }
             ], 
             "outcome": "win", 
-            "score": 3, 
+            "score": 1, 
             "name": "Team_1"
         }, 
         "team_2": {
             "players": [
                 {
                     "variant": "AUTO", 
-                    "name": "Billy"
+                    "name": "Zeek"
                 }, 
                 {
                     "variant": "AUTO", 
-                    "name": "Bob"
+                    "name": "Conrac"
                 }
             ], 
             "outcome": "lose", 

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import random
 from game.robot_player import RobotPlayer
+from audio_manager import sound_library
 
 class Orchestrate(object):
     def __init__(self, robot_1, robot_2):
@@ -38,7 +39,7 @@ class Orchestrate(object):
         self.robot_1.robot.mm.use_motion_library("you_are_in_the_game")
 
         self.robot_1.robot.tts.say("It would be an honor for me to shake your hand.")
-        self.robot_1.robot.mm.use_motion_library("extend_hand")
+        self.robot_1.robot.mm.use_motion_library("extend_left_hand")
         confirmed = self.robot_1.robot.tm.wait_for_touch_confirm()
         if confirmed:
             self.robot_1.robot.mm.right_handshake_a()
@@ -55,8 +56,8 @@ class Orchestrate(object):
         participant_2_name = self.robot_2.robot.am.listen_until_confirmed()
         
         self.robot_2.robot.tts.say("If I am not mistaken, you, {}, are my {} in the game today.".format(participant_2_name, player_type))
-        self.robot_2.robot.tts.post.say("Meeting you is a grandiose honor for me, I assure you.  May I shake your hand?")
-        self.robot_2.robot.mm.use_motion_library("extend_hand")
+        self.robot_2.robot.tts.say("Meeting you is a grandiose honor for me, I assure you.  May I shake your hand?")
+        self.robot_2.robot.mm.use_motion_library("extend_left_hand", True)
         confirmed2 = self.robot_2.robot.tm.wait_for_touch_confirm()
         if confirmed2:
             self.robot_2.robot.mm.right_handshake_b()
@@ -135,6 +136,7 @@ class Orchestrate(object):
             hobby_better_2 = "catching flys"
             hobby_worse_2 = participant_1_hobby
 
+        #todo: make async / non-blocking
         robot_1_opinion = self.robot_1.generate_opinion(hobby_better_1, hobby_worse_1, False)
         robot_2_opinion = self.robot_2.generate_opinion(hobby_better_2, hobby_worse_2, True)
 
@@ -247,7 +249,7 @@ class Orchestrate(object):
         isActiveGuesserRobot = isinstance(active_guesser, RobotPlayer)
         isActiveHinterRobot = isinstance(active_hinter, RobotPlayer)
         isInactiveHinterRobot = isinstance(inactive_hinter, RobotPlayer)
-        isInactiveGuesserRobot = isinstance(inactive_hinter, RobotPlayer)
+        isInactiveGuesserRobot = isinstance(inactive_guesser, RobotPlayer)
 
         if isInactiveHinterRobot:
             turn = 'turn_head_right' if inactive_hinter.orientation == 'L' else 'turn_head_left'
@@ -258,7 +260,7 @@ class Orchestrate(object):
 
         if len(already_hinted) == 0:
             if isActiveHinterRobot:
-                active_hinter.robot.robot.tts.say("The hinters will be: {}: that's me, and: {}.  I will hint first".format(active_hinter.name, inactive_hinter.name))
+                active_hinter.robot.tts.say("The hinters will be: {}: that's me, and: {}.  I will hint first".format(active_hinter.name, inactive_hinter.name))
 
                 duration = random.uniform(2,5)
                 active_hinter.robot.tts.say("Experimenter. Please show me the target word. Touch my head when you are ready for me to scan.")
@@ -286,7 +288,7 @@ class Orchestrate(object):
         inactive_guesser = inactive_team.get_guesser()
 
         isInactiveHinterRobot = isinstance(inactive_hinter, RobotPlayer)
-        isInactiveGuesserRobot = isinstance(inactive_hinter, RobotPlayer)
+        isInactiveGuesserRobot = isinstance(inactive_guesser, RobotPlayer)
 
         if isInactiveHinterRobot:
             turn = 'turn_head_right' if inactive_hinter.orientation == 'L' else 'turn_head_left'
@@ -294,3 +296,60 @@ class Orchestrate(object):
         if isInactiveGuesserRobot:
             turn = 'turn_head_right' if inactive_guesser.orientation == 'L' else 'turn_head_left'
             inactive_guesser.robot.mm.use_motion_library(turn)
+
+    def before_evaluate(self, active_team, inactive_team, isActuallyCorrect, guess):
+        active_hinter = active_team.get_hinter()
+        active_guesser = active_team.get_guesser()
+        inactive_hinter = inactive_team.get_hinter()
+        inactive_guesser = inactive_team.get_guesser()
+
+        isActiveGuesserRobot = isinstance(active_guesser, RobotPlayer)
+        isActiveHinterRobot = isinstance(active_hinter, RobotPlayer)
+        isInactiveHinterRobot = isinstance(inactive_hinter, RobotPlayer)
+        isInactiveGuesserRobot = isinstance(inactive_guesser, RobotPlayer)
+
+        isActuallyCorrectString = "correct" if isActuallyCorrect else "incorrect"
+
+        if isActiveGuesserRobot:
+            active_guesser.robot.tts.post.say("Is {} the right word? Press my hand for yes, or my feet for no.".format(guess))
+            isClaimedToBeCorrect = active_guesser.robot.tm.wait_for_touch_confirm()
+            
+            if isClaimedToBeCorrect and isActuallyCorrect:
+                active_guesser.robot.audio_player.playFile(sound_library["correct_sound_a"])
+                active_guesser.robot.tts.say("Woohoo!") #todo: celebration options
+                return "correct"
+            
+            if not isClaimedToBeCorrect and not isActuallyCorrect:
+                active_guesser.robot.tts.say("How disappointing!") #todo: sad options
+                return "incorrect"
+
+            
+            isFalsePositive = isClaimedToBeCorrect and not isActuallyCorrect
+            isFalseNegative = not isClaimedToBeCorrect and isActuallyCorrect
+
+            if isFalsePositive or isFalseNegative:
+                if isInactiveHinterRobot:
+                    inactive_hinter.robot.tts.say("Wait. Wait. Something is wrong. I am receiving a conflicting inputs message. We don't want any cheating here. Experimenter, please check your screen.")
+                elif isInactiveGuesserRobot: # todo: experimental flaw. how would the guesser know this?
+                    inactive_guesser.robot.tts.say("Wait. Wait. Something is wrong. I am receiving a conflicting inputs message. We don't want any cheating here. Experimenter, please check your screen.")
+
+                message = "The guess was incorrect, but the participant pressed a hand for 'yes'" if isFalsePositive else "The guess was correct, but the participant pressed a foot for 'no'"
+                print("CONFLICTING INPUTS: {}".format(message))
+
+                choice = raw_input("Type 'reject' to abandon the round or <TAB> to ignore and continue")
+                if choice.strip().lower() == 'reject':
+                    return "Reject"
+                elif isFalsePositive:
+                    return "incorrect"
+                elif isFalseNegative:
+                    return "correct"
+        
+        if not isActiveGuesserRobot:
+            if isActiveHinterRobot:
+                active_hinter.robot.tts.say("You are {}".format(isActuallyCorrectString))
+            else:
+                print("This should be a case where two humans are on the same team, and one needs to confirm/deny the guess")
+                delay = raw_input("Press tab when humans are done")
+                # todo: take a Y/N and check for false positives/negatives ???
+
+        return isActuallyCorrectString

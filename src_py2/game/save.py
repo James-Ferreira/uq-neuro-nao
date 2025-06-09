@@ -6,7 +6,7 @@ import json
 from enum import Enum
 
 class Save(object):
-    def __init__(self, team_1, team_2, game_condition,  target_words, max_rounds=3, max_turns=3):
+    def __init__(self, team_1, team_2, game_condition, target_words, max_rounds=3, max_turns=3):
         self.team_1 = team_1
         self.team_2 = team_2
         self.game_condition = game_condition
@@ -80,7 +80,6 @@ class Save(object):
         self.set_turn(1)
         self.next_target_word()
 
-    #todo: write test
     def isFinished(self, isCorrect):
          if((isCorrect and self.max_rounds == self.current_round) or (self.max_rounds == self.current_round and self.max_turns == self.current_turn)):
             return True

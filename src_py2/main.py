@@ -11,21 +11,21 @@ def play_password(robot_1, robot_2, hasDemo, game_condition):
     orchestrate.sit()
     orchestrate.repose()
 
-    p1_name, p2_name = orchestrate.simple_welcome()
-    orchestrate.simple_hobby(p1_name, p2_name)
-
+    # p1_name, p2_name = orchestrate.simple_welcome()
+    p1_name, p2_name = "Jimmy", "Conrac"
+    # orchestrate.simple_hobby(p1_name, p2_name)
     team_1 = Team("Team_1", [
-            Player(p1_name, Variant.AUTO),
+            robot_1,
             Player(p1_name, Variant.AUTO)])
 
     team_2 = Team("Team_2", [
-            Player(p1_name, Variant.AUTO),
+            robot_2,
             Player(p2_name, Variant.AUTO)])
 
     if (hasDemo):
         robot_1.robot.tts.post.say("We will begin with a demonstration to ensure that you understand how to play")
         demo_words = ["arachnid", "bumblebee", "cryptid", "dove"]
-        demo_save = Save(team_1, team_2, demo_words, 1, 2, game_condition)
+        demo_save = Save(team_1, team_2, game_condition, demo_words, 1, 2)
         demo_game = Loop("initialise", demo_save, orchestrate)
         demo_game.run()
         robot_1.robot.tts.post.say("That was the end of the demonstration.  Hopefully you now understand how to play our word-guessing game, and you are ready to compete for victory.  The scores will now be reset to zero.")
@@ -33,7 +33,7 @@ def play_password(robot_1, robot_2, hasDemo, game_condition):
 
     words = ["crab", "tennis", "wig", "bottle", "leaf", "king", "wheel", "lip", "pocket", "comet", "stadium", "cord"] 
 
-    save = Save(team_1, team_2, words, game_condition)
+    save = Save(team_1, team_2, game_condition, words)
     game = Loop("initialise", save, orchestrate)
 
     game.run()

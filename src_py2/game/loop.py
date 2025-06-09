@@ -72,12 +72,17 @@ class Loop:
             return "hint"
 
     def evaluate(self):
-        #todo: false reject / false confirmation handling
         active_team = self.save.get_active_team()
+        inactive_team = self.save.get_inactive_team()
         guess = self.save.get_latest_guess()
-        isCorrect = active_team.produce_evaluation(self.save.get_target_word(), guess)
+        target_word = self.save.get_target_word()
 
-        if (isCorrect):
+        print("Evaluating (guess={}) (target={})".format(guess, target_word))
+
+        isActuallyCorrect = guess == target_word
+        status = self.orchestrate.before_evaluate(active_team, inactive_team, isActuallyCorrect, guess)
+
+        if (status == "correct"):
             self.save.calculate_score(active_team.team_name)
 
             info = "of '{} by {} from {}".format(
@@ -86,20 +91,21 @@ class Loop:
             active_team.team_name
             )
             print(colored("✓ Correct guess", 'green') + ' ' + info)
-        else:
+        elif status == "incorrect":
             info = "of '{} by {} from {}".format(
             guess,
             active_team.get_guesser().name,
             active_team.team_name
             )
             print(colored("✘ Incorrect guess", 'red') + ' ' + info)
+        else:
+            print(colored("✘ Rejected Round", 'yellow'))
+            self.save.reject_round()
 
-        # add an option to reject an evaluation in the case of speech recognition ai 
-
-        if(self.save.isFinished(isCorrect)):
+        if(self.save.isFinished(isActuallyCorrect)):
             return "end_of_game"
         
-        if(isCorrect):
+        if(isActuallyCorrect):
             self.save.next_round()
         else:
             self.save.next_turn()

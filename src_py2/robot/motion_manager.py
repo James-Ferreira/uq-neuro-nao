@@ -97,14 +97,14 @@ class MotionManager:
         interpolator = self.motion.post.angleInterpolation if post else self.motion.angleInterpolation
         return interpolator(joints, angles, time_points, True)
     
-    def use_motion_library(self, key):
+    def use_motion_library(self, key, reverse = False):
         motion_data = motion_library.motions.get(key)
         if not motion_data:
             print("Motion not found.")
             return
 
         self.execute_motion(
-            self.reversed,
+            self.reversed or reverse,
             motion_data["joint_angles_list"],
             motion_data["time_points_list"]
         )

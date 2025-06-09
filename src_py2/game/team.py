@@ -127,41 +127,9 @@ class Team(object):
             hinter.robot.audio_player.stopAll()
             transcript = hinter.robot.am.listen_until_confirmed(5)
             return transcript
-            
+        
+        if not isRobotGuesser and not isRobotHinter:
+            guess = raw_input("Type guess: ")
+            return guess
+
         return guesser.generate_guess(target_word, already_guessed)
-
-    def produce_evaluation(self, target_word, guess):
-        hinter = self.get_hinter()
-        guesser = self.get_guesser()
-        isRobotGuesser = isinstance(guesser, RobotPlayer)
-        isRobotHinter = isinstance(hinter, RobotPlayer)
-        isCorrect = guess == target_word
-
-        print("Evaluating (guess={}) (target={})".format(guess, target_word))
-        if isRobotGuesser:
-            guesser.robot.tts.say("Is {} the right word?".format(guess))
-            guesser.robot.tts.say("Press me hand for yes, or my feet for no.")
-            confirmed = guesser.robot.tm.wait_for_touch_confirm()
-            if not confirmed:
-                guesser.robot.tts.say("Oh thats disappointing")
-                return False
-            else:
-                guesser.robot.audio_player.playFile(sound_library["correct_sound_a"])
-                guesser.robot.tts.say("Woohoo!")
-                return True
-
-
-        if isRobotHinter:
-            if isCorrect:
-                hinter.robot.tts.say("How delightful. You are correct")
-            else:
-                hinter.robot.tts.say("How disappointing. You are incorrect")
-
-            # else:
-            #     guesser.robot.tts.say("Am I correct?")
-            #     transcript = guesser.robot.am.listen(5)
-            #     if transcript.contains("no"):
-            #         return ValueError("Rejected")
-
-
-        return isCorrect
