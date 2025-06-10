@@ -36,7 +36,7 @@ def play_password(robot_1, robot_2, hasDemo, game_condition):
     save = Save(team_1, team_2, game_condition, words)
     game = Loop("initialise", save, orchestrate)
 
-    game.run()
+    #game.run()
     orchestrate.simple_outro(p1_name, p2_name)
 
 if __name__ == "__main__":

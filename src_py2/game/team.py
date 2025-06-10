@@ -70,7 +70,7 @@ class Team(object):
             else:
                 confirmed = False
                 while not confirmed:
-                    hinter.robot.tts.say("Do you understand the hint? Press my hand for yes, or my foot for no.")
+                    hinter.robot.tts.post.say("Do you understand the hint? Press my hand for yes, or my foot for no.")
                     confirmed = hinter.robot.tm.wait_for_touch_confirm()
 
                     if not confirmed:
@@ -108,7 +108,7 @@ class Team(object):
             else:
                 confirmed = False
                 while not confirmed:
-                    guesser.robot.tts.say("Do you understand the guess? Press my hand for yes, or my foot for no.")
+                    guesser.robot.tts.post.say("Do you understand the guess? Press my hand for yes, or my foot for no.")
                     confirmed = guesser.robot.tm.wait_for_touch_confirm()
 
                     if not confirmed:

@@ -173,6 +173,7 @@ class Orchestrate(object):
 
         self.robot_2.robot.tts.post.say("I know just what you mean, {}. I, myself am ready for a long, peaceful rest er roo, as the ozzies say.".format(self.robot_1.name))
         self.robot_2.robot.mm.use_motion_library("outro_2")
+        # makes robot_1 put its arms back into sit position, a bit clunky
         self.robot_1.robot.mm.use_motion_library("outro_3")
 
         if self.robot_1.team_condition == 'O':
@@ -182,16 +183,29 @@ class Orchestrate(object):
 
         self.robot_1.robot.tts.post.say("Well, {}, it was a great pleasure playing with you today".format(participant_1_name))
         self.robot_1.robot.mm.use_motion_library("outro_4")
-        self.robot_2.robot.mm.use_motion_library("outro_5")
+
+        # original second motion for robot 2 (why ?)
+        # self.robot_2.robot.mm.use_motion_library("outro_5")
         
         self.robot_2.robot.tts.post.say("And I had a wonderful time playing with you, {}.".format(participant_2_name))
-        self.robot_1.robot.mm.use_motion_library("outro_6")
-        self.robot_2.robot.mm.use_motion_library("outro_7")
+
+        # original motion for robot 1 (why ?)
+        # self.robot_1.robot.mm.use_motion_library("outro_6")
+
+        # this (original) animaiton is too short, switching to robot_1's longer hand-to-chest animation (outro_6, above)
+        # self.robot_2.robot.mm.use_motion_library("outro_5")
+        self.robot_2.robot.mm.use_motion_library("outro_6")
+
+        # this animation made the robot turn it's head away from the participant, likely detracting from the sincerity of the dialogue.
+        # self.robot_2.robot.mm.use_motion_library("outro_7")
         
         self.robot_1.robot.tts.post.say("So, {}, shall we?".format(self.robot_2.name))
+        # this motion needs to be longer so robot_2 doesn't interrupt
         self.robot_1.robot.mm.use_motion_library("outro_8")
+        import time
+        time.sleep(1.5)
 
-        self.robot_2.robot.tts.post.say("Lets")
+        self.robot_2.robot.tts.say("Lets")
 
         self.wave_bye()
         self.repose()

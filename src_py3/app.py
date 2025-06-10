@@ -16,7 +16,6 @@ client = ollama.Client(
 )
 print("Ollama model loaded.")
 
-
 @app.route('/transcribe', methods=['POST'])
 def transcribe_audio():
     if 'audio' not in request.files:
@@ -94,66 +93,77 @@ def guess():
     already_hinted = data['already_hinted']
     already_guessed = data['already_guessed']
 
-    prompt = f"""You are playing the word guessing game Password. You are the guesser. Your task is to guess a single word based on the hints provided to you.
-        DO NOT use compound words. DO NOT repeat or reuse the hint word. DO NOT use the hint word as a prefix, suffix, or part of your guess. DO NOT reuse any previous guesses.
-        Your output must be exactly one word in English (only letters, no punctuation or numbers)
-        You must reason about the hint and guess the target word using inference, association, or conceptual relationships -- not by repeating or modifying the hint itself.
+    prompt = f"""You are playing the word guessing game *Password*. You are the guesser. Your task is to guess a single word based on the hints provided to you.
+        RULES — STRICTLY FOLLOW THESE:
+        - DO NOT use compound words.
+        - DO NOT repeat or reuse the hint word.
+        - DO NOT use the hint word as a prefix, suffix, or substring of your guess.
+        - DO NOT reuse any previous guesses.
+        - Your guess must be one valid English word — only letters (no numbers, punctuation, or spaces).
+        - Your output must be the guess only — no reasoning, no explanation, no extra text.
 
-        Examples of Invalid Behavior (DON'T do this)
+        Your guess should be conceptually or associatively related to the hint, but must NOT include the hint itself in any form.
 
-        These are examples of what NOT to do. In each case, the guess wrongly contains the hint or a previous guess:
+        ---
 
-        Hint: Shell -> Invalid Guess: Seashell
-        (Contains the hint as a part of a compound)
+        Examples of Invalid Behavior (DO NOT do this):
 
-        Hint: Fire -> Invalid Guess: Fireball
-        (Reuses the hint in a compound word)
+        Case: Compound word using the hint  
+        Hint: Shell -> Invalid Guess: Seashell  
+        (Combines "shell" with another word — compound)
 
-        Hint: Snow -> Invalid Guess: Snowfall
-        (Uses the hint as a prefix)
+        Case: Hint word reused directly  
+        Hint: Water -> Invalid Guess: Waterfall  
+        (Reuses "water" — not allowed)
 
-        Hint: Tree -> Invalid Guess: Treehouse
-        (Hint is directly embedded in the guess)
+        Case: Hint word as prefix  
+        Hint: Snow -> Invalid Guess: Snowman  
+        ("Snow" is used as a prefix — invalid)
 
-        Hint: Light -> Invalid Guess: Flashlight
-        (Reuses the hint in a compound)
+        Case: Hint is a substring  
+        Hint: Book -> Invalid Guess: Notebook  
+        ("book" is embedded — invalid)
 
-        Hint: Water -> Invalid Guess: Waterfall
-        (Includes the exact hint)
+        Case: Suffix usage  
+        Hint: Tooth -> Invalid Guess: Sabertooth  
+        ("tooth" used as suffix — invalid)
 
-        Hint: Book -> Invalid Guess: Notebook
-        (Compound word with the hint)
+        Case: Exact reuse  
+        Hint: Fire -> Invalid Guess: Fire  
+        (Exact reuse of the hint — forbidden)
 
-        Hint: Dog -> Invalid Guess: Doghouse
-        (Contains the hint entirely)
+        Case: Previous guess reused  
+        Previous guess: Lion -> Invalid Guess: Lion  
+        (Repeating a past guess — invalid)
 
-        Hint: Tooth -> Invalid Guess: Toothpaste
-        (Repeats the hint)
+        ---
 
-        Hint: Hand -> Invalid Guess: Handshake
-        (Hint is part of the guess)
+        Examples of Valid Guesses:
 
-        What You Should Do Instead
+        Hint: Shell -> Valid Guess: Turtle  
+        (Hard outer protection — related, but no reuse of "shell")
 
-        When given a hint like "shell", you should guess a related word like:
+        Hint: Water -> Valid Guess: River  
+        (Associated concept — not a compound)
 
-        Turtle (an animal with a shell)
+        Hint: Fire -> Valid Guess: Heat  
+        (Related through inference — no repetition)
 
-        Clam (a type of shellfish)
+        Hint: Book -> Valid Guess: Library  
+        (Conceptually related — no overlap)
 
-        Armor (something protective, like a shell)
+        Hint: Dog -> Valid Guess: Bark  
+        (Related behavior — valid)
 
-        Crab, Snail, etc.
+        ---
 
-        These guesses do not contain the hint and demonstrate appropriate associative reasoning.
-        
-        Previous hints and guesses are listed below:
-        HINTS so far:
-            {already_hinted}
-        GUESSES so far:
-            {already_guessed}
+        PAST HINTS:  
+        {already_hinted}
 
-        Now, produce your one-word guess.""" 
+        PAST GUESSES:  
+        {already_guessed}
+
+        Now, produce your one-word guess:""" 
 
     print(f"Prompt: {prompt}")
 
