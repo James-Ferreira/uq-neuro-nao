@@ -178,6 +178,14 @@ def guess():
     print(f"Elapsed time: {end - start:.2f} seconds.")
     response_str = str(ai_response.response)
 
+
+    #conrad added 12th June **#
+    import string
+    translator = str.maketrans('', '', string.punctuation)
+    response_str = response_str.translate(translator).strip().lower()
+    #** ** ** ** ** ** ** ** **#
+
+
     print("Response: ", response_str)
     try:
         return jsonify({'response': response_str}), 200

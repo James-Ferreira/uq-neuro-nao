@@ -12,7 +12,7 @@ def play_password(robot_1, robot_2, hasDemo, game_condition):
     orchestrate.repose()
 
     # p1_name, p2_name = orchestrate.simple_welcome()
-    p1_name, p2_name = "Jimmy", "Conrac"
+    p1_name, p2_name = "Jimjam", "Konker"
     # orchestrate.simple_hobby(p1_name, p2_name)
     team_1 = Team("Team_1", [
             robot_1,
@@ -36,8 +36,8 @@ def play_password(robot_1, robot_2, hasDemo, game_condition):
     save = Save(team_1, team_2, game_condition, words)
     game = Loop("initialise", save, orchestrate)
 
-    #game.run()
-    orchestrate.simple_outro(p1_name, p2_name)
+    game.run()
+    #orchestrate.simple_outro(p1_name, p2_name)
 
 if __name__ == "__main__":
     condition_index = 0 # incremenet for different game conditions

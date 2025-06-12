@@ -1,8 +1,8 @@
 {
-    "duration": 466.59, 
+    "duration": 543.46, 
     "config": {
-        "max_rounds": 3, 
-        "max_turns": 3, 
+        "max_rounds": 4, 
+        "max_turns": 6, 
         "game_condition": {
             "exp_name": "Zork", 
             "team_condition": "O", 
@@ -17,25 +17,19 @@
             "round_number": 1, 
             "team_1": {
                 "team_name": "Team_1", 
-                "score": 0, 
+                "score": 5, 
                 "guesses": [
-                    "crustacean", 
                     "crab"
                 ], 
                 "hints": [
-                    "Shell", 
-                    "Sand"
+                    "Fish"
                 ]
             }, 
             "team_2": {
                 "team_name": "Team_2", 
                 "score": 0, 
-                "guesses": [
-                    "lobster"
-                ], 
-                "hints": [
-                    "Seaweed"
-                ]
+                "guesses": [], 
+                "hints": []
             }
         }, 
         "2": {
@@ -43,23 +37,25 @@
             "round_number": 2, 
             "team_1": {
                 "team_name": "Team_1", 
-                "score": 0, 
+                "score": 2, 
                 "guesses": [
-                    "Bounce"
+                    "court", 
+                    "tennis"
                 ], 
                 "hints": [
-                    "racket"
+                    "racket", 
+                    "badminton"
                 ]
             }, 
             "team_2": {
                 "team_name": "Team_2", 
                 "score": 0, 
                 "guesses": [
-                    "FROST", 
-                    "Flurry"
+                    "athlete", 
+                    "serve"
                 ], 
                 "hints": [
-                    "hint", 
+                    "sport", 
                     "net"
                 ]
             }
@@ -69,12 +65,12 @@
             "round_number": 3, 
             "team_1": {
                 "team_name": "Team_1", 
-                "score": 2, 
+                "score": 5, 
                 "guesses": [
                     "wig"
                 ], 
                 "hints": [
-                    "Fur"
+                    "Finger"
                 ]
             }, 
             "team_2": {
@@ -82,6 +78,36 @@
                 "score": 0, 
                 "guesses": [], 
                 "hints": []
+            }
+        }, 
+        "4": {
+            "target_word": "bottle", 
+            "round_number": 4, 
+            "team_1": {
+                "team_name": "Team_1", 
+                "score": 0, 
+                "guesses": [
+                    "wave", 
+                    "fluid"
+                ], 
+                "hints": [
+                    "container", 
+                    "drink"
+                ]
+            }, 
+            "team_2": {
+                "team_name": "Team_2", 
+                "score": 1, 
+                "guesses": [
+                    "river", 
+                    "waveform", 
+                    "bottle"
+                ], 
+                "hints": [
+                    "water", 
+                    "shape", 
+                    "cork"
+                ]
             }
         }
     }, 
@@ -99,7 +125,7 @@
                 }
             ], 
             "outcome": "win", 
-            "score": 2, 
+            "score": 12, 
             "name": "Team_1"
         }, 
         "team_2": {
@@ -114,7 +140,7 @@
                 }
             ], 
             "outcome": "lose", 
-            "score": 0, 
+            "score": 1, 
             "name": "Team_2"
         }
     }

@@ -252,7 +252,6 @@ class Orchestrate(object):
         self.robot_1.robot.mm.sit()
         self.robot_2.robot.mm.sit()
 
-
     def before_hint(self, active_team, inactive_team, already_hinted):
         active_hinter = active_team.get_hinter()
         active_guesser = active_team.get_guesser()
