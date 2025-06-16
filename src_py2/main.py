@@ -5,6 +5,7 @@ from game.player import Player, Variant
 from game.robot_player import RobotPlayer
 from robot.orchestrate import Orchestrate
 from conditions import all_conditions
+from target_words import demo_targets, actual_targets
 
 def play_password(robot_1, robot_2, hasDemo, game_condition):
     orchestrate = Orchestrate(robot_1, robot_2)
@@ -24,16 +25,14 @@ def play_password(robot_1, robot_2, hasDemo, game_condition):
 
     if (hasDemo):
         robot_1.robot.tts.post.say("We will begin with a demonstration to ensure that you understand how to play")
-        demo_words = ["arachnid", "bumblebee", "cryptid", "dove"]
-        demo_save = Save(team_1, team_2, game_condition, demo_words, 1, 2)
+        demo_save = Save(team_1, team_2, game_condition, demo_targets, 1, 2)
         demo_game = Loop("initialise", demo_save, orchestrate)
         demo_game.run()
         robot_1.robot.tts.post.say("That was the end of the demonstration.  Hopefully you now understand how to play our word-guessing game, and you are ready to compete for victory.  The scores will now be reset to zero.")
         orchestrate.repose()
 
-    words = ["crab", "tennis", "wig", "bottle", "leaf", "king", "wheel", "lip", "pocket", "comet", "stadium", "cord"] 
 
-    save = Save(team_1, team_2, game_condition, words)
+    save = Save(team_1, team_2, game_condition, actual_targets)
     game = Loop("initialise", save, orchestrate)
 
     game.run()

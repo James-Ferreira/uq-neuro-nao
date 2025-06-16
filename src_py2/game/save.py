@@ -4,13 +4,17 @@ import copy
 import pprint
 import json
 from enum import Enum
+import datetime
 
 class Save(object):
-    def __init__(self, team_1, team_2, game_condition, target_words, max_rounds=4, max_turns=6):
+    def __init__(self, team_1, team_2, game_condition, targets_with_quadrants, max_rounds=4, max_turns=6):
         self.team_1 = team_1
         self.team_2 = team_2
         self.game_condition = game_condition
-        self.target_words = target_words
+
+
+        self.targets_with_quadrants = targets_with_quadrants
+        self.target_words = list(targets_with_quadrants.keys())
         self.max_rounds = max_rounds
         self.max_turns = max_turns
         self.current_round = 1
@@ -23,7 +27,7 @@ class Save(object):
 
         self.rejected = []
 
-        self.set_target_word(target_words[0])
+        self.set_target_word(self.target_words[0])
 
 
     ### ROUNDS ###
@@ -45,7 +49,6 @@ class Save(object):
             raise ValueError("Round {} does not exist.".format(self.current_round))
 
     def next_turn(self):
-        # self.get_active_team().rotate_role()
         if self.current_turn < self.max_turns:
             self.set_turn(self.current_turn + 1)
         else: 
@@ -56,8 +59,11 @@ class Save(object):
             self.set_round(self.current_round + 1)
             self.set_turn(1) 
             self.next_target_word()
-            self.team_1.rotate_role()
-            self.team_2.rotate_role()
+
+            # rotate every 2nd round
+            if self.current_round % 2 == 0:
+                self.team_1.rotate_role()
+                self.team_2.rotate_role()
 
     def get_curr_round(self):
         return self.rounds[self.current_round]
@@ -238,8 +244,11 @@ class Save(object):
                 ))
             
         pprint.pprint(data, indent=2)
-
-        with open("session_data.json", "w") as f:
+        now = datetime.datetime.now()
+        filename = "session_data+{}+{:02d}{:02d}.json".format(
+            now.date(), now.hour, now.minute
+        )
+        with open(filename, "w") as f:
             json.dump(data, f, indent=4)
 
 def make_json_safe(obj):

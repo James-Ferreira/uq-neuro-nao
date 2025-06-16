@@ -31,10 +31,13 @@ class Loop:
 
         already_hinted = self.save.get_curr_round_hints()
         already_guessed = self.save.get_curr_round_guesses()
-        try:
-            self.orchestrate.before_hint(active_team, inactive_team, already_hinted)
 
-            hint = active_team.produce_hint(self.save.get_target_word(), already_hinted, already_guessed)
+        target_word = self.save.get_target_word()
+        try:
+            target_with_quadrants = self.save.targets_with_quadrants.get(target_word)
+            self.orchestrate.before_hint(active_team, inactive_team, already_hinted, target_with_quadrants)
+
+            hint = active_team.produce_hint(target_word, already_hinted, already_guessed)
             self.save.record_hint(active_team.team_name, hint)
 
             print("[{}] {} hinted '{}'".format(

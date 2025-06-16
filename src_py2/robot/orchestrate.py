@@ -252,7 +252,7 @@ class Orchestrate(object):
         self.robot_1.robot.mm.sit()
         self.robot_2.robot.mm.sit()
 
-    def before_hint(self, active_team, inactive_team, already_hinted):
+    def before_hint(self, active_team, inactive_team, already_hinted, target_with_quadrants):
         active_hinter = active_team.get_hinter()
         active_guesser = active_team.get_guesser()
         inactive_hinter = inactive_team.get_hinter()
@@ -264,11 +264,14 @@ class Orchestrate(object):
         isInactiveGuesserRobot = isinstance(inactive_guesser, RobotPlayer)
 
         if isInactiveHinterRobot:
-            turn = 'turn_head_right' if inactive_hinter.orientation == 'L' else 'turn_head_left'
-            inactive_hinter.robot.mm.use_motion_library(turn)
+            inactive_hinter.robot.mm.use_motion_library("turn_head")
         if isInactiveGuesserRobot:
-            turn = 'turn_head_right' if inactive_guesser.orientation == 'L' else 'turn_head_left'
-            inactive_guesser.robot.mm.use_motion_library(turn)
+            inactive_guesser.robot.mm.use_motion_library("turn_head")
+
+        if isActiveHinterRobot:
+            active_hinter.robot.mm.sit_gently()
+        if isActiveGuesserRobot:
+            active_guesser.robot.mm.sit_gently()
 
         if len(already_hinted) == 0:
             if isActiveHinterRobot:
@@ -277,15 +280,20 @@ class Orchestrate(object):
                 duration = random.uniform(2,5)
                 active_hinter.robot.tts.say("Experimenter. Please show me the target word. Touch my head when you are ready for me to scan.")
                 active_hinter.robot.tm.wait_for_touch_activate()
+                active_hinter.robot.audio_player.post.playFile(sound_library["scanning"])
                 active_hinter.robot.leds.rotateEyes(0x33ECFF, 0.5, duration)
-                active_hinter.robot.tts.say("I see the target word")
+                active_hinter.robot.audio_player.stopAll()
+                active_hinter.robot.tts.say("I see the target word in quadrant{}".format(target_with_quadrants["position_1"]))
+
 
                 if active_hinter.team_condition == "P":
                     if isInactiveHinterRobot:
                         inactive_hinter.robot.tts.say("Please let me see the target word, too.  Touch my head when you are ready for me to scan.")  
                         inactive_hinter.robot.tm.wait_for_touch_activate()
+                        inactive_hinter.robot.audio_player.post.playFile(sound_library["scanning"])
                         inactive_hinter.robot.leds.rotateEyes(0x33ECFF, 0.5, duration)
-                        inactive_hinter.robot.tts.say("I see the target word")
+                        inactive_hinter.robot.audio_player.stopAll()
+                        inactive_hinter.robot.tts.say("I see the target word in position {}".format(target_with_quadrants["position_2"]))
                     else:
                       active_hinter.tts.say("Thank you.  Now you can show the target word to: {}, too:  Touch my head when you are ready to continue.".format(inactive_hinter.name))
                       active_hinter.robot.tm.wait_for_touch_activate()
@@ -295,18 +303,26 @@ class Orchestrate(object):
                 active_guesser.robot.tts.say("The hinters will be: {} and: {}.  {} will hint first.".format(active_hinter.name, inactive_hinter.name, active_hinter.name))
 
     def before_guess(self, active_team, inactive_team):
+        active_hinter = active_team.get_hinter()
+        active_guesser = active_team.get_guesser()
         inactive_hinter = inactive_team.get_hinter()
         inactive_guesser = inactive_team.get_guesser()
 
+        isActiveGuesserRobot = isinstance(active_guesser, RobotPlayer)
+        isActiveHinterRobot = isinstance(active_hinter, RobotPlayer)
         isInactiveHinterRobot = isinstance(inactive_hinter, RobotPlayer)
         isInactiveGuesserRobot = isinstance(inactive_guesser, RobotPlayer)
 
         if isInactiveHinterRobot:
-            turn = 'turn_head_right' if inactive_hinter.orientation == 'L' else 'turn_head_left'
-            inactive_hinter.robot.mm.use_motion_library(turn)
+            inactive_hinter.robot.mm.use_motion_library("turn_head")
         if isInactiveGuesserRobot:
-            turn = 'turn_head_right' if inactive_guesser.orientation == 'L' else 'turn_head_left'
-            inactive_guesser.robot.mm.use_motion_library(turn)
+            inactive_guesser.robot.mm.use_motion_library("turn_head")
+
+        if isActiveHinterRobot:
+            active_hinter.robot.mm.sit_gently()
+        if isActiveGuesserRobot:
+            active_guesser.robot.mm.sit_gently()
+
 
     def before_evaluate(self, active_team, inactive_team, isActuallyCorrect, guess):
         active_hinter = active_team.get_hinter()

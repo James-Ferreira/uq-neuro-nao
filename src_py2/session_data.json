@@ -1,5 +1,5 @@
 {
-    "duration": 543.46, 
+    "duration": 985.77, 
     "config": {
         "max_rounds": 4, 
         "max_turns": 6, 
@@ -22,7 +22,7 @@
                     "crab"
                 ], 
                 "hints": [
-                    "Fish"
+                    "Shell"
                 ]
             }, 
             "team_2": {
@@ -37,26 +37,30 @@
             "round_number": 2, 
             "team_1": {
                 "team_name": "Team_1", 
-                "score": 2, 
+                "score": 0, 
                 "guesses": [
+                    "net", 
                     "court", 
                     "tennis"
                 ], 
                 "hints": [
-                    "racket", 
-                    "badminton"
+                    "volley", 
+                    "ball", 
+                    "please give the name of the sport"
                 ]
             }, 
             "team_2": {
                 "team_name": "Team_2", 
                 "score": 0, 
                 "guesses": [
-                    "athlete", 
+                    "cloud", 
+                    "serve", 
                     "serve"
                 ], 
                 "hints": [
+                    "racket", 
                     "sport", 
-                    "net"
+                    "name"
                 ]
             }
         }, 
@@ -65,19 +69,29 @@
             "round_number": 3, 
             "team_1": {
                 "team_name": "Team_1", 
-                "score": 5, 
+                "score": 1, 
                 "guesses": [
+                    "money", 
+                    "feeble", 
                     "wig"
                 ], 
                 "hints": [
-                    "Finger"
+                    "to pay", 
+                    "snatch", 
+                    "weave"
                 ]
             }, 
             "team_2": {
                 "team_name": "Team_2", 
                 "score": 0, 
-                "guesses": [], 
-                "hints": []
+                "guesses": [
+                    "fees", 
+                    "fiber"
+                ], 
+                "hints": [
+                    "hair", 
+                    "the target word has to do with fake hair as in a toupee"
+                ]
             }
         }, 
         "4": {
@@ -85,28 +99,22 @@
             "round_number": 4, 
             "team_1": {
                 "team_name": "Team_1", 
-                "score": 0, 
+                "score": 4, 
                 "guesses": [
-                    "wave", 
-                    "fluid"
+                    "bottle"
                 ], 
                 "hints": [
-                    "container", 
-                    "drink"
+                    "Liquid"
                 ]
             }, 
             "team_2": {
                 "team_name": "Team_2", 
-                "score": 1, 
+                "score": 0, 
                 "guesses": [
-                    "river", 
-                    "waveform", 
-                    "bottle"
+                    "contain her i hardly know her"
                 ], 
                 "hints": [
-                    "water", 
-                    "shape", 
-                    "cork"
+                    "container"
                 ]
             }
         }
@@ -121,11 +129,11 @@
                 }, 
                 {
                     "variant": "AUTO", 
-                    "name": "Jimmy"
+                    "name": "Jimjam"
                 }
             ], 
             "outcome": "win", 
-            "score": 12, 
+            "score": 10, 
             "name": "Team_1"
         }, 
         "team_2": {
@@ -136,11 +144,11 @@
                 }, 
                 {
                     "variant": "AUTO", 
-                    "name": "Conrac"
+                    "name": "Konker"
                 }
             ], 
             "outcome": "lose", 
-            "score": 1, 
+            "score": 0, 
             "name": "Team_2"
         }
     }

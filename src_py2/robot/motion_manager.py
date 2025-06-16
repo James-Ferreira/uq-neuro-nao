@@ -44,9 +44,7 @@ class MotionManager:
         if not self.posture_check('Sit') and not self.posture_check('SitRelax'):
             return
         else:
-            joint_angles = [angles_compressed for _, angles_compressed in [['HeadYaw', [-0.052197933197021484]], ['HeadPitch', [-0.05526590347290039]], ['LShoulderPitch', [0.9050180912017822]], ['LShoulderRoll', [0.25153398513793945]], ['LElbowYaw', [-0.43109607696533203]], ['LElbowRoll', [-1.1826720237731934]], ['LWristYaw', [0.004559993743896484]], ['LHand', [0.29399996995925903]], ['RShoulderPitch', [0.9465198516845703]], ['RShoulderRoll', [-0.3083760738372803]], ['RElbowYaw', [0.5153820514678955]], ['RElbowRoll', [1.1965618133544922]], ['RWristYaw', [0.004559993743896484]], ['RHand', [0.29680001735687256]]]]
-            time_points = [time_points_compressed for _, time_points_compressed in [['HeadYaw', [1.25]], ['HeadPitch', [1.25]], ['LShoulderPitch', [1.25]], ['LShoulderRoll', [1.25]], ['LElbowYaw', [1.25]], ['LElbowRoll', [1.25]], ['LWristYaw', [1.25]], ['LHand', [1.25]], ['RShoulderPitch', [1.25]], ['RShoulderRoll', [1.25]], ['RElbowYaw', [1.25]], ['RElbowRoll', [1.25]], ['RWristYaw', [1.25]], ['RHand', [1.25]]]]
-            self.motion.post.angleInterpolation(motion_library.joint_names_list, joint_angles, time_points, True)                
+            self.use_motion_library('sit_gently')
    
     def sit_relax(self, post=None):
         speed = 0.75

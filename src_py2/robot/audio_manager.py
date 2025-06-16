@@ -170,4 +170,5 @@ sound_library = {
     "correct_sound_b": "/home/nao/AUDIO/correct_1-5.mp3", #1.5s
     "incorrect_sound_b": "/home/nao/AUDIO/incorrect_1-05.mp3", #1.05s
     "thinking": "/home/nao/AUDIO/thinking_3.mp3",
+    "scanning": "/home/nao/AUDIO/scanning_3.mp3",
 }

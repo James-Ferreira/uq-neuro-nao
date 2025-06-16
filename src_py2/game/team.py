@@ -1,5 +1,5 @@
 from game.player import Roles
-from robot_player import RobotPlayer
+from game.robot_player import RobotPlayer
 from robot.audio_manager import sound_library
 import time
 
@@ -86,6 +86,9 @@ class Team(object):
             if isRobotGuesser:
                 guesser.robot.tts.say('I am ready to guess')
                 guesser.robot.tts.say('You have 5 seconds to think of your hint')
+                guesser.robot.audio_player.post.playFile(sound_library["thinking"])
+                time.sleep(5)
+                guesser.robot.audio_player.stopAll()
                 transcript = guesser.robot.am.listen_until_confirmed(5)
                 return transcript
 
@@ -98,7 +101,7 @@ class Team(object):
         isRobotHinter = isinstance(hinter, RobotPlayer)
 
         if isRobotGuesser:
-            guesser.robot.tts.say("I shall now think about my guess")
+            guesser.robot.tts.post.say("I shall now think about my guess")
             guess = guesser.generate_guess(target_word, already_hinted, already_guessed)
             guesser.robot.tts.say("My guess is {}".format(guess))
 

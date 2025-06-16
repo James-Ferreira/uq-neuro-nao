@@ -33,6 +33,21 @@
                 "panel": "new"
             },
             "problemMatcher": []
+        },
+        {
+            "label": "Run py2 Tests",
+            "command": "python2.7",
+            "args": [
+                "-m",
+                "unittest",
+                "discover",
+                "-v",
+                "-s",
+                "src_py2/tests",
+                "-p",
+                "test_*.py"
+            ],
+            "problemMatcher": []
         }
     ]
 }

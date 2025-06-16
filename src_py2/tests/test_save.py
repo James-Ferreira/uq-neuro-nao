@@ -1,9 +1,12 @@
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import unittest
 from game.team import Team
 from game.save import Save
 from game.player import Player, Variant
 from game.round import Round
-from pprint import pprint
+from collections import OrderedDict
 
 class TestSave(unittest.TestCase):
 
@@ -12,8 +15,13 @@ class TestSave(unittest.TestCase):
         self.team_2 = Team("Princesses", [Player("Peach", Variant.AUTO), Player("Daisy", Variant.AUTO)])
         self.max_rounds = 6
         self.max_turns = 5
-        self.target_words = [f"target{i}" for i in range(self.max_rounds + 1)]
-        self.save_game = Save(self.team_1, self.team_2, self.target_words, self.max_rounds, self.max_turns)
+        self.targets = OrderedDict(
+            ("target{}".format(i), {"position_1": 1, "position_2": 1})
+            for i in range(self.max_rounds + 1)
+        )
+        self.target_words = list(self.targets.keys())
+        gc = {'pitch': 0.85, 'exp_name': 'Zork', 'team_condition': 'O', 'orientation': 'L', 'robot': 'clas'},
+        self.save_game = Save(self.team_1, self.team_2, gc, self.targets, self.max_rounds, self.max_turns)
 
     def test_set_round(self):
         self.assertEqual(self.save_game.current_round, 1)
@@ -132,7 +140,6 @@ class TestSave(unittest.TestCase):
             self.save_game.record_guess(active_team_name, "guess2")
             self.assertEqual(self.save_game.get_latest_guess(), "guess2")
 
-
     def test_round_reject(self):
         expected_base = Round(1, self.team_1, self.team_2, self.target_words[0])
 
@@ -157,6 +164,20 @@ class TestSave(unittest.TestCase):
 
         self.assertEqual(self.save_game.rejected, [expected_to_reject])
 
+    def test_round_roles(self):
+        active_hinter_order = ["Mario", "Daisy", "Luigi", "Peach", "Mario", "Daisy"]
+        inactive_hinter_order = ["Peach", "Luigi", "Daisy", "Mario", "Peach", "Luigi"]
+
+        for i in range(self.max_rounds):
+            active_hinter = self.save_game.get_active_team().get_hinter().name
+            inactive_hinter = self.save_game.get_inactive_team().get_hinter().name
+
+            print("\nRound {}, Active Hinter {}, Inactive Hinter {}\n".format(i, active_hinter, inactive_hinter))
+
+            self.assertEqual(active_hinter, active_hinter_order[i])
+            self.assertEqual(inactive_hinter, inactive_hinter_order[i])
+
+            self.save_game.next_round()
 
 if __name__ == '__main__':
     unittest.main()
