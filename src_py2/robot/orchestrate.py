@@ -340,7 +340,8 @@ class Orchestrate(object):
         if isActiveGuesserRobot:
             active_guesser.robot.tts.post.say("Is {} the right word? Press my hand for yes, or my foot for no.".format(guess))
             isClaimedToBeCorrect = active_guesser.robot.tm.wait_for_touch_confirm()
-            
+            active_guesser.robot.tts.stopAll()
+
             if isClaimedToBeCorrect and isActuallyCorrect:
                 active_guesser.robot.audio_player.playFile(sound_library["correct_sound_a"])
                 active_guesser.robot.tts.say("Woohoo!") #todo: celebration options

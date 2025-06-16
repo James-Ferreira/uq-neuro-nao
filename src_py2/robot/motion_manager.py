@@ -87,7 +87,6 @@ class MotionManager:
             self.motion.post.angleInterpolation(motion_library.joint_names_list, joint_angles, time_points, True)
 
     def execute_motion(self, reverse, joint_angles, time_points, post=False):
-        print("executing motion")
 
         joints = mirror_joint_names(motion_library.joint_names_list) if reverse else motion_library.joint_names_list
         angles = transform_angles_by_joint_name(motion_library.joint_names_list, joint_angles) if reverse else joint_angles
@@ -95,7 +94,9 @@ class MotionManager:
         interpolator = self.motion.post.angleInterpolation if post else self.motion.angleInterpolation
         return interpolator(joints, angles, time_points, True)
     
-    def use_motion_library(self, key, reverse = False):
+    def use_motion_library(self, key, reverse = False, post = False):
+        print("{} using motion '{}'".format(self.robot.name, key))
+
         motion_data = motion_library.motions.get(key)
         if not motion_data:
             print("Motion not found.")
@@ -104,7 +105,8 @@ class MotionManager:
         self.execute_motion(
             self.reversed or reverse,
             motion_data["joint_angles_list"],
-            motion_data["time_points_list"]
+            motion_data["time_points_list"],
+            post
         )
 
     def posture_check(self, posture):
