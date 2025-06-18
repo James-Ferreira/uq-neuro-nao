@@ -55,21 +55,22 @@ class AudioManager:
         
         self.robot.tts.say("Sorry, I couldn't understand. Let's try again later.")
 
-    def listen_until_confirmed(self, duration=5):
+    def listen_until_confirmed(self, duration=2.5):
         while True:
             try:
                 self.robot.audio_player.post.playFile(sound_library["start_listening"])
                 self.robot.tts.say("I'm listening")
-                self.robot.leds.post.fadeRGB("AllLeds", 0xFF0000, 0.1)
+                self.robot.leds.post.fadeRGB("FaceLeds", 0x00FF00, 0.1)
 
                 audio_path = "/tmp/recorded_speech.wav"
                 self.record_audio(duration, audio_path)
-                self.robot.leds.post.fadeRGB("AllLeds", 0xFFFFFF, 0.1)
+                self.robot.leds.post.fadeRGB("FaceLeds", 0xFFFFFF, 0.1)
 
                 if not os.path.exists(audio_path) or os.path.getsize(audio_path) == 0:
                     raise ValueError("Zero-length audio can cause recognition failure or hang")
 
-                self.robot.audio_player.post.playFile(sound_library["stop_listening"])
+                # removing .post from below to see if that stops speech from occuring as end sound plays
+                self.robot.audio_player.playFile(sound_library["stop_listening"])
 
                 transcription = transcribe.transcribe_file(audio_path)
                 if not transcription:

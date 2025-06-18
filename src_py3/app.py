@@ -7,7 +7,7 @@ import ollama
 app = Flask(__name__)
 
 print("Loading Whisper model...")
-model = whisper.load_model("medium")
+model = whisper.load_model("small")
 print("Whisper model loaded.")
 
 print("Loading Ollama model...")

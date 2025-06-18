@@ -12,9 +12,11 @@ def play_password(robot_1, robot_2, hasDemo, game_condition):
     orchestrate.sit()
     orchestrate.repose()
 
-    # p1_name, p2_name = orchestrate.simple_welcome()
-    p1_name, p2_name = "Jimjam", "Konker"
-    # orchestrate.simple_hobby(p1_name, p2_name)
+    # need hard-coded player names if running without simple_welcome()
+    # p1_name, p2_name = "Sarah", "Natalie"
+
+    p1_name, p2_name = orchestrate.simple_welcome()
+    orchestrate.simple_hobby(p1_name, p2_name)
     team_1 = Team("Team_1", [
             robot_1,
             Player(p1_name, Variant.AUTO)])

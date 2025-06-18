@@ -31,9 +31,9 @@ class MotionManager:
         else:
             self.robot.posture.goToPosture('LyingBelly', speed)
 
-    def sit(self, post=None):
+    def sit(self, post=False):
         speed = 0.75
-        if post == 1:
+        if post == True:
             self.robot.posture.post.goToPosture('Sit', speed)
         else:
             self.robot.posture.goToPosture('Sit', speed)
@@ -83,7 +83,7 @@ class MotionManager:
             return
         else:
             joint_angles = [angles_compressed for _, angles_compressed in [['HeadYaw', [-0.013848066329956055]], ['HeadPitch', [0.5752079486846924]], ['LShoulderPitch', [0.8896780014038086]], ['LShoulderRoll', [0.16716408729553223]], ['LElbowYaw', [-0.48018407821655273]], ['LElbowRoll', [-0.9970581531524658]], ['LWristYaw', [-0.8299360275268555]], ['LHand', [0.6647999882698059]], ['RShoulderPitch', [0.8575479984283447]], ['RShoulderRoll', [-0.127363920211792]], ['RElbowYaw', [0.4371480941772461]], ['RElbowRoll', [0.9112381935119629]], ['RWristYaw', [0.891211986541748]], ['RHand', [0.5971999764442444]]]]
-            time_points = [time_points_compressed for _, time_points_compressed in [['HeadYaw', [1.25]], ['HeadPitch', [1.25]], ['LShoulderPitch', [1.25]], ['LShoulderRoll', [1.25]], ['LElbowYaw', [1.25]], ['LElbowRoll', [1.25]], ['LWristYaw', [1.25]], ['LHand', [1.25]], ['RShoulderPitch', [1.25]], ['RShoulderRoll', [1.25]], ['RElbowYaw', [1.25]], ['RElbowRoll', [1.25]], ['RWristYaw', [1.25]], ['RHand', [1.25]]]]
+            time_points = [time_points_compressed for _, time_points_compressed in [['HeadYaw', [1]], ['HeadPitch', [1]], ['LShoulderPitch', [1]], ['LShoulderRoll', [1]], ['LElbowYaw', [1]], ['LElbowRoll', [1]], ['LWristYaw', [1]], ['LHand', [1]], ['RShoulderPitch', [1]], ['RShoulderRoll', [1]], ['RElbowYaw', [1]], ['RElbowRoll', [1]], ['RWristYaw', [1]], ['RHand', [1]]]]
             self.motion.post.angleInterpolation(motion_library.joint_names_list, joint_angles, time_points, True)
 
     def execute_motion(self, reverse, joint_angles, time_points, post=False):
@@ -94,16 +94,19 @@ class MotionManager:
         interpolator = self.motion.post.angleInterpolation if post else self.motion.angleInterpolation
         return interpolator(joints, angles, time_points, True)
     
-    def use_motion_library(self, key, reverse = False, post = False):
+    def use_motion_library(self, key, reverse = None, post = False):
         print("{} using motion '{}'".format(self.robot.name, key))
 
         motion_data = motion_library.motions.get(key)
         if not motion_data:
             print("Motion not found.")
             return
+        
+        # needed to override self.reversed for extend_righ_hand animation in simple_welcome(). reverse = None kwarg might break other stuff down the line??
+        final_reverse = self.reversed if reverse is None else reverse
 
         self.execute_motion(
-            self.reversed or reverse,
+            final_reverse,
             motion_data["joint_angles_list"],
             motion_data["time_points_list"],
             post
@@ -265,18 +268,17 @@ class MotionManager:
     def right_handshake_a(self):
         joint_names = ['HeadYaw', 'HeadPitch', 'LShoulderPitch', 'LShoulderRoll', 'LElbowYaw', 'LElbowRoll', 'LWristYaw', 'LHand', 'LHipYawPitch', 'LHipRoll', 'LHipPitch', 'LKneePitch', 'LAnklePitch', 'LAnkleRoll', 'RHipYawPitch', 'RHipRoll', 'RHipPitch', 'RKneePitch', 'RAnklePitch', 'RAnkleRoll', 'RShoulderPitch', 'RShoulderRoll', 'RElbowYaw', 'RElbowRoll', 'RWristYaw', 'RHand']
 
-        punchline_array= [
-                                "\\rspd=88\\ Gosh I love shaking hands. Shake. Shake.  Shake.  You just shake and then your friends.  Its so human.",
-                                ]
+        # can we delete this?
+        # punchline_array= ["\\rspd=88\\ Gosh I love shaking hands. Shake. Shake.  Shake.  You just shake and then your friends.  Its so human."]
         
-        self.robot.tts.post.say("Its an honor.  I assure you.")
+        self.robot.tts.post.say("Its an honor. I assure you.")
             
         times_multiple = 0.35
             
         # Stage: 1 : 
         print("Stage: " + str(1) + ": " + "")
         
-        joint_angles_labeled = [['HeadYaw', 0.06592011451721191], ['HeadPitch', 0.3328361511230469], ['LShoulderPitch', 0.970980167388916], ['LShoulderRoll', 0.30675792694091797], ['LElbowYaw', -0.5047280788421631], ['LElbowRoll', -1.201080083847046], ['LWristYaw', -0.8560140132904053], ['LHand', 0.7495999932289124], ['LHipYawPitch', -0.5997519493103027], ['LHipRoll', 0.27002596855163574], ['LHipPitch', -1.5385600328445435], ['LKneePitch', 1.3974320888519287], ['LAnklePitch', 0.8482601642608643], ['LAnkleRoll', -0.010695934295654297], ['RHipYawPitch', -0.5997519493103027], ['RHipRoll', -0.2592041492462158], ['RHipPitch', -1.5355758666992188], ['RKneePitch', 1.4051861763000488], ['RAnklePitch', 0.8406739234924316], ['RAnkleRoll', 0.019984006881713867], ['RShoulderPitch', 0.5538160800933838], ['RShoulderRoll', 0.2208540439605713], ['RElbowYaw', 1.3590821027755737], ['RElbowRoll', 0.38507604598999023], ['RWristYaw', -0.027653932571411133], ['RHand', 0.7947999835014343]]
+        joint_angles_labeled = [['HeadYaw', 0.06592011451721191], ['HeadPitch', 0.3328361511230469], ['LShoulderPitch', 0.970980167388916], ['LShoulderRoll', 0.30675792694091797], ['LElbowYaw', -0.5047280788421631], ['LElbowRoll', -1.201080083847046], ['LWristYaw', -0.8560140132904053], ['LHand', 0.1], ['LHipYawPitch', -0.5997519493103027], ['LHipRoll', 0.27002596855163574], ['LHipPitch', -1.5385600328445435], ['LKneePitch', 1.3974320888519287], ['LAnklePitch', 0.8482601642608643], ['LAnkleRoll', -0.010695934295654297], ['RHipYawPitch', -0.5997519493103027], ['RHipRoll', -0.2592041492462158], ['RHipPitch', -1.5355758666992188], ['RKneePitch', 1.4051861763000488], ['RAnklePitch', 0.8406739234924316], ['RAnkleRoll', 0.019984006881713867], ['RShoulderPitch', 0.5538160800933838], ['RShoulderRoll', 0.2208540439605713], ['RElbowYaw', 1.3590821027755737], ['RElbowRoll', 0.38507604598999023], ['RWristYaw', -0.027653932571411133], ['RHand', 0.3]]
         times = [motion_time * times_multiple for motion_time in [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]]
         joint_angles_updated = [angle for _, angle in joint_angles_labeled]
             
@@ -286,7 +288,7 @@ class MotionManager:
         # Stage: 2 : 
         print("Stage: " + str(2) + ": " + "")
         
-        joint_angles_labeled = [['HeadYaw', 0.06592011451721191], ['HeadPitch', 0.3328361511230469], ['LShoulderPitch', 0.970980167388916], ['LShoulderRoll', 0.30368995666503906], ['LElbowYaw', -0.5031938552856445], ['LElbowRoll', -1.181138038635254], ['LWristYaw', -0.8575479984283447], ['LHand', 0.7495999932289124], ['LHipYawPitch', -0.5982179641723633], ['LHipRoll', 0.2715599536895752], ['LHipPitch', -1.533958077430725], ['LKneePitch', 1.3958981037139893], ['LAnklePitch', 0.8482601642608643], ['LAnkleRoll', -0.010695934295654297], ['RHipYawPitch', -0.5982179641723633], ['RHipRoll', -0.2592041492462158], ['RHipPitch', -1.526371955871582], ['RKneePitch', 1.4036521911621094], ['RAnklePitch', 0.8406739234924316], ['RAnkleRoll', 0.019984006881713867], ['RShoulderPitch', 0.29917192459106445], ['RShoulderRoll', 0.17176604270935059], ['RElbowYaw', 1.4143060445785522], ['RElbowRoll', 0.5185339450836182], ['RWristYaw', -0.12276196479797363], ['RHand', 0.795199990272522]]
+        joint_angles_labeled = [['HeadYaw', 0.06592011451721191], ['HeadPitch', 0.3328361511230469], ['LShoulderPitch', 0.970980167388916], ['LShoulderRoll', 0.30368995666503906], ['LElbowYaw', -0.5031938552856445], ['LElbowRoll', -1.181138038635254], ['LWristYaw', -0.8575479984283447], ['LHand', 0.1], ['LHipYawPitch', -0.5982179641723633], ['LHipRoll', 0.2715599536895752], ['LHipPitch', -1.533958077430725], ['LKneePitch', 1.3958981037139893], ['LAnklePitch', 0.8482601642608643], ['LAnkleRoll', -0.010695934295654297], ['RHipYawPitch', -0.5982179641723633], ['RHipRoll', -0.2592041492462158], ['RHipPitch', -1.526371955871582], ['RKneePitch', 1.4036521911621094], ['RAnklePitch', 0.8406739234924316], ['RAnkleRoll', 0.019984006881713867], ['RShoulderPitch', 0.29917192459106445], ['RShoulderRoll', 0.17176604270935059], ['RElbowYaw', 1.4143060445785522], ['RElbowRoll', 0.5185339450836182], ['RWristYaw', -0.12276196479797363], ['RHand', 0.3]]
         times = [motion_time * times_multiple for motion_time in [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]]
         joint_angles_updated = [angle for _, angle in joint_angles_labeled]
             
@@ -296,7 +298,7 @@ class MotionManager:
         # Stage: 3 : 
         print("Stage: " + str(3) + ": " + "")
         
-        joint_angles_labeled = [['HeadYaw', 0.06592011451721191], ['HeadPitch', 0.3328361511230469], ['LShoulderPitch', 0.970980167388916], ['LShoulderRoll', 0.3052239418029785], ['LElbowYaw', -0.5062620639801025], ['LElbowRoll', -1.1995460987091064], ['LWristYaw', -0.8560140132904053], ['LHand', 0.7495999932289124], ['LHipYawPitch', -0.5982179641723633], ['LHipRoll', 0.27002596855163574], ['LHipPitch', -1.5385600328445435], ['LKneePitch', 1.3974320888519287], ['LAnklePitch', 0.8482601642608643], ['LAnkleRoll', -0.010695934295654297], ['RHipYawPitch', -0.5982179641723633], ['RHipRoll', -0.2592041492462158], ['RHipPitch', -1.5371098518371582], ['RKneePitch', 1.4036521911621094], ['RAnklePitch', 0.8406739234924316], ['RAnkleRoll', 0.019984006881713867], ['RShoulderPitch', 0.7470998764038086], ['RShoulderRoll', 0.16102814674377441], ['RElbowYaw', 1.4173741340637207], ['RElbowRoll', 0.4356980323791504], ['RWristYaw', -0.14270401000976562], ['RHand', 0.7947999835014343]]
+        joint_angles_labeled = [['HeadYaw', 0.06592011451721191], ['HeadPitch', 0.3328361511230469], ['LShoulderPitch', 0.970980167388916], ['LShoulderRoll', 0.3052239418029785], ['LElbowYaw', -0.5062620639801], ['LElbowRoll', -1.1995460987091064], ['LWristYaw', -0.8560140132904053], ['LHand', 0.1], ['LHipYawPitch', -0.5982179641723633], ['LHipRoll', 0.27002596855163574], ['LHipPitch', -1.5385600328445435], ['LKneePitch', 1.3974320888519287], ['LAnklePitch', 0.8482601642608643], ['LAnkleRoll', -0.010695934295654297], ['RHipYawPitch', -0.5982179641723633], ['RHipRoll', -0.2592041492462158], ['RHipPitch', -1.5371098518371582], ['RKneePitch', 1.4036521911621094], ['RAnklePitch', 0.8406739234924316], ['RAnkleRoll', 0.019984006881713867], ['RShoulderPitch', 0.7470998764038086], ['RShoulderRoll', 0.16102814674377441], ['RElbowYaw', 1.4173741340637207], ['RElbowRoll', 0.4356980323791504], ['RWristYaw', -0.14270401000976562], ['RHand', 0.3]]
         times = [motion_time * times_multiple for motion_time in [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]]
         joint_angles_updated = [angle for _, angle in joint_angles_labeled]
             
@@ -306,7 +308,7 @@ class MotionManager:
         # Stage: 4 : 
         print("Stage: " + str(4) + ": " + "")
         
-        joint_angles_labeled = [['HeadYaw', 0.06592011451721191], ['HeadPitch', 0.3328361511230469], ['LShoulderPitch', 0.970980167388916], ['LShoulderRoll', 0.3052239418029785], ['LElbowYaw', -0.5062620639801025], ['LElbowRoll', -1.198012113571167], ['LWristYaw', -0.8560140132904053], ['LHand', 0.7495999932289124], ['LHipYawPitch', -0.5997519493103027], ['LHipRoll', 0.27002596855163574], ['LHipPitch', -1.5385600328445435], ['LKneePitch', 1.3974320888519287], ['LAnklePitch', 0.8482601642608643], ['LAnkleRoll', -0.010695934295654297], ['RHipYawPitch', -0.5997519493103027], ['RHipRoll', -0.2592041492462158], ['RHipPitch', -1.5340418815612793], ['RKneePitch', 1.4036521911621094], ['RAnklePitch', 0.8406739234924316], ['RAnkleRoll', 0.019984006881713867], ['RShoulderPitch', 0.18565607070922852], ['RShoulderRoll', 0.19017410278320312], ['RElbowYaw', 1.4189081192016602], ['RElbowRoll', 0.43109607696533203], ['RWristYaw', -0.14883995056152344], ['RHand', 0.7947999835014343]]
+        joint_angles_labeled = [['HeadYaw', 0.06592011451721191], ['HeadPitch', 0.3328361511230469], ['LShoulderPitch', 0.970980167388916], ['LShoulderRoll', 0.3052239418029785], ['LElbowYaw', -0.5062620639801], ['LElbowRoll', -1.198012113571167], ['LWristYaw', -0.8560140132904053], ['LHand', 0.1], ['LHipYawPitch', -0.5997519493103027], ['LHipRoll', 0.27002596855163574], ['LHipPitch', -1.5385600328445435], ['LKneePitch', 1.3974320888519287], ['LAnklePitch', 0.8482601642608643], ['LAnkleRoll', -0.010695934295654297], ['RHipYawPitch', -0.5997519493103027], ['RHipRoll', -0.2592041492462158], ['RHipPitch', -1.5340418815612793], ['RKneePitch', 1.4036521911621094], ['RAnklePitch', 0.8406739234924316], ['RAnkleRoll', 0.019984006881713867], ['RShoulderPitch', 0.18565607070922852], ['RShoulderRoll', 0.19017410278320312], ['RElbowYaw', 1.4189081192016602], ['RElbowRoll', 0.43109607696533203], ['RWristYaw', -0.14883995056152344], ['RHand', 0.3]]
         times = [motion_time * times_multiple for motion_time in [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]]
         joint_angles_updated = [angle for _, angle in joint_angles_labeled]
             
@@ -316,7 +318,7 @@ class MotionManager:
         # Stage: 5 : 
         print("Stage: " + str(5) + ": " + "")
         
-        joint_angles_labeled = [['HeadYaw', 0.06592011451721191], ['HeadPitch', 0.3328361511230469], ['LShoulderPitch', 0.970980167388916], ['LShoulderRoll', 0.3052239418029785], ['LElbowYaw', -0.5062620639801025], ['LElbowRoll', -1.2026140689849854], ['LWristYaw', -0.8560140132904053], ['LHand', 0.7495999932289124], ['LHipYawPitch', -0.5997519493103027], ['LHipRoll', 0.2715599536895752], ['LHipPitch', -1.5385600328445435], ['LKneePitch', 1.3989660739898682], ['LAnklePitch', 0.8482601642608643], ['LAnkleRoll', -0.010695934295654297], ['RHipYawPitch', -0.5997519493103027], ['RHipRoll', -0.2592041492462158], ['RHipPitch', -1.5355758666992188], ['RKneePitch', 1.4036521911621094], ['RAnklePitch', 0.8406739234924316], ['RAnkleRoll', 0.019984006881713867], ['RShoulderPitch', 0.6504578590393066], ['RShoulderRoll', 0.2070479393005371], ['RElbowYaw', 1.4158400297164917], ['RElbowRoll', 0.35132789611816406], ['RWristYaw', -0.18719005584716797], ['RHand', 0.7947999835014343]]
+        joint_angles_labeled = [['HeadYaw', 0.06592011451721191], ['HeadPitch', 0.3328361511230469], ['LShoulderPitch', 0.970980167388916], ['LShoulderRoll', 0.3052239418029785], ['LElbowYaw', -0.5062620639801], ['LElbowRoll', -1.2026140689849854], ['LWristYaw', -0.8560140132904053], ['LHand', 0.1], ['LHipYawPitch', -0.5997519493103027], ['LHipRoll', 0.2715599536895752], ['LHipPitch', -1.5385600328445435], ['LKneePitch', 1.3989660739898682], ['LAnklePitch', 0.8482601642608643], ['LAnkleRoll', -0.010695934295654297], ['RHipYawPitch', -0.5997519493103027], ['RHipRoll', -0.2592041492462158], ['RHipPitch', -1.5355758666992188], ['RKneePitch', 1.4036521911621094], ['RAnklePitch', 0.8406739234924316], ['RAnkleRoll', 0.019984006881713867], ['RShoulderPitch', 0.6504578590393066], ['RShoulderRoll', 0.2070479393005371], ['RElbowYaw', 1.4158400297164917], ['RElbowRoll', 0.35132789611816406], ['RWristYaw', -0.18719005584716797], ['RHand', 0.3]]
         times = [motion_time * times_multiple for motion_time in [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]]
         joint_angles_updated = [angle for _, angle in joint_angles_labeled]
             
@@ -326,7 +328,7 @@ class MotionManager:
         # Stage: 6 : 
         print("Stage: " + str(6) + ": " + "")
         
-        joint_angles_labeled = [['HeadYaw', 0.06592011451721191], ['HeadPitch', 0.3328361511230469], ['LShoulderPitch', 0.970980167388916], ['LShoulderRoll', 0.30675792694091797], ['LElbowYaw', -0.5062620639801025], ['LElbowRoll', -1.2041480541229248], ['LWristYaw', -0.8560140132904053], ['LHand', 0.7495999932289124], ['LHipYawPitch', -0.5997519493103027], ['LHipRoll', 0.27002596855163574], ['LHipPitch', -1.5385600328445435], ['LKneePitch', 1.3974320888519287], ['LAnklePitch', 0.8482601642608643], ['LAnkleRoll', -0.010695934295654297], ['RHipYawPitch', -0.5997519493103027], ['RHipRoll', -0.2592041492462158], ['RHipPitch', -1.5325078964233398], ['RKneePitch', 1.4036521911621094], ['RAnklePitch', 0.8406739234924316], ['RAnkleRoll', 0.019984006881713867], ['RShoulderPitch', 0.14117002487182617], ['RShoulderRoll', 0.23312616348266602], ['RElbowYaw', 1.4311801195144653], ['RElbowRoll', 0.3436579704284668], ['RWristYaw', -0.18565607070922852], ['RHand', 0.7947999835014343]]
+        joint_angles_labeled = [['HeadYaw', 0.06592011451721191], ['HeadPitch', 0.3328361511230469], ['LShoulderPitch', 0.970980167388916], ['LShoulderRoll', 0.30675792694091797], ['LElbowYaw', -0.5062620639801], ['LElbowRoll', -1.2041480541229248], ['LWristYaw', -0.8560140132904053], ['LHand', 0.1], ['LHipYawPitch', -0.5997519493103027], ['LHipRoll', 0.27002596855163574], ['LHipPitch', -1.5385600328445435], ['LKneePitch', 1.3974320888519287], ['LAnklePitch', 0.8482601642608643], ['LAnkleRoll', -0.010695934295654297], ['RHipYawPitch', -0.5997519493103027], ['RHipRoll', -0.2592041492462158], ['RHipPitch', -1.5325078964233398], ['RKneePitch', 1.4036521911621094], ['RAnklePitch', 0.8406739234924316], ['RAnkleRoll', 0.019984006881713867], ['RShoulderPitch', 0.14117002487182617], ['RShoulderRoll', 0.23312616348266602], ['RElbowYaw', 1.4311801195144653], ['RElbowRoll', 0.3436579704284668], ['RWristYaw', -0.18565607070922852], ['RHand', 0.3]]
         times = [motion_time * times_multiple for motion_time in [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]]
         joint_angles_updated = [angle for _, angle in joint_angles_labeled]
             
@@ -336,7 +338,7 @@ class MotionManager:
         # Stage: 7 : 
         print("Stage: " + str(7) + ": " + "")
         
-        joint_angles_labeled = [['HeadYaw', 0.06592011451721191], ['HeadPitch', 0.3328361511230469], ['LShoulderPitch', 0.9694461822509766], ['LShoulderRoll', 0.3052239418029785], ['LElbowYaw', -0.5062620639801025], ['LElbowRoll', -1.2026140689849854], ['LWristYaw', -0.8560140132904053], ['LHand', 0.7495999932289124], ['LHipYawPitch', -0.5997519493103027], ['LHipRoll', 0.27002596855163574], ['LHipPitch', -1.5385600328445435], ['LKneePitch', 1.3989660739898682], ['LAnklePitch', 0.8482601642608643], ['LAnkleRoll', -0.010695934295654297], ['RHipYawPitch', -0.5997519493103027], ['RHipRoll', -0.2592041492462158], ['RHipPitch', -1.5340418815612793], ['RKneePitch', 1.4036521911621094], ['RAnklePitch', 0.8406739234924316], ['RAnkleRoll', 0.019984006881713867], ['RShoulderPitch', 0.6228458881378174], ['RShoulderRoll', 0.24846601486206055], ['RElbowYaw', 1.4311801195144653], ['RElbowRoll', 0.3083760738372803], ['RWristYaw', -0.18565607070922852], ['RHand', 0.7947999835014343]]
+        joint_angles_labeled = [['HeadYaw', 0.06592011451721191], ['HeadPitch', 0.3328361511230469], ['LShoulderPitch', 0.9694461822509766], ['LShoulderRoll', 0.3052239418029785], ['LElbowYaw', -0.5062620639801], ['LElbowRoll', -1.2026140689849854], ['LWristYaw', -0.8560140132904053], ['LHand', 0.1], ['LHipYawPitch', -0.5997519493103027], ['LHipRoll', 0.27002596855163574], ['LHipPitch', -1.5385600328445435], ['LKneePitch', 1.3989660739898682], ['LAnklePitch', 0.8482601642608643], ['LAnkleRoll', -0.010695934295654297], ['RHipYawPitch', -0.5997519493103027], ['RHipRoll', -0.2592041492462158], ['RHipPitch', -1.5340418815612793], ['RKneePitch', 1.4036521911621094], ['RAnklePitch', 0.8406739234924316], ['RAnkleRoll', 0.019984006881713867], ['RShoulderPitch', 0.6228458881378174], ['RShoulderRoll', 0.24846601486206055], ['RElbowYaw', 1.4311801195144653], ['RElbowRoll', 0.3083760738372803], ['RWristYaw', -0.18565607070922852], ['RHand', 0.3]]
         times = [motion_time * times_multiple for motion_time in [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]]
         joint_angles_updated = [angle for _, angle in joint_angles_labeled]
             
@@ -346,7 +348,7 @@ class MotionManager:
         # Stage: 8 : 
         print("Stage: " + str(8) + ": " + "")
         
-        joint_angles_labeled = [['HeadYaw', 0.06592011451721191], ['HeadPitch', 0.3328361511230469], ['LShoulderPitch', 0.970980167388916], ['LShoulderRoll', 0.30675792694091797], ['LElbowYaw', -0.5062620639801025], ['LElbowRoll', -1.201080083847046], ['LWristYaw', -0.8560140132904053], ['LHand', 0.7495999932289124], ['LHipYawPitch', -0.5997519493103027], ['LHipRoll', 0.27002596855163574], ['LHipPitch', -1.5385600328445435], ['LKneePitch', 1.3974320888519287], ['LAnklePitch', 0.8482601642608643], ['LAnkleRoll', -0.01222991943359375], ['RHipYawPitch', -0.5997519493103027], ['RHipRoll', -0.2592041492462158], ['RHipPitch', -1.5325078964233398], ['RKneePitch', 1.4036521911621094], ['RAnklePitch', 0.8406739234924316], ['RAnkleRoll', 0.019984006881713867], ['RShoulderPitch', 0.14730596542358398], ['RShoulderRoll', 0.2561359405517578], ['RElbowYaw', 1.440384030342102], ['RElbowRoll', 0.3298518657684326], ['RWristYaw', -0.12582993507385254], ['RHand', 0.7947999835014343]]
+        joint_angles_labeled = [['HeadYaw', 0.06592011451721191], ['HeadPitch', 0.3328361511230469], ['LShoulderPitch', 0.970980167388916], ['LShoulderRoll', 0.30675792694091797], ['LElbowYaw', -0.5062620639801], ['LElbowRoll', -1.201080083847046], ['LWristYaw', -0.8560140132904053], ['LHand', 0.1], ['LHipYawPitch', -0.5997519493103027], ['LHipRoll', 0.27002596855163574], ['LHipPitch', -1.5385600328445435], ['LKneePitch', 1.3974320888519287], ['LAnklePitch', 0.8482601642608643], ['LAnkleRoll', -0.01222991943359375], ['RHipYawPitch', -0.5997519493103027], ['RHipRoll', -0.2592041492462158], ['RHipPitch', -1.5325078964233398], ['RKneePitch', 1.4036521911621094], ['RAnklePitch', 0.8406739234924316], ['RAnkleRoll', 0.019984006881713867], ['RShoulderPitch', 0.14730596542358398], ['RShoulderRoll', 0.2561359405517578], ['RElbowYaw', 1.440384030342102], ['RElbowRoll', 0.3298518657684326], ['RWristYaw', -0.12582993507385254], ['RHand', 0.3]]
         times = [motion_time * times_multiple for motion_time in [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]]
         joint_angles_updated = [angle for _, angle in joint_angles_labeled]
             
@@ -356,7 +358,7 @@ class MotionManager:
         # Stage: 9 : 
         print("Stage: " + str(9) + ": " + "")
         
-        joint_angles_labeled = [['HeadYaw', 0.06592011451721191], ['HeadPitch', 0.3328361511230469], ['LShoulderPitch', 0.970980167388916], ['LShoulderRoll', 0.30675792694091797], ['LElbowYaw', -0.5062620639801025], ['LElbowRoll', -1.201080083847046], ['LWristYaw', -0.8560140132904053], ['LHand', 0.7495999932289124], ['LHipYawPitch', -0.5997519493103027], ['LHipRoll', 0.27002596855163574], ['LHipPitch', -1.5385600328445435], ['LKneePitch', 1.3974320888519287], ['LAnklePitch', 0.8482601642608643], ['LAnkleRoll', -0.010695934295654297], ['RHipYawPitch', -0.5997519493103027], ['RHipRoll', -0.2592041492462158], ['RHipPitch', -1.5325078964233398], ['RKneePitch', 1.4036521911621094], ['RAnklePitch', 0.8406739234924316], ['RAnkleRoll', 0.019984006881713867], ['RShoulderPitch', 0.5568840503692627], ['RShoulderRoll', 0.2469320297241211], ['RElbowYaw', 1.440384030342102], ['RElbowRoll', 0.3099100589752197], ['RWristYaw', -0.12276196479797363], ['RHand', 0.7947999835014343]]
+        joint_angles_labeled = [['HeadYaw', 0.06592011451721191], ['HeadPitch', 0.3328361511230469], ['LShoulderPitch', 0.970980167388916], ['LShoulderRoll', 0.30675792694091797], ['LElbowYaw', -0.5062620639801], ['LElbowRoll', -1.201080083847046], ['LWristYaw', -0.8560140132904053], ['LHand', 0.1], ['LHipYawPitch', -0.5997519493103027], ['LHipRoll', 0.27002596855163574], ['LHipPitch', -1.5385600328445435], ['LKneePitch', 1.3974320888519287], ['LAnklePitch', 0.8482601642608643], ['LAnkleRoll', -0.010695934295654297], ['RHipYawPitch', -0.5997519493103027], ['RHipRoll', -0.2592041492462158], ['RHipPitch', -1.5325078964233398], ['RKneePitch', 1.4036521911621094], ['RAnklePitch', 0.8406739234924316], ['RAnkleRoll', 0.019984006881713867], ['RShoulderPitch', 0.5568840503692627], ['RShoulderRoll', 0.2469320297241211], ['RElbowYaw', 1.440384030342102], ['RElbowRoll', 0.3099100589752197], ['RWristYaw', -0.12276196479797363], ['RHand', 0.3]]
         times = [motion_time * times_multiple for motion_time in [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]]
         joint_angles_updated = [angle for _, angle in joint_angles_labeled]
             
@@ -366,7 +368,7 @@ class MotionManager:
         # Stage: 10 : 
         print("Stage: " + str(10) + ": " + "")
         
-        joint_angles_labeled = [['HeadYaw', 0.06592011451721191], ['HeadPitch', 0.3328361511230469], ['LShoulderPitch', 0.970980167388916], ['LShoulderRoll', 0.3052239418029785], ['LElbowYaw', -0.5031938552856445], ['LElbowRoll', -1.1765360832214355], ['LWristYaw', -0.8560140132904053], ['LHand', 0.7495999932289124], ['LHipYawPitch', -0.5982179641723633], ['LHipRoll', 0.2715599536895752], ['LHipPitch', -1.5324240922927856], ['LKneePitch', 1.3958981037139893], ['LAnklePitch', 0.8482601642608643], ['LAnkleRoll', -0.010695934295654297], ['RHipYawPitch', -0.5982179641723633], ['RHipRoll', -0.2592041492462158], ['RHipPitch', -1.5248379707336426], ['RKneePitch', 1.4036521911621094], ['RAnklePitch', 0.8406739234924316], ['RAnkleRoll', 0.019984006881713867], ['RShoulderPitch', 0.46944594383239746], ['RShoulderRoll', -0.6750020980834961], ['RElbowYaw', 1.4388500452041626], ['RElbowRoll', 0.3958139419555664], ['RWristYaw', -0.11816000938415527], ['RHand', 0.7947999835014343]]
+        joint_angles_labeled = [['HeadYaw', 0.06592011451721191], ['HeadPitch', 0.3328361511230469], ['LShoulderPitch', 0.970980167388916], ['LShoulderRoll', 0.3052239418029785], ['LElbowYaw', -0.5031938552856445], ['LElbowRoll', -1.1765360832214355], ['LWristYaw', -0.8560140132904053], ['LHand', 0.1], ['LHipYawPitch', -0.5982179641723633], ['LHipRoll', 0.2715599536895752], ['LHipPitch', -1.5324240922927856], ['LKneePitch', 1.3958981037139893], ['LAnklePitch', 0.8482601642608643], ['LAnkleRoll', -0.010695934295654297], ['RHipYawPitch', -0.5982179641723633], ['RHipRoll', -0.2592041492462158], ['RHipPitch', -1.5248379707336426], ['RKneePitch', 1.4036521911621094], ['RAnklePitch', 0.8406739234924316], ['RAnkleRoll', 0.019984006881713867], ['RShoulderPitch', 0.46944594383239746], ['RShoulderRoll', -0.6750020980834961], ['RElbowYaw', 1.4388500452041626], ['RElbowRoll', 0.3958139419555664], ['RWristYaw', -0.11816000938415527], ['RHand', 0.3]]
         times = [motion_time * 0.6 for motion_time in [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]]
         joint_angles_updated = [angle for _, angle in joint_angles_labeled]
             
@@ -376,13 +378,14 @@ class MotionManager:
         # Stage: 11 : 
         print("Stage: " + str(11) + ": " + "")
         
-        joint_angles_labeled = [['HeadYaw', 0.06592011451721191], ['HeadPitch', 0.3328361511230469], ['LShoulderPitch', 0.9725141525268555], ['LShoulderRoll', 0.3052239418029785], ['LElbowYaw', -0.5047280788421631], ['LElbowRoll', -1.1872740983963013], ['LWristYaw', -0.8560140132904053], ['LHand', 0.7495999932289124], ['LHipYawPitch', -0.5997519493103027], ['LHipRoll', 0.2715599536895752], ['LHipPitch', -1.537026047706604], ['LKneePitch', 1.3974320888519287], ['LAnklePitch', 0.8482601642608643], ['LAnkleRoll', -0.010695934295654297], ['RHipYawPitch', -0.5997519493103027], ['RHipRoll', -0.25766992568969727], ['RHipPitch', -1.5325078964233398], ['RKneePitch', 1.4051861763000488], ['RAnklePitch', 0.8406739234924316], ['RAnkleRoll', 0.019984006881713867], ['RShoulderPitch', 0.9219760894775391], ['RShoulderRoll', -0.24088001251220703], ['RElbowYaw', 0.4693620204925537], ['RElbowRoll', 1.0845799446105957], ['RWristYaw', 0.1978440284729004], ['RHand', 0.7947999835014343]]
+        joint_angles_labeled = [['HeadYaw', 0.06592011451721191], ['HeadPitch', 0.3328361511230469], ['LShoulderPitch', 0.9725141268555], ['LShoulderRoll', 0.3052239418029785], ['LElbowYaw', -0.5047280788421631], ['LElbowRoll', -1.1872740983963013], ['LWristYaw', -0.8560140132904053], ['LHand', 0.1], ['LHipYawPitch', -0.5997519493103027], ['LHipRoll', 0.2715599536895752], ['LHipPitch', -1.537026047706604], ['LKneePitch', 1.3974320888519287], ['LAnklePitch', 0.8482601642608643], ['LAnkleRoll', -0.010695934295654297], ['RHipYawPitch', -0.5997519493103027], ['RHipRoll', -0.25766992568969727], ['RHipPitch', -1.5325078964233398], ['RKneePitch', 1.4051861763000488], ['RAnklePitch', 0.8406739234924316], ['RAnkleRoll', 0.019984006881713867], ['RShoulderPitch', 0.9219760894775391], ['RShoulderRoll', -0.24088001251220703], ['RElbowYaw', 0.4693620204925537], ['RElbowRoll', 1.0845799446105957], ['RWristYaw', 0.1978440284729004], ['RHand', 0.3]]
         times = [motion_time * 1 for motion_time in [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]]
         joint_angles_updated = [angle for _, angle in joint_angles_labeled]
             
         self.motion.angleInterpolation(joint_names, joint_angles_updated, times, True)
         
-        self.robot.tts.post.say(random.choice(punchline_array))  
+        # can we delete this?
+        # self.robot.tts.post.say(random.choice(punchline_array))  
 
     def right_handshake_b(self):
         angle_modulator = 1.0
@@ -410,7 +413,7 @@ class MotionManager:
             
         # Movement: 4 : u
         print("Stage: " + str(4) + ": " + "u")
-        joint_angles = [angle_modulator * angle for  _, angle in [['HeadYaw', 0.1318819522857666], ['HeadPitch', 0.3803901672363281], ['LShoulderPitch', 0.9587080478668213], ['LShoulderRoll', 0.31749606132507324], ['LElbowYaw', -0.4847860336303711], ['LElbowRoll', -1.2118180990219116], ['LWristYaw', 0.042910099029541016], ['LHand', 0.30479997396469116], ['RShoulderPitch', -0.14262008666992188], ['RShoulderRoll', 0.11961007118225098], ['RElbowYaw', 0.8758721351623535], ['RElbowRoll', 0.029187917709350586], ['RWristYaw', 0.6457719802856445], ['RHand', 0.1]]]
+        joint_angles = [angle_modulator * angle for  _, angle in [['HeadYaw', 0.1318819522857666], ['HeadPitch', 0.3803901672363281], ['LShoulderPitch', 0.9587080478668213], ['LShoulderRoll', 0.31749606107324], ['LElbowYaw', -0.4847860336303711], ['LElbowRoll', -1.2118180990219116], ['LWristYaw', 0.042910099029541016], ['LHand', 0.30479997396469116], ['RShoulderPitch', -0.14262008666992188], ['RShoulderRoll', 0.11961007118225098], ['RElbowYaw', 0.8758721351623535], ['RElbowRoll', 0.029187917709350586], ['RWristYaw', 0.6457719802856445], ['RHand', 0.1]]]
         action_durations = [duration_modulator * duration for _, duration in [['HeadYaw', 0.35], ['HeadPitch', 0.35], ['LShoulderPitch', 0.35], ['LShoulderRoll', 0.35], ['LElbowYaw', 0.35], ['LElbowRoll', 0.35], ['LWristYaw', 0.35], ['LHand', 0.35], ['RShoulderPitch', 0.35], ['RShoulderRoll', 0.35], ['RElbowYaw', 0.35], ['RElbowRoll', 0.35], ['RWristYaw', 0.35], ['RHand', 0.35]]]
         self.motion.angleInterpolation(joint_names_list, joint_angles, action_durations, True)
 

@@ -14,10 +14,12 @@ class Orchestrate(object):
         self.robot_1.robot.tm.wait_for_touch_activate()
         self.robot_1.robot.mm.use_motion_library("head_touch_up")
         self.robot_1.robot.mm.use_motion_library("head_touch_down_snoozy")
-        self.robot_1.robot.leds.post.fadeRGB("FaceLeds", 0xFFFFF, 0.1)
-        self.robot_1.robot.leds.post.fadeRGB("ChestLeds", 0xFFFFFF, 0.1)
+
+        self.robot_2.robot.leds.post.fadeRGB("FaceLeds", 0xFFFFFF, 0.1)
+        self.robot_2.robot.leds.post.fadeRGB("ChestLeds", 0xFFFFFF, 0.1)
         self.robot_2.robot.tts.post.say("Oh: {}. Wake up.".format(self.robot_1.name))
         self.robot_2.robot.mm.use_motion_library("head_touch_up_2")
+
         self.robot_1.robot.leds.post.fadeRGB("FaceLeds", 0xFFFFFF, 0.1)
         self.robot_1.robot.leds.post.fadeRGB("ChestLeds", 0xFFFFFF, 0.1)
         self.robot_1.robot.tts.post.say("Oh. Oh my. Our {}'s are here.".format(player_type))
@@ -39,12 +41,12 @@ class Orchestrate(object):
         self.robot_1.robot.mm.use_motion_library("you_are_in_the_game")
 
         self.robot_1.robot.tts.say("It would be an honor for me to shake your hand.")
-        self.robot_1.robot.mm.use_motion_library("extend_left_hand")
+        self.robot_1.robot.mm.use_motion_library("extend_right_hand")
         confirmed = self.robot_1.robot.tm.wait_for_touch_confirm()
         if confirmed:
             self.robot_1.robot.mm.right_handshake_a()
         else:
-            self.robot_1.tts.say("well, thats disappointing")
+            self.robot_1.tts.say("Well, that's disappointing.")
         
         self.robot_1.robot.mm.sit_gently()
         self.robot_1.robot.tts.say("I am looking forward to playing with you")
@@ -56,14 +58,17 @@ class Orchestrate(object):
         participant_2_name = self.robot_2.robot.am.listen_until_confirmed()
         
         self.robot_2.robot.tts.say("If I am not mistaken, you, {}, are my {} in the game today.".format(participant_2_name, player_type))
-        self.robot_2.robot.tts.say("Meeting you is a grandiose honor for me, I assure you.  May I shake your hand?")
-        self.robot_2.robot.mm.use_motion_library("extend_left_hand", True)
+        self.robot_2.robot.tts.say("Meeting you is a grandiose honor for me, I assure you. May I shake your hand?")
+        self.robot_2.robot.mm.use_motion_library("extend_right_hand", reverse=False)
         confirmed2 = self.robot_2.robot.tm.wait_for_touch_confirm()
         if confirmed2:
             self.robot_2.robot.mm.right_handshake_b()
+        else:
+            self.robot_2.tts.say("Very well. I'll try not to take it personally.")
 
-        self.robot_1.robot.tts.post.say("Lets Begin.")
-        self.robot_2.robot.tts.post.say("Lets Begin.")
+        # can we delete this dialogue?
+        # self.robot_1.robot.tts.post.say("Lets Begin.")
+        # self.robot_2.robot.tts.post.say("Lets Begin.")
 
         return participant_1_name, participant_2_name
         
@@ -91,7 +96,7 @@ class Orchestrate(object):
         self.robot_1.robot.tts.post.say("Cool: {} is very cool.".format(participant_1_hobby))
         self.robot_1.robot.mm.use_motion_library("cool_hobby")
 
-        self.robot_2.robot.tts.post.say("And what about you, {}.  What is a hobby of yours?".format(participant_2_name))
+        self.robot_2.robot.tts.post.say("And what about you, {}. What is a hobby of yours?".format(participant_2_name))
         self.robot_2.robot.mm.use_motion_library("what_is_ur_hobby")
         
         participant_2_hobby = self.robot_2.robot.am.listen_until_confirmed() 
@@ -249,8 +254,8 @@ class Orchestrate(object):
         self.robot_2.robot.mm.repose(False)
 
     def sit(self):
-        self.robot_1.robot.mm.sit()
-        self.robot_2.robot.mm.sit()
+        self.robot_1.robot.mm.use_motion_library("sit_gently", post=True)
+        self.robot_2.robot.mm.use_motion_library("sit_gently", post=True)
 
     def before_hint(self, active_team, inactive_team, already_hinted, target_with_quadrants):
         active_hinter = active_team.get_hinter()
