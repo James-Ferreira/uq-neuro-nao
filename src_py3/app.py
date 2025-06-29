@@ -3,6 +3,7 @@ import os
 import whisper
 import time
 import ollama
+import string
 
 app = Flask(__name__)
 
@@ -178,13 +179,8 @@ def guess():
     print(f"Elapsed time: {end - start:.2f} seconds.")
     response_str = str(ai_response.response)
 
-
-    #conrad added 12th June **#
-    import string
     translator = str.maketrans('', '', string.punctuation)
     response_str = response_str.translate(translator).strip().lower()
-    #** ** ** ** ** ** ** ** **#
-
 
     print("Response: ", response_str)
     try:
