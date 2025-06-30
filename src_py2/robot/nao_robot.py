@@ -4,7 +4,7 @@ from touch_manager import TouchModule
 from motion_manager import MotionManager
 from audio_manager import AudioManager
 
-class Robot:
+class NAORobot:
     def __init__(self, name, ip, port, usrnme, pword, reversed):
         self.ip = ip
         self.port = port

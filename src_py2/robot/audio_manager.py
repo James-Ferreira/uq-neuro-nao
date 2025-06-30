@@ -1,49 +1,50 @@
 import os
-import transcribe
+import api.transcribe as transcribe
 import time
 import string
 
 class AudioManager:
+    # rename robot arg to nao ?
     def __init__(self, robot):
-        self.robot = robot
+        self.nao = robot
 
     def pitch_change(self):
-        current_pitch = self.robot.tts.getParameter('pitchShift')
+        current_pitch = self.nao.tts.getParameter('pitchShift')
         print("Current pitch: {}".format(current_pitch))
         print("Pitch range: 0.5 - 4")
         user_input = raw_input("Please enter a value for pitch: ") # type: ignore (suppressess superfluous warning)
-        self.robot.tts.setParameter("pitchShift", float(user_input))
+        self.nao.tts.setParameter("pitchShift", float(user_input))
 
     def set_pitch(self, value):
-        self.robot.tts.setParameter("pitchShift", float(value))
+        self.nao.tts.setParameter("pitchShift", float(value))
 
     def set_volume(self, value):
-        self.robot.audio_player.setMasterVolume(float(value))
+        self.nao.audio_player.setMasterVolume(float(value))
 
     def stop_rec(self):
         # Needed because any break in a recording script will cause the recording not to stop, even when command window closed??
-        self.robot.audio_recorder.stopMicrophonesRecording()
+        self.nao.audio_recorder.stopMicrophonesRecording()
 
     def listen(self, duration):
         try:
-            self.robot.audio_player.post.playFile(sound_library["start_listening"])
-            self.robot.tts.say("I'm listening")
+            self.nao.audio_player.post.playFile(sound_library["start_listening"])
+            self.nao.tts.say("I'm listening")
 
-            self.robot.leds.post.fadeRGB("AllLeds", 0xFF0000, 0.1)
+            self.nao.leds.post.fadeRGB("AllLeds", 0xFF0000, 0.1)
             audio_path = "/tmp/recorded_speech.wav"
             self.record_audio(duration, audio_path)
-            self.robot.leds.post.fadeRGB("AllLeds", 0xFFFFFF, 0.1)
+            self.nao.leds.post.fadeRGB("AllLeds", 0xFFFFFF, 0.1)
 
             if not os.path.exists(audio_path) or os.path.getsize(audio_path) == 0:
                 raise ValueError("Zero-length audio can cause recognition failure or hang")
 
-            self.robot.audio_player.post.playFile(sound_library["stop_listening"])
+            self.nao.audio_player.post.playFile(sound_library["stop_listening"])
 
             transcription = transcribe.transcribe_file(audio_path)
             if transcription:
-                # self.robot.leds.post.fadeRGB("AllLeds", 0x00FF00, 0.1)
-                # self.robot.tts.say("I think you said: " + str(transcription))
-                # self.robot.leds.post.fadeRGB("AllLeds", 0xFFFFFF, 0.1)
+                # self.nao.leds.post.fadeRGB("AllLeds", 0x00FF00, 0.1)
+                # self.nao.tts.say("I think you said: " + str(transcription))
+                # self.nao.leds.post.fadeRGB("AllLeds", 0xFFFFFF, 0.1)
 
                 return clean_string(transcription)
             else:
@@ -51,26 +52,26 @@ class AudioManager:
             
         except Exception as e:
             print("Listening error: %s " % (e))
-            self.robot.tts.say("I'm sorry, I didn't catch that. Please say it again.")
+            self.nao.tts.say("I'm sorry, I didn't catch that. Please say it again.")
         
-        self.robot.tts.say("Sorry, I couldn't understand. Let's try again later.")
+        self.nao.tts.say("Sorry, I couldn't understand. Let's try again later.")
 
     def listen_until_confirmed(self, duration=2.5):
         while True:
             try:
-                self.robot.audio_player.post.playFile(sound_library["start_listening"])
-                self.robot.tts.say("I'm listening")
-                self.robot.leds.post.fadeRGB("FaceLeds", 0x00FF00, 0.1)
+                self.nao.audio_player.post.playFile(sound_library["start_listening"])
+                self.nao.tts.say("I'm listening")
+                self.nao.leds.post.fadeRGB("FaceLeds", 0x00FF00, 0.1)
 
                 audio_path = "/tmp/recorded_speech.wav"
                 self.record_audio(duration, audio_path)
-                self.robot.leds.post.fadeRGB("FaceLeds", 0xFFFFFF, 0.1)
+                self.nao.leds.post.fadeRGB("FaceLeds", 0xFFFFFF, 0.1)
 
                 if not os.path.exists(audio_path) or os.path.getsize(audio_path) == 0:
                     raise ValueError("Zero-length audio can cause recognition failure or hang")
 
                 # removing .post from below to see if that stops speech from occuring as end sound plays
-                self.robot.audio_player.playFile(sound_library["stop_listening"])
+                self.nao.audio_player.playFile(sound_library["stop_listening"])
 
                 transcription = transcribe.transcribe_file(audio_path)
                 if not transcription:
@@ -78,22 +79,22 @@ class AudioManager:
 
                 cleaned_input = clean_string(transcription)
 
-                self.robot.tts.post.say(
+                self.nao.tts.post.say(
                     "I heard {}. Is that correct? "
                     "Press my hand for yes, or my foot for no.".format(cleaned_input))
                 
-                confirmed = self.robot.tm.wait_for_touch_confirm()
+                confirmed = self.nao.tm.wait_for_touch_confirm()
 
                 if confirmed:
-                    self.robot.tts.say("Confirmed.")
+                    self.nao.tts.say("Confirmed.")
                     return cleaned_input
                 else:
-                    self.robot.tts.say("Okay, let's try again.")
+                    self.nao.tts.say("Okay, let's try again.")
             
             except Exception as e:
                 print("Listening error: %s" % e)
-                self.robot.tts.say("I'm sorry, I didn't catch that.")
-                self.robot.tts.say("Let's try again.")    
+                self.nao.tts.say("I'm sorry, I didn't catch that.")
+                self.nao.tts.say("Let's try again.")    
 
     def converse(self, rounds=3):
         transcription = ""
@@ -107,21 +108,21 @@ class AudioManager:
                     continue
 
 
-                self.robot.tts.post.say(
+                self.nao.tts.post.say(
                 "I heard {}. Is that correct? "
                 "Press my hand for yes, or my foot for no.".format(input))
-                confirmed = self.robot.tm.wait_for_touch_confirm()
+                confirmed = self.nao.tm.wait_for_touch_confirm()
                 if not confirmed:
-                    self.robot.tts.say("REJECTED")
+                    self.nao.tts.say("REJECTED")
                     continue
 
-                self.robot.tts.say("CONFIRMED")
+                self.nao.tts.say("CONFIRMED")
 
                 transcription += "Speaker: {}\n".format(input)
 
                 ai_reply = transcribe.reply(transcription)
                 if ai_reply:
-                    self.robot.tts.say(str(ai_reply))
+                    self.nao.tts.say(str(ai_reply))
                     transcription += "Robot: {}\n".format(ai_reply)
                 else:
                     print("AI did not return a reply.\n")
@@ -144,18 +145,18 @@ class AudioManager:
         # [1, 1, 1, 1] for all microphnes
         channels = [0, 0, 1, 0]
         
-        self.robot.audio_recorder.startMicrophonesRecording(internal_path, 'wav', 16000, channels)
+        self.nao.audio_recorder.startMicrophonesRecording(internal_path, 'wav', 16000, channels)
         print('Audio recording started.')
         
         time.sleep(float(duration))
 
-        self.robot.audio_recorder.stopMicrophonesRecording()
+        self.nao.audio_recorder.stopMicrophonesRecording()
         print('Audio recording stopped.')
 
         if playback == True:
-            self.robot.audio_player.playFile(internal_path)
+            self.nao.audio_player.playFile(internal_path)
             
-        self.robot.download_file_from_nao(remote_file_path=internal_path, local_file_path=output_path)
+        self.nao.download_file_from_nao(remote_file_path=internal_path, local_file_path=output_path)
 
 def clean_string(text):
     text = text.strip()

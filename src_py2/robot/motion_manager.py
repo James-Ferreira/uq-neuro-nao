@@ -5,38 +5,39 @@ import random
 import time
 
 class MotionManager:
+    # rename robot arg to nao ?
     def __init__(self, robot, reversed):
-        self.robot = robot
+        self.nao = robot
         self.motion = robot.motion
         self.reversed = reversed
 
     def crouch(self, post=None):
         speed = 0.75
         if post == 1:
-            self.robot.posture.pose.goToPosture('Crouch', speed)
+            self.nao.posture.pose.goToPosture('Crouch', speed)
         else:
-            self.robot.posture.goToPosture('Crouch', speed)
+            self.nao.posture.goToPosture('Crouch', speed)
 
     def lie_back(self, post=None):
         speed = 0.75
         if post == 1:
-            self.robot.posture.post.goToPosture('LyingBack', speed)
+            self.nao.posture.post.goToPosture('LyingBack', speed)
         else:
-            self.robot.posture.goToPosture('LyingBack', speed)
+            self.nao.posture.goToPosture('LyingBack', speed)
 
     def lie_belly(self, post=None):
         speed = 0.75
         if post == 1:
-            self.robot.posture.post.goToPosture('LyingBelly', speed)
+            self.nao.posture.post.goToPosture('LyingBelly', speed)
         else:
-            self.robot.posture.goToPosture('LyingBelly', speed)
+            self.nao.posture.goToPosture('LyingBelly', speed)
 
     def sit(self, post=False):
         speed = 0.75
         if post == True:
-            self.robot.posture.post.goToPosture('Sit', speed)
+            self.nao.posture.post.goToPosture('Sit', speed)
         else:
-            self.robot.posture.goToPosture('Sit', speed)
+            self.nao.posture.goToPosture('Sit', speed)
 
     def sit_gently(self):
         # to sit without the jerking common in the default sit command.
@@ -49,34 +50,34 @@ class MotionManager:
     def sit_relax(self, post=None):
         speed = 0.75
         if post == 1:
-            self.robot.posture.post.goToPosture('SitRelax', speed)
+            self.nao.posture.post.goToPosture('SitRelax', speed)
         else:
-            self.robot.posture.goToPosture('SitRelax', speed)
+            self.nao.posture.goToPosture('SitRelax', speed)
 
     def stand(self, post=None):
         speed = 0.75
         if post == 1:
-            self.robot.posture.post.goToPosture('Stand', speed)
+            self.nao.posture.post.goToPosture('Stand', speed)
         else:
-            self.robot.posture.goToPosture('Stand', speed)
+            self.nao.posture.goToPosture('Stand', speed)
 
     def stand_init(self, post=None):
         speed = 0.75
         if post == 1:
-            self.robot.posture.post.goToPosture('StandInit', speed)
+            self.nao.posture.post.goToPosture('StandInit', speed)
         else:
-            self.robot.posture.goToPosture('StandInit', speed)
+            self.nao.posture.goToPosture('StandInit', speed)
 
     def stand_zero(self, post=None):
         speed = 0.75
         if post == 1:
-            self.robot.posture.post.goToPosture('StandZero', speed)  
+            self.nao.posture.post.goToPosture('StandZero', speed)  
         else:
-            self.robot.posture.goToPosture('StandZero', speed) 
+            self.nao.posture.goToPosture('StandZero', speed) 
 
     def repose(self, leds=True):
         if leds == False:
-            self.robot.leds.post.fadeRGB("AllLeds", 0x000000, 0.1)
+            self.nao.leds.post.fadeRGB("AllLeds", 0x000000, 0.1)
 
         if not self.posture_check('Sit'):
             print("repose failed")
@@ -95,7 +96,7 @@ class MotionManager:
         return interpolator(joints, angles, time_points, True)
     
     def use_motion_library(self, key, reverse = None, post = False):
-        print("{} using motion '{}'".format(self.robot.name, key))
+        print("{} using motion '{}'".format(self.nao.name, key))
 
         motion_data = motion_library.motions.get(key)
         if not motion_data:
@@ -119,7 +120,7 @@ class MotionManager:
             print("Invalid posture requested: {}".format(posture))
             return False
 
-        current_posture = self.robot.posture.getPosture()
+        current_posture = self.nao.posture.getPosture()
 
         if current_posture == desired_posture:
             return True
@@ -156,22 +157,22 @@ class MotionManager:
             self.motion.setStiffnesses(part, 1.0)
 
     def catch_fly(self):
-        current_posture = self.robot.posture.getPosture()
+        current_posture = self.nao.posture.getPosture()
         if current_posture != 'Sit':
             print('Current posture {} is incompatible with requested animation.'.format(
                 current_posture))
             return
         
-        self.robot.animation.run('animations/Sit/Waiting/CatchFly_1')
+        self.nao.animation.run('animations/Sit/Waiting/CatchFly_1')
 
     def puppet_show(self):
-        current_posture = self.robot.posture.getPosture()
+        current_posture = self.nao.posture.getPosture()
         if current_posture != 'Sit':
             print('Current posture {} is incompatible with requested animation.'.format(
                 current_posture))
             return
         
-        self.robot.animation.run('animations/Sit/Waiting/Puppet_1')
+        self.nao.animation.run('animations/Sit/Waiting/Puppet_1')
 
     def bob_n_speak(self, text):
         # Create an event that signals the bobbing thread to stop.
@@ -195,7 +196,7 @@ class MotionManager:
         bobbing_thread.start()
 
         # While the robot speaks, head bobbing happens in parallel.
-        self.robot.tts.say(str(text))
+        self.nao.tts.say(str(text))
 
         # Once speaking is finished, signal the bobbing thread to stop.
         stop_event.set()
@@ -214,19 +215,19 @@ class MotionManager:
         
         random.shuffle(byes)
         
-        current_posture = self.robot.posture.getPosture()
+        current_posture = self.nao.posture.getPosture()
         
         #wave bye, standing version (same as wave_bye2)
         if current_posture == 'Stand':
             
-            self.robot.tts.post.say(byes[0])
-            self.robot.animation.run('animations/Stand/Gestures/Hey_2')
-            self.robot.leds.post.fadeRGB("FaceLeds", 0xFFFFFF, 1)
+            self.nao.tts.post.say(byes[0])
+            self.nao.animation.run('animations/Stand/Gestures/Hey_2')
+            self.nao.leds.post.fadeRGB("FaceLeds", 0xFFFFFF, 1)
         
         #wave bye, sitting version (same as wave_bye3)
         elif current_posture == 'Sit':
             # Ensure the robot is in the sitting posture
-            self.robot.posture.goToPosture("Sit", 0.5)
+            self.nao.posture.goToPosture("Sit", 0.5)
         
             # Open the right hand
             self.motion.post.openHand('RHand')
@@ -238,7 +239,7 @@ class MotionManager:
             self.motion.setAngles(names, angles, fractionMaxSpeed)
             time.sleep(0.7)
 
-            self.robot.tts.post.say(byes[0])
+            self.nao.tts.post.say(byes[0])
 
             # Perform the waving motion
             for _ in range(7):  # Wave hand back and forth
@@ -259,7 +260,7 @@ class MotionManager:
             time.sleep(3)
             
             # Ensure the robot is in the sitting posture
-            self.robot.posture.goToPosture("Sit", 0.5)  
+            self.nao.posture.goToPosture("Sit", 0.5)  
     
         else:
             print('Current posture, {}, is incompatible with requested animation.'.format(current_posture))
@@ -271,7 +272,7 @@ class MotionManager:
         # can we delete this?
         # punchline_array= ["\\rspd=88\\ Gosh I love shaking hands. Shake. Shake.  Shake.  You just shake and then your friends.  Its so human."]
         
-        self.robot.tts.post.say("Its an honor. I assure you.")
+        self.nao.tts.post.say("Its an honor. I assure you.")
             
         times_multiple = 0.35
             
@@ -385,7 +386,7 @@ class MotionManager:
         self.motion.angleInterpolation(joint_names, joint_angles_updated, times, True)
         
         # can we delete this?
-        # self.robot.tts.post.say(random.choice(punchline_array))  
+        # self.nao.tts.post.say(random.choice(punchline_array))  
 
     def right_handshake_b(self):
         angle_modulator = 1.0

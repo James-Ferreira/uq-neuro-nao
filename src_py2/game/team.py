@@ -54,42 +54,42 @@ class Team(object):
 
         if isRobotHinter:
             if isRobotGuesser:
-                guesser.robot.tts.say("{}. I am ready to guess".format(hinter.name))
-                guesser.robot.mm.use_motion_library("ready_to_guess")
+                guesser.nao.tts.say("{}. I am ready to guess".format(hinter.name))
+                guesser.nao.mm.use_motion_library("ready_to_guess")
 
-            hinter.robot.tts.say("Ok {}, I shall think about your hint".format(guesser.name))
-            hinter.robot.audio_player.post.playFile(sound_library["thinking"])
+            hinter.nao.tts.say("Ok {}, I shall think about your hint".format(guesser.name))
+            hinter.nao.audio_player.post.playFile(sound_library["thinking"])
             hint = hinter.generate_hint(target_word, already_hinted, already_guessed)
-            hinter.robot.audio_player.stopAll()
+            hinter.nao.audio_player.stopAll()
 
-            hinter.robot.tts.say("The hint is: {}".format(hint))
+            hinter.nao.tts.say("The hint is: {}".format(hint))
 
             if isRobotGuesser:
-                guesser.robot.tts.say("Did you say: {}".format(hint))
-                hinter.robot.tts.say("Yes, I did")
+                guesser.nao.tts.say("Did you say: {}".format(hint))
+                hinter.nao.tts.say("Yes, I did")
             else:
                 confirmed = False
                 while not confirmed:
-                    hinter.robot.tts.post.say("Do you understand the hint? Press my hand for yes, or my foot for no.")
-                    confirmed = hinter.robot.tm.wait_for_touch_confirm()
+                    hinter.nao.tts.post.say("Do you understand the hint? Press my hand for yes, or my foot for no.")
+                    confirmed = hinter.nao.tm.wait_for_touch_confirm()
 
                     if not confirmed:
-                        hinter.robot.tts.say("Okay, let me spell it out for you.")
+                        hinter.nao.tts.say("Okay, let me spell it out for you.")
                         for letter in hint:
-                            hinter.robot.tts.say(str(letter.lower()))
+                            hinter.nao.tts.say(str(letter.lower()))
                             time.sleep(0.3)
-                        hinter.robot.tts.say(str(hint))
+                        hinter.nao.tts.say(str(hint))
  
             return hint
 
         if not isRobotHinter:
             if isRobotGuesser:
-                guesser.robot.tts.say('I am ready to guess')
-                guesser.robot.tts.say('You have 5 seconds to think of your hint')
-                guesser.robot.audio_player.post.playFile(sound_library["thinking"])
+                guesser.nao.tts.say('I am ready to guess')
+                guesser.nao.tts.say('You have 5 seconds to think of your hint')
+                guesser.nao.audio_player.post.playFile(sound_library["thinking"])
                 time.sleep(5)
-                guesser.robot.audio_player.stopAll()
-                transcript = guesser.robot.am.listen_until_confirmed(5)
+                guesser.nao.audio_player.stopAll()
+                transcript = guesser.nao.am.listen_until_confirmed(5)
                 return transcript
 
         return hinter.generate_hint(target_word, already_hinted)
@@ -101,34 +101,34 @@ class Team(object):
         isRobotHinter = isinstance(hinter, RobotPlayer)
 
         if isRobotGuesser:
-            guesser.robot.tts.post.say("I shall now think about my guess")
+            guesser.nao.tts.post.say("I shall now think about my guess")
             guess = guesser.generate_guess(target_word, already_hinted, already_guessed)
-            guesser.robot.tts.say("My guess is {}".format(guess))
+            guesser.nao.tts.say("My guess is {}".format(guess))
 
             if isRobotHinter:
-                hinter.robot.tts.say("Did you guess {}".format(guess))
-                guesser.robot.tts.say("Yes")
+                hinter.nao.tts.say("Did you guess {}".format(guess))
+                guesser.nao.tts.say("Yes")
             else:
                 confirmed = False
                 while not confirmed:
-                    guesser.robot.tts.post.say("Do you understand the guess? Press my hand for yes, or my foot for no.")
-                    confirmed = guesser.robot.tm.wait_for_touch_confirm()
+                    guesser.nao.tts.post.say("Do you understand the guess? Press my hand for yes, or my foot for no.")
+                    confirmed = guesser.nao.tm.wait_for_touch_confirm()
 
                     if not confirmed:
-                        guesser.robot.tts.say("Okay, let me spell it out for you.")
+                        guesser.nao.tts.say("Okay, let me spell it out for you.")
                         for letter in guess:
-                            guesser.robot.tts.say(str(letter.lower()))
+                            guesser.nao.tts.say(str(letter.lower()))
                             time.sleep(0.3)
-                        guesser.robot.tts.say(str(guess))
+                        guesser.nao.tts.say(str(guess))
 
             return guess
 
         if not isRobotGuesser and isRobotHinter:
-            hinter.robot.tts.say("You have 5 seconds to think of your guess")
-            hinter.robot.audio_player.post.playFile(sound_library["thinking"])
+            hinter.nao.tts.say("You have 5 seconds to think of your guess")
+            hinter.nao.audio_player.post.playFile(sound_library["thinking"])
             time.sleep(5)
-            hinter.robot.audio_player.stopAll()
-            transcript = hinter.robot.am.listen_until_confirmed(5)
+            hinter.nao.audio_player.stopAll()
+            transcript = hinter.nao.am.listen_until_confirmed(5)
             return transcript
         
         if not isRobotGuesser and not isRobotHinter:

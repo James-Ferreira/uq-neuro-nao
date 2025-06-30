@@ -18,16 +18,16 @@ class TouchMode(Enum):
     RIGHT_FOOT_SCREAM = "TouchModuleScream"
 
 class TouchModule(ALModule):
-    def __init__(self, robot, module_name):
+    def __init__(self, nao, module_name):
         ALModule.__init__(self, module_name)
 
         import __main__
         __main__.__dict__[module_name] = self
 
-        self.robot = robot
+        self.nao = nao
         self.processing_touch = False
 
-        self.robot.memory.subscribeToEvent("TouchChanged", module_name, "onTouchChanged")
+        self.nao.memory.subscribeToEvent("TouchChanged", module_name, "onTouchChanged")
 
         # ------- helpers for confirmation -------
         self._lock_confirm = threading.Lock()
