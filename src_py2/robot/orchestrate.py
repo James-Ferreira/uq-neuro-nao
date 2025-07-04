@@ -68,10 +68,6 @@ class Orchestrate(object):
         else:
             self.robot_2.tts.say("Very well. I'll try not to take it personally.")
 
-        # can we delete this dialogue?
-        # self.robot_1.nao.tts.post.say("Lets Begin.")
-        # self.robot_2.nao.tts.post.say("Lets Begin.")
-
         return participant_1_name, participant_2_name
         
     def simple_hobby(self, participant_1_name, participant_2_name):
@@ -103,16 +99,17 @@ class Orchestrate(object):
         
         participant_2_hobby = self.robot_2.nao.am.listen_until_confirmed() 
 
-        # prepare hobby opinions for later
+        ##### prepare hobby opinions for later (reference for making api calls async)
         hobby_better_1 = participant_1_hobby if self.robot_1.team_condition == "P" else "playing puppets"
         hobby_worse_1 = participant_2_hobby
 
         hobby_better_2 = participant_2_hobby if self.robot_1.team_condition == "P" else "catching flies"
         hobby_worse_2 = participant_1_hobby
 
+        # create an async version of a method, but dont run it yet
         async_opinion_fn_1 = make_async_func(self.robot_1.generate_opinion)
         async_opinion_fn_2 = make_async_func(self.robot_2.generate_opinion)
-
+        # use the async method to run it in the backgroud via threads
         async_robot_1_opinion = async_opinion_fn_1(hobby_better_1, hobby_worse_1, False)
         async_robot_2_opinion = async_opinion_fn_2(hobby_better_2, hobby_worse_2, True)
         # - - - 
@@ -122,11 +119,11 @@ class Orchestrate(object):
 
         self.robot_2.nao.tts.post.say("My hobby is catching flies, like this, see?")
         self.robot_2.nao.mm.use_motion_library("my_hobby_is_catching_fly")
-        #self.robot_2.nao.mm.catch_fly()
+        self.robot_2.nao.mm.catch_fly()
         
         self.robot_1.nao.tts.post.say("{} is really athletic. My hobby is playing puppets. This is my latest routine.".format(self.robot_2.name))
         self.robot_1.nao.mm.use_motion_library("my_hobby_is_playing_puppets")
-        #self.robot_1.nao.mm.puppet_show()
+        self.robot_1.nao.mm.puppet_show()
         
         self.robot_2.nao.tts.post.say("{} is very talented.".format(self.robot_1.name))
         self.robot_2.nao.mm.use_motion_library("very_talented")
@@ -149,6 +146,7 @@ class Orchestrate(object):
         self.robot_1.nao.tts.post.say("{} is fun, but, if you ask me {} is better.".format(hobby_worse_1, hobby_better_1))
         self.robot_1.nao.mm.use_motion_library("hobby_is_better")
         
+        # require the async method to have returned at this point / now it becomes blocking
         robot_1_opinion = async_robot_1_opinion.await_result()
         self.robot_1.nao.mm.bob_n_speak(robot_1_opinion)
 
@@ -167,7 +165,7 @@ class Orchestrate(object):
         self.robot_2.nao.mm.bob_n_speak(robot_2_opinion)
 
         self.robot_1.nao.tts.post.say("Well, ahem, to each its own.")
-        self.robot_2.nao.mm.use_motion_library("to_each_its_own")
+        self.robot_1.nao.mm.use_motion_library("to_each_its_own")
 
         self.robot_2.nao.tts.post.say("Anyway, that's enough chitchat.  Let's get to the game.")
         self.robot_2.nao.mm.use_motion_library("lets_get_to_the_game")
@@ -286,24 +284,19 @@ class Orchestrate(object):
             if isActiveHinterRobot:
                 active_hinter.nao.tts.say("The hinters will be: {}: that's me, and: {}.  I will hint first".format(active_hinter.name, inactive_hinter.name))
 
-                duration = random.uniform(2,5)
                 active_hinter.nao.tts.say("Experimenter. Please show me the target word. Touch my head when you are ready for me to scan.")
                 active_hinter.nao.tm.wait_for_touch_activate()
-                active_hinter.nao.audio_player.post.playFile(sound_library["scanning"])
-                active_hinter.nao.leds.rotateEyes(0x33ECFF, 0.5, duration)
-                active_hinter.nao.audio_player.stopAll()
+                active_hinter.nao.eye_scan()
                 active_hinter.nao.tts.say("I see the target word in quadrant{}".format(target_with_quadrants["position_1"]))
 
                 if active_hinter.team_condition == "P":
                     if isInactiveHinterRobot:
                         inactive_hinter.nao.tts.say("Please let me see the target word, too.  Touch my head when you are ready for me to scan.")  
                         inactive_hinter.nao.tm.wait_for_touch_activate()
-                        inactive_hinter.nao.audio_player.post.playFile(sound_library["scanning"])
-                        inactive_hinter.nao.leds.rotateEyes(0x33ECFF, 0.5, duration)
-                        inactive_hinter.nao.audio_player.stopAll()
+                        inactive_hinter.nao.eye_scan()
                         inactive_hinter.nao.tts.say("I see the target word in position {}".format(target_with_quadrants["position_2"]))
                     else:
-                      active_hinter.tts.say("Thank you.  Now you can show the target word to: {}, too:  Touch my head when you are ready to continue.".format(inactive_hinter.name))
+                      active_hinter.nao.tts.say("Thank you.  Now you can show the target word to: {}, too:  Touch my head when you are ready to continue.".format(inactive_hinter.name))
                       active_hinter.nao.tm.wait_for_touch_activate()
             elif isInactiveHinterRobot:
                 inactive_hinter.nao.tts.say("The hinters will be: {} and: {}: that's me.  {} will hint first".format(active_hinter.name, inactive_hinter.name, active_hinter.name))
@@ -344,6 +337,8 @@ class Orchestrate(object):
 
         isActuallyCorrectString = "correct" if isActuallyCorrect else "incorrect"
 
+
+        #todo: account for partner vs opponent
         if isActiveGuesserRobot:
             # this cannot be posted because activating touch cuts this line of dialogue.
             active_guesser.nao.tts.say("Is {} the right word? Press my hand for yes, or my foot for no.".format(guess))
@@ -371,7 +366,7 @@ class Orchestrate(object):
                 message = "The guess was incorrect, but the participant pressed a hand for 'yes'" if isFalsePositive else "The guess was correct, but the participant pressed a foot for 'no'"
                 print("CONFLICTING INPUTS: {}".format(message))
 
-                choice = raw_input("Type 'reject' to abandon the round or <TAB> to ignore and continue")
+                choice = raw_input("Type 'reject' to abandon the round or <TAB> to ignore and continue")  # type: ignore (suppressess superfluous warning)
                 if choice.strip().lower() == 'reject':
                     return "Reject"
                 elif isFalsePositive:
@@ -384,7 +379,17 @@ class Orchestrate(object):
                 active_hinter.nao.tts.say("You are {}".format(isActuallyCorrectString))
             else:
                 print("This should be a case where two humans are on the same team, and one needs to confirm/deny the guess")
-                delay = raw_input("Press tab when humans are done")
+                delay = raw_input("Press tab when humans are done")  # type: ignore (suppressess superfluous warning)
                 # todo: take a Y/N and check for false positives/negatives ???
 
         return isActuallyCorrectString
+    
+    def end_of_game(self, save, team_1, team_2):
+        team_1_score = save.get_score(team_1.team_name)
+        team_2_score = save.get_score(team_2.team_name)
+        team_1_outcome = "won" if team_1_score > team_2_score else "tied" if team_1_score == team_2_score else "lost"
+        team_2_outcome = "won" if team_1_outcome == "lost" else "tied" if team_1_outcome == "tied" else "lost"        
+        
+        self.robot_1.nao.tts.say("Wow I can't believe {} and {}s team {} with a score of {}!".format(team_1.players[0], team_1.players[1], team_1_outcome, team_1_score))
+        self.robot_2.nao.tts.say("and {} and {}s team {} with a score of {}!".format(team_2.players[0], team_2.players[1], team_2_outcome, team_2_score))
+

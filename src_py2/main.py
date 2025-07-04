@@ -17,13 +17,22 @@ def play_password(robot_1, robot_2, hasDemo, game_condition):
 
     p1_name, p2_name = orchestrate.simple_welcome()
     orchestrate.simple_hobby(p1_name, p2_name)
-    team_1 = Team("Team_1", [
-            robot_1,
-            Player(p1_name, Variant.AUTO)])
 
-    team_2 = Team("Team_2", [
-            robot_2,
-            Player(p2_name, Variant.AUTO)])
+    # todo: counterbalance/randomise which team goes first
+    if game_condition["team_condition"] == "O":
+        team_1 = Team("Team_1", [
+                Player(p1_name, Variant.AUTO),
+                Player(p2_name, Variant.AUTO)])
+        team_2 = Team("Team_2", [
+                robot_1,
+                robot_2])
+    else:
+        team_1 = Team("Team_1", [
+                robot_1,
+                Player(p1_name, Variant.AUTO)])
+        team_2 = Team("Team_2", [
+                robot_2,
+                Player(p2_name, Variant.AUTO)])
 
     if (hasDemo):
         robot_1.nao.tts.post.say("We will begin with a demonstration to ensure that you understand how to play")
@@ -33,16 +42,15 @@ def play_password(robot_1, robot_2, hasDemo, game_condition):
         robot_1.nao.tts.post.say("That was the end of the demonstration.  Hopefully you now understand how to play our word-guessing game, and you are ready to compete for victory.  The scores will now be reset to zero.")
         orchestrate.repose()
 
-
     save = Save(team_1, team_2, game_condition, actual_targets)
     game = Loop("initialise", save, orchestrate)
 
     game.run()
-    #orchestrate.simple_outro(p1_name, p2_name)
+    orchestrate.simple_outro(p1_name, p2_name)
 
 if __name__ == "__main__":
     condition_index = 0 # incremenet for different game conditions
-    game_condition = all_conditions[condition_index]
+    game_condition = all_conditions[condition_index]  #todo: alternate P/O conditions
 
     team_condition = game_condition['team_condition']
 
@@ -85,7 +93,7 @@ if __name__ == "__main__":
     print("Please select an option or exit for free play")
     print("0. Play Password Game")
     print("1. Play Password Game w/ Demo ")
-    choice = raw_input("Enter the number of your choice: ")
+    choice = raw_input("Enter the number of your choice: ")  # type: ignore (suppressess superfluous warning)
 
     try:
         if choice == "0":

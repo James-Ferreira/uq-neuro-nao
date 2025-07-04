@@ -52,6 +52,7 @@ class Team(object):
         isRobotGuesser = isinstance(guesser, RobotPlayer)
         isRobotHinter = isinstance(hinter, RobotPlayer)
 
+        speech_delay = 0.3
         if isRobotHinter:
             if isRobotGuesser:
                 guesser.nao.tts.say("{}. I am ready to guess".format(hinter.name))
@@ -59,13 +60,18 @@ class Team(object):
 
             hinter.nao.tts.say("Ok {}, I shall think about your hint".format(guesser.name))
             hinter.nao.audio_player.post.playFile(sound_library["thinking"])
+            hinter.nao.leds.post.fadeRGB('FaceLeds', 0xFFC0CB, 0.1)
             hint = hinter.generate_hint(target_word, already_hinted, already_guessed)
             hinter.nao.audio_player.stopAll()
+            hinter.nao.leds.post.fadeRGB("FaceLeds", 0xFFFFFF, 0.1)
+
 
             hinter.nao.tts.say("The hint is: {}".format(hint))
 
             if isRobotGuesser:
+                time.sleep(speech_delay)
                 guesser.nao.tts.say("Did you say: {}".format(hint))
+                time.sleep(speech_delay)
                 hinter.nao.tts.say("Yes, I did")
             else:
                 confirmed = False
@@ -100,13 +106,17 @@ class Team(object):
         isRobotGuesser = isinstance(guesser, RobotPlayer)
         isRobotHinter = isinstance(hinter, RobotPlayer)
 
+        speech_delay = 0.3
+
         if isRobotGuesser:
             guesser.nao.tts.post.say("I shall now think about my guess")
             guess = guesser.generate_guess(target_word, already_hinted, already_guessed)
             guesser.nao.tts.say("My guess is {}".format(guess))
 
             if isRobotHinter:
+                time.sleep(speech_delay)
                 hinter.nao.tts.say("Did you guess {}".format(guess))
+                time.sleep(speech_delay)
                 guesser.nao.tts.say("Yes")
             else:
                 confirmed = False
@@ -132,7 +142,7 @@ class Team(object):
             return transcript
         
         if not isRobotGuesser and not isRobotHinter:
-            guess = raw_input("Type guess: ")
+            guess = raw_input("Type guess: ")  # type: ignore (suppressess superfluous warning)
             return guess
 
         return guesser.generate_guess(target_word, already_guessed)

@@ -17,8 +17,23 @@ client = ollama.Client(
 )
 print("Ollama model loaded.")
 
-@app.route('/transcribe', methods=['POST'])
-def transcribe_audio():
+@app.route('/transcribe/filepath', methods=['POST'])
+def transcribe_audio_from_filepath():
+    data = request.get_json()
+    if not data or 'filepath' not in data:
+        return jsonify({'error': 'No filepath provided'}), 400
+
+    filepath = data['filepath']
+
+    print(f"/transcribe/filepath: {filepath}")
+    try:
+        transcription_result = transcribe_whisper(filepath, model)
+        return jsonify({'transcription': transcription_result}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
+@app.route('/transcribe/file', methods=['POST'])
+def transcribe_audio_from_file():
     if 'audio' not in request.files:
         return jsonify({'error': 'No audio file provided'}), 400
 

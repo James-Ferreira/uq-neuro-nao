@@ -29,14 +29,14 @@ class Player(object):
     def generate_hint(self, target_word, already_hinted):
 
         if(self.variant == Variant.STDIN):
-            return raw_input("▶ Enter {}'s hint: ".format(self.name))
+            return raw_input("▶ Enter {}'s hint: ".format(self.name))  # type: ignore (suppressess superfluous warning)
         
         return "hint1"
 
     def generate_guess(self, target_word, already_hinted):
 
         if(self.variant == Variant.STDIN):
-            guess = raw_input("▶ Enter {}'s guess:".format(self.name))
+            guess = raw_input("▶ Enter {}'s guess:".format(self.name))  # type: ignore (suppressess superfluous warning)
             return guess
         
         return target_word if random.random() < 0.5 else "guess1"

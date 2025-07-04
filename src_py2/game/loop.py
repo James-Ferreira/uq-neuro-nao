@@ -106,6 +106,7 @@ class Loop:
             self.save.reject_round()
 
         if(self.save.isFinished(isActuallyCorrect)):
+            self.orchestrate.end_of_game(self.save, active_team, inactive_team)
             return "end_of_game"
         
         if(isActuallyCorrect):

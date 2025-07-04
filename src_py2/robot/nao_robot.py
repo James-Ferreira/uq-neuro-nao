@@ -1,8 +1,9 @@
 from naoqi import ALProxy, ALProxy, ALBroker
 import paramiko
+import random
 from touch_manager import TouchModule
 from motion_manager import MotionManager
-from audio_manager import AudioManager
+from audio_manager import AudioManager, sound_library
 
 class NAORobot:
     def __init__(self, name, ip, port, usrnme, pword, reversed):
@@ -129,3 +130,10 @@ class NAORobot:
     def speak_and_move(self, message, motion_key):
         self.tts.post.say(message)
         self.mm.use_motion_library(motion_key)
+
+    def eye_scan(self):
+        duration = random.uniform(2,5)
+        self.audio_player.post.playFile(sound_library["scanning"])
+        self.leds.rotateEyes(0x33ECFF, 0.5, duration)
+        self.audio_player.stopAll()
+        self.leds.post.fadeRGB("AllLeds", 0xFFFFFF, 0.1)

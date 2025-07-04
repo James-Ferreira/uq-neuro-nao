@@ -1,8 +1,38 @@
 import requests
 import os
 
+def transcribe_filepath(filepath):
+    # relies on the api having access to the same file system
+    api_url = "http://localhost:5000/transcribe/filepath"
+
+    if not os.path.exists(filepath):
+        print("Audio file not found at {}".format(filepath))
+        return None
+
+    try:
+        response = requests.post(api_url, json={
+            'filepath': filepath,
+        })
+        response.raise_for_status()
+        transcription_data = response.json()
+        transcription = transcription_data.get('transcription')
+
+        if transcription:
+            print("Transcribed '{}'".format(transcription))
+            return transcription
+        else: 
+            print("Error: API returned empty transcription.")
+            return None
+    except requests.exceptions.RequestException as e:
+        print("Error calling transcription API: {}".format(e))
+        return None
+    except IOError as e:
+        print("Error opening audio file: {}".format(e))
+        return None
+    
+
 def transcribe_file(filepath):
-    api_url = "http://localhost:5000/transcribe"
+    api_url = "http://localhost:5000/transcribe/file"
 
     if not os.path.exists(filepath):
         print("Audio file not found at {}".format(filepath))
