@@ -12,7 +12,8 @@ class Variant(Enum):
     STDIN = 1
 
 class Player(object):
-    def __init__(self, name, variant=Variant.AUTO):
+    def __init__(self, identifier, name, variant=Variant.AUTO):
+        self.identifier = identifier
         self.name = name
         self.variant = variant
         self.role = None

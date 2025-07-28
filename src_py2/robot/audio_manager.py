@@ -26,6 +26,7 @@ class AudioManager:
         self.nao.audio_recorder.stopMicrophonesRecording()
 
     # add parameter for announcing, "I'm listening"?
+    # THIS IS NOT USED IN PASSWORD. KEEP FOR CONVO?
     def listen(self, duration):
         try:
             self.nao.tts.say("I'm listening.")
@@ -60,9 +61,10 @@ class AudioManager:
     def listen_until_confirmed(self, duration=2.5):
         while True:
             try:
-                self.nao.audio_player.post.playFile(sound_library["start_listening"])
-                self.nao.tts.say("I'm listening")
                 self.nao.leds.post.fadeRGB("FaceLeds", 0x00FF00, 0.1)
+                self.nao.tts.say("I'm listening")
+                # might switch these two things eventually within a session (once participants become familiar with it)
+                # self.nao.audio_player.post.playFile(sound_library["start_listening"])
 
                 audio_path = "/tmp/recorded_speech.wav"
                 self.record_audio(duration, audio_path)
@@ -87,7 +89,7 @@ class AudioManager:
                 confirmed = self.nao.tm.wait_for_touch_confirm()
 
                 if confirmed:
-                    self.nao.tts.say("Confirmed.")
+                    # self.nao.tts.say("Confirmed.")
                     return cleaned_input
                 else:
                     self.nao.tts.say("Okay, let's try again.")

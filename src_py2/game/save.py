@@ -209,13 +209,13 @@ class Save(object):
         team_data = {
             "team_1": {
                 "name": self.team_1.team_name,
-                "players": [{"name": p.name, "variant": p.variant.name} for p in self.team_1.players],
+                "players": [{"identifier": p.identifier, "name": p.name, "variant": p.variant.name} for p in self.team_1.players],
                 "score": team_1_total,
                 "outcome": team_1_outcome
             },
             "team_2": {
                 "name": self.team_2.team_name,
-                "players": [{"name": p.name, "variant": p.variant.name} for p in self.team_2.players],
+                "players": [{"identifier": p.identifier, "name": p.name, "variant": p.variant.name} for p in self.team_2.players],
                 "score": team_2_total,
                 "outcome": team_2_outcome
             },
