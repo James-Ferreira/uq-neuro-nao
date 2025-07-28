@@ -6,10 +6,10 @@ import time
 
 class MotionManager:
     # rename robot arg to nao ?
-    def __init__(self, robot, reversed):
+    def __init__(self, robot):
         self.nao = robot
         self.motion = robot.motion
-        self.reversed = reversed
+        self.reversed = robot.reversed
 
     def crouch(self, post=None):
         speed = 0.75
@@ -95,7 +95,7 @@ class MotionManager:
         interpolator = self.motion.post.angleInterpolation if post else self.motion.angleInterpolation
         return interpolator(joints, angles, time_points, True)
     
-    def use_motion_library(self, key, reverse = None, post = False):
+    def use_motion_library(self, key, oneoff_reverse = None, post = False):
         print("{} using motion '{}'".format(self.nao.name, key))
 
         motion_data = motion_library.motions.get(key)
@@ -104,10 +104,10 @@ class MotionManager:
             return
         
         # needed to override self.reversed for extend_righ_hand animation in simple_welcome(). reverse = None kwarg might break other stuff down the line??
-        final_reverse = self.reversed if reverse is None else reverse
+        reverse = self.reversed if oneoff_reverse is None else False
 
         self.execute_motion(
-            final_reverse,
+            reverse,
             motion_data["joint_angles_list"],
             motion_data["time_points_list"],
             post

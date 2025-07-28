@@ -13,6 +13,7 @@ class NAORobot:
         self.pword = pword
         self.usrnme = usrnme
         self.initialize_proxies()
+        self.reversed = reversed
 
         if name == "192.168.0.183": #classact
             self.dialog_off()
@@ -25,7 +26,7 @@ class NAORobot:
         # clas.tts.setParameter('pitchShift', 1)  
         self.tts.setParameter('speed', 88)
 
-        self.mm = MotionManager(self, reversed)
+        self.mm = MotionManager(self)
         self.am = AudioManager(self)
         self.broker = ALBroker("broker-{}".format(name), "0.0.0.0", 0, self.ip, self.port)
         self.tm = TouchModule(self, "touch_{}".format(name))
