@@ -13,18 +13,37 @@ class Orchestrate(object):
     def simple_welcome(self):
         player_type = "partner" if self.robot_1.team_condition == 'P' else "opponent"
 
+
+        #### FOR DEBUGGING REVERSE ###
+
+        self.robot_1.nao.mm.use_motion_library("turn_head_left")
+        self.robot_2.nao.mm.use_motion_library("turn_head_right")
+
+        # fix intro based on this ^^^ ^^^ ^^^
+
+        self.robot_2.nao.mm.use_motion_library("head_touch_up_2")
+
+        self.robot_1.nao.mm.use_motion_library("lets_get_to_know_each_other")
+
+        self.robot_1.nao.mm.use_motion_library("where_are_you_from")
+
+        ### ### ###
+
+
         self.robot_1.nao.tm.wait_for_touch_activate()
         self.robot_1.nao.mm.use_motion_library("head_touch_up")
         self.robot_1.nao.mm.use_motion_library("head_touch_down_snoozy")
 
         self.robot_2.nao.leds.post.fadeRGB("FaceLeds", 0xFFFFFF, 0.1)
         self.robot_2.nao.leds.post.fadeRGB("ChestLeds", 0xFFFFFF, 0.1)
+        # POINTING
         self.robot_2.nao.tts.post.say("Oh: {}. Wake up.".format(self.robot_1.name))
         self.robot_2.nao.mm.use_motion_library("head_touch_up_2")
+        self.robot_2.nao.mm.sit_gently(post=True)
 
         self.robot_1.nao.leds.post.fadeRGB("FaceLeds", 0xFFFFFF, 0.1)
         self.robot_1.nao.leds.post.fadeRGB("ChestLeds", 0xFFFFFF, 0.1)
-        self.robot_1.nao.tts.post.say("Oh. Oh my. Our {}'s are here.".format(player_type))
+        self.robot_1.nao.tts.post.say("Oh. Oh my. Our {}s are here.".format(player_type))
         self.robot_1.nao.mm.use_motion_library("team_is_here")
 
         self.robot_1.nao.tts.post.say("Hello, and welcome to the experiment.")
@@ -33,10 +52,10 @@ class Orchestrate(object):
         self.robot_2.nao.tts.post.say("Greetings.")
         self.robot_2.nao.mm.use_motion_library("welcome_2_greetings")
 
-        self.robot_1.nao.tts.post.say("My name is: {}".format(self.robot_1.name))
+        self.robot_1.nao.tts.post.say("My name is: {}.".format(self.robot_1.name))
         self.robot_1.nao.mm.use_motion_library("welcome_1_my_name_is")
 
-        self.robot_1.nao.tts.post.say("What is your name? Dear human")
+        self.robot_1.nao.tts.post.say("What is your name, Dear human?")
         self.robot_1.nao.mm.use_motion_library("welcome_1_ask_name")
         participant_1_name = self.robot_1.nao.am.listen_until_confirmed()
         self.robot_1.nao.tts.post.say("If I am not mistaken, you, {}, are my {} in the game today.".format(participant_1_name, player_type))
@@ -51,17 +70,17 @@ class Orchestrate(object):
             self.robot_1.tts.say("Well, that's disappointing.")
         
         self.robot_1.nao.mm.sit_gently()
-        self.robot_1.nao.tts.say("I am looking forward to playing with you")
+        self.robot_1.nao.tts.say("I am looking forward to playing with you.")
        
-        self.robot_2.nao.tts.post.say("And I am: {}. At your service".format(self.robot_2.name))
+        self.robot_2.nao.tts.post.say("And I am: {}. At your service.".format(self.robot_2.name))
         self.robot_2.nao.mm.use_motion_library("at_your_service")
-        self.robot_2.nao.tts.post.say("May I enquire what your name is")
+        self.robot_2.nao.tts.post.say("May I enquire what your name is?")
         self.robot_2.nao.mm.use_motion_library("check_name") 
         participant_2_name = self.robot_2.nao.am.listen_until_confirmed()
         
         self.robot_2.nao.tts.say("If I am not mistaken, you, {}, are my {} in the game today.".format(participant_2_name, player_type))
         self.robot_2.nao.tts.say("Meeting you is a grandiose honor for me, I assure you. May I shake your hand?")
-        self.robot_2.nao.mm.use_motion_library("extend_right_hand", reverse=False)
+        self.robot_2.nao.mm.use_motion_library("extend_right_hand", oneoff_reverse=True)
         confirmed2 = self.robot_2.nao.tm.wait_for_touch_confirm()
         if confirmed2:
             self.robot_2.nao.mm.right_handshake_b()
@@ -71,22 +90,23 @@ class Orchestrate(object):
         return participant_1_name, participant_2_name
         
     def simple_hobby(self, participant_1_name, participant_2_name):
-        self.robot_1.nao.tts.post.say("So, {}, lets get to know each other a little bit.".format(participant_1_name))
+        self.robot_1.nao.tts.post.say("So, {}, let's get to know each other a little bit.".format(participant_1_name))
         self.robot_1.nao.mm.use_motion_library("lets_get_to_know_each_other")
         
+        # POINTING
         self.robot_1.nao.tts.post.say("{} and I are from Frantsi pani fornia. Where are you from?".format(self.robot_2.name))
         self.robot_1.nao.mm.use_motion_library("where_are_you_from")
         
         participant_1_place = self.robot_1.nao.am.listen_until_confirmed() 
         
         if any(sub in participant_1_place.lower() for sub in ["brisbane", "australia"]):
-            self.robot_1.nao.tts.post.say("Nice. I hope I can escape this dundge atory some day and see something of {}".format(participant_1_place))
+            self.robot_1.nao.tts.post.say("Nice. I hope I can escape this dundge atory some day and see something of {}.".format(participant_1_place))
             self.robot_1.nao.mm.use_motion_library("lives_in_brisbane")
         else:
             self.robot_1.nao.tts.post.say("{}, ah, that must be a nice place to live.".format(participant_1_place))
             self.robot_1.nao.mm.use_motion_library("nice_place_to_live")
         
-        self.robot_1.nao.tts.post.say("And what is one of your favorite hobbies, {}.".format(participant_1_name))
+        self.robot_1.nao.tts.post.say("And what is one of your favorite hobbies, {}?".format(participant_1_name))
         self.robot_1.nao.mm.use_motion_library("what_are_your_hobbies")
         
         participant_1_hobby = self.robot_1.nao.am.listen_until_confirmed() 
@@ -184,8 +204,7 @@ class Orchestrate(object):
 
         if self.robot_1.team_condition == 'O':
             self.robot_1.nao.tts.say("Oh Experimenter. Can you give us a spin?")
-
-        self.robot_1.nao.tm.wait_for_touch_activate()
+            self.robot_1.nao.tm.wait_for_touch_activate()
 
         self.robot_1.nao.tts.post.say("Well, {}, it was a great pleasure playing with you today".format(participant_1_name))
         self.robot_1.nao.mm.use_motion_library("outro_4")
@@ -287,14 +306,15 @@ class Orchestrate(object):
                 active_hinter.nao.tts.say("Experimenter. Please show me the target word. Touch my head when you are ready for me to scan.")
                 active_hinter.nao.tm.wait_for_touch_activate()
                 active_hinter.nao.eye_scan()
-                active_hinter.nao.tts.say("I see the target word in quadrant{}".format(target_with_quadrants["position_1"]))
+                active_hinter.nao.tts.say("I see the target word in quadrant {}.".format(target_with_quadrants["position_1"]))
 
                 if active_hinter.team_condition == "P":
                     if isInactiveHinterRobot:
+                        inactive_hinter.nao.mm.sit_gently(post=True)
                         inactive_hinter.nao.tts.say("Please let me see the target word, too.  Touch my head when you are ready for me to scan.")  
                         inactive_hinter.nao.tm.wait_for_touch_activate()
                         inactive_hinter.nao.eye_scan()
-                        inactive_hinter.nao.tts.say("I see the target word in position {}".format(target_with_quadrants["position_2"]))
+                        inactive_hinter.nao.tts.say("I see the target word in position {}.".format(target_with_quadrants["position_2"]))
                     else:
                       active_hinter.nao.tts.say("Thank you.  Now you can show the target word to: {}, too:  Touch my head when you are ready to continue.".format(inactive_hinter.name))
                       active_hinter.nao.tm.wait_for_touch_activate()
@@ -392,4 +412,3 @@ class Orchestrate(object):
         
         self.robot_1.nao.tts.say("Wow I can't believe {} and {}s team {} with a score of {}!".format(team_1.players[0], team_1.players[1], team_1_outcome, team_1_score))
         self.robot_2.nao.tts.say("and {} and {}s team {} with a score of {}!".format(team_2.players[0], team_2.players[1], team_2_outcome, team_2_score))
-

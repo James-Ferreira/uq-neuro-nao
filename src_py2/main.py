@@ -9,13 +9,12 @@ from target_words import demo_targets, actual_targets
 
 # not exactly sure where to put this...
 def custom_condition(game_condition):
-    print("Condition: {}".format(game_condition["team_condition"]))
-    team_condition_overwrite = raw_input("Enter P or O to overwrite condition, or nothing to continue: ").strip().upper()  # type: ignore (suppressess superfluous warning)
-    if team_condition_overwrite == None:
-        print("Condition is still {}".format(game_condition["team_condition"]))
+    condition_overwrite = raw_input("Use a custom condition (Y/N): ").strip().upper()  # type: ignore (suppressess superfluous warning)
+    if condition_overwrite == "N":
+        print("Condition is still default.")
     else:
-        print("Condition changed to {}".format(team_condition_overwrite))
-        game_condition["team_condition"] = team_condition_overwrite
+        print("Condition changed to custom.")
+        game_condition = {'pitch': 0.85, 'exp_name': 'Zork', 'team_condition': 'P', 'orientation': 'R', 'robot': 'meta'}
     return game_condition
 
 def play_password(robot_1, robot_2, hasDemo, game_condition):
@@ -23,15 +22,22 @@ def play_password(robot_1, robot_2, hasDemo, game_condition):
     orchestrate.sit()
     orchestrate.repose()
 
-    # need hard-coded player names if running without simple_welcome()
-    p1_name, p2_name = "Sarah", "Natalie"
-
     # p1_identifier = raw_input("Type the first participant's first and last name: ").strip().upper()
     # p2_identifier = raw_input("Type the first participant's first and last name: ").strip().upper()
     p1_identifier = "Dr. Sarah Grainger"
     p2_identifier = "Prof. Natalie Ebner"
 
-    #p1_name, p2_name = orchestrate.simple_welcome()
+    # need hard-coded player names if running without simple_welcome()
+    # p1_name, p2_name = "Sarah", "Natalie"
+
+
+    ### OUTRO DEBUG ###
+    # orchestrate.simple_outro(p1_name, p2_name)
+
+    ### #### ###
+
+
+    p1_name, p2_name = orchestrate.simple_welcome()
     #orchestrate.simple_hobby(p1_name, p2_name)
 
     # todo: counterbalance/randomise which team goes first
@@ -86,11 +92,15 @@ if __name__ == "__main__":
     robot_1_ip = "192.168.0.183" if robot_1_identifier == 'clas' else '192.168.0.78'
     robot_2_ip = "192.168.0.78" if robot_1_identifier == 'clas' else '192.168.0.183'
 
+
     # if robot_1 is on the right, robot_1's motions should be reversed and robot_2s shouldnt be
     # WORK IN PROGRESS!!!
+
     robot_1_motion_reverse = robot_2_motion_reverse = (robot_1_orientation == 'R')
-    robot_2_motion_reverse = robot_1_orientation == 'L'
+
+
     ### ### ###
+
 
     robot_1 = RobotPlayer(
             robot_1_identifier,
@@ -114,11 +124,16 @@ if __name__ == "__main__":
             reversed=robot_2_motion_reverse
         )
 
-    print("Robot 1 team condition: {}".format(robot_1.team_condition))
-    print("Robot 2 team condition: {}".format(robot_2.team_condition))
+    print("Robot 1: {}\n"
+      "Team condition: {}\n"
+      "Orientation: {}\n"
+      "Reverse: {}".format(robot_1.identifier, robot_1.team_condition, robot_1.orientation, robot_1.reversed))
 
-    print("Robot 1, {}'s orientation: {}".format(robot_1_identifier, robot_1.orientation))
-    print("Robot 2, {}'s orientation: {}".format(robot_2_identifier, robot_2.orientation))
+    print("Robot 2: {}\n"
+      "Team condition: {}\n"
+      "Orientation: {}\n"
+      "Reverse: {}".format(robot_2.identifier, robot_2.team_condition, robot_2.orientation, robot_2.reversed))
+
     raw_input("Breakpoint. Press ENTER")  # type: ignore (suppressess superfluous warning)
 
     print("Please select an option or exit for free play")

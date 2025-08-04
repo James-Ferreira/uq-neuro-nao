@@ -10,6 +10,7 @@ class RobotPlayer(Player):
         self.ip_address = ip_address
         self.team_condition = team_condition #todo: enforce P or O
         self.orientation = orientation #todo: enforce L or R
+        self.reversed = reversed
         self.nao.am.set_pitch(pitch)
 
     def generate_guess(self, target_word, already_hinted, already_guessed):

@@ -39,13 +39,13 @@ class MotionManager:
         else:
             self.nao.posture.goToPosture('Sit', speed)
 
-    def sit_gently(self):
+    def sit_gently(self, post=False):
         # to sit without the jerking common in the default sit command.
         # will not work if robot is standing.
         if not self.posture_check('Sit') and not self.posture_check('SitRelax'):
             return
         else:
-            self.use_motion_library('sit_gently')
+            self.use_motion_library('sit_gently', post=post)
    
     def sit_relax(self, post=None):
         speed = 0.75
@@ -88,6 +88,7 @@ class MotionManager:
             self.motion.post.angleInterpolation(motion_library.joint_names_list, joint_angles, time_points, True)
 
     def execute_motion(self, reverse, joint_angles, time_points, post=False):
+        print("{}'s reverse = {}".format(self.nao.name, reverse))
 
         joints = mirror_joint_names(motion_library.joint_names_list) if reverse else motion_library.joint_names_list
         angles = transform_angles_by_joint_name(motion_library.joint_names_list, joint_angles) if reverse else joint_angles
