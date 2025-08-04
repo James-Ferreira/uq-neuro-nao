@@ -14,7 +14,7 @@ def custom_condition(game_condition):
         print("Condition is still default.")
     else:
         print("Condition changed to custom.")
-        game_condition = {'pitch': 0.85, 'exp_name': 'Zork', 'team_condition': 'P', 'orientation': 'R', 'robot': 'meta'}
+        game_condition = {'pitch': 0.85, 'exp_name': 'Zork', 'team_condition': 'O', 'orientation': 'R', 'robot': 'meta'}
     return game_condition
 
 def play_password(robot_1, robot_2, hasDemo, game_condition):
@@ -38,7 +38,7 @@ def play_password(robot_1, robot_2, hasDemo, game_condition):
 
 
     p1_name, p2_name = orchestrate.simple_welcome()
-    #orchestrate.simple_hobby(p1_name, p2_name)
+    orchestrate.simple_hobby(p1_name, p2_name)
 
     # todo: counterbalance/randomise which team goes first
     if game_condition["team_condition"] == "O":

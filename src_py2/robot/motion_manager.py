@@ -96,7 +96,7 @@ class MotionManager:
         interpolator = self.motion.post.angleInterpolation if post else self.motion.angleInterpolation
         return interpolator(joints, angles, time_points, True)
     
-    def use_motion_library(self, key, oneoff_reverse = None, post = False):
+    def use_motion_library(self, key, default_orientation = None, post = False):
         print("{} using motion '{}'".format(self.nao.name, key))
 
         motion_data = motion_library.motions.get(key)
@@ -105,7 +105,7 @@ class MotionManager:
             return
         
         # needed to override self.reversed for extend_righ_hand animation in simple_welcome(). reverse = None kwarg might break other stuff down the line??
-        reverse = self.reversed if oneoff_reverse is None else False
+        reverse = self.reversed if default_orientation is None else False
 
         self.execute_motion(
             reverse,

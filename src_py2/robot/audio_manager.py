@@ -4,9 +4,8 @@ import time
 import string
 
 class AudioManager:
-    # todo (?): rename robot arg to nao ?
-    def __init__(self, robot):
-        self.nao = robot
+    def __init__(self, nao):
+        self.nao = nao
 
     def pitch_change(self):
         current_pitch = self.nao.tts.getParameter('pitchShift')

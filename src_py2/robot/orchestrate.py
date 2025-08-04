@@ -13,22 +13,14 @@ class Orchestrate(object):
     def simple_welcome(self):
         player_type = "partner" if self.robot_1.team_condition == 'P' else "opponent"
 
-
         #### FOR DEBUGGING REVERSE ###
 
-        self.robot_1.nao.mm.use_motion_library("turn_head_left")
-        self.robot_2.nao.mm.use_motion_library("turn_head_right")
-
-        # fix intro based on this ^^^ ^^^ ^^^
-
-        self.robot_2.nao.mm.use_motion_library("head_touch_up_2")
-
-        self.robot_1.nao.mm.use_motion_library("lets_get_to_know_each_other")
-
-        self.robot_1.nao.mm.use_motion_library("where_are_you_from")
+        #self.robot_1.nao.mm.use_motion_library("turn_head_left", post=True)
+        #self.robot_2.nao.mm.use_motion_library("turn_head_right")
+        # fix intro/game based on this ^ robot_1 uses left, robot_2 uses right!
+        #self.robot_2.nao.mm.use_motion_library("head_touch_up_2")
 
         ### ### ###
-
 
         self.robot_1.nao.tm.wait_for_touch_activate()
         self.robot_1.nao.mm.use_motion_library("head_touch_up")
@@ -62,7 +54,8 @@ class Orchestrate(object):
         self.robot_1.nao.mm.use_motion_library("you_are_in_the_game")
 
         self.robot_1.nao.tts.say("It would be an honor for me to shake your hand.")
-        self.robot_1.nao.mm.use_motion_library("extend_right_hand")
+        # todo: re-animate handshake invitation
+        self.robot_1.nao.mm.use_motion_library("extend_right_hand", default_orientation=True)
         confirmed = self.robot_1.nao.tm.wait_for_touch_confirm()
         if confirmed:
             self.robot_1.nao.mm.right_handshake_a()
@@ -78,9 +71,12 @@ class Orchestrate(object):
         self.robot_2.nao.mm.use_motion_library("check_name") 
         participant_2_name = self.robot_2.nao.am.listen_until_confirmed()
         
+        # todo: vary dialogue for engagement, then find/create animation
         self.robot_2.nao.tts.say("If I am not mistaken, you, {}, are my {} in the game today.".format(participant_2_name, player_type))
+        # todo: add animation to the above dialogue (and post the dialogue)
+
         self.robot_2.nao.tts.say("Meeting you is a grandiose honor for me, I assure you. May I shake your hand?")
-        self.robot_2.nao.mm.use_motion_library("extend_right_hand", oneoff_reverse=True)
+        self.robot_2.nao.mm.use_motion_library("extend_right_hand", default_orientation=True)
         confirmed2 = self.robot_2.nao.tm.wait_for_touch_confirm()
         if confirmed2:
             self.robot_2.nao.mm.right_handshake_b()
@@ -290,9 +286,40 @@ class Orchestrate(object):
         isInactiveGuesserRobot = isinstance(inactive_guesser, RobotPlayer)
 
         if isInactiveHinterRobot:
-            inactive_hinter.nao.mm.use_motion_library("turn_head")
+            if inactive_hinter == self.robot_1:
+                if self.robot_1.team_condition == 'O':
+                    inactive_hinter.nao.mm.use_motion_library("turn_head_right")
+                elif self.robot_1.team_condition == 'P':
+                    inactive_hinter.nao.mm.use_motion_library("turn_head_left")
+                else:
+                    print("something wrong")
+            elif inactive_hinter == self.robot_2:
+                if self.robot_1.team_condition == 'O':
+                    inactive_hinter.nao.mm.use_motion_library("turn_head_left")
+                elif self.robot_1.team_condition == 'P':
+                    inactive_hinter.nao.mm.use_motion_library("turn_head_right")
+                else:
+                    print("something wrong")
+            else:
+                print("something very wrong")
+
         if isInactiveGuesserRobot:
-            inactive_guesser.nao.mm.use_motion_library("turn_head")
+            if inactive_guesser == self.robot_1:
+                if self.robot_1.team_condition == 'O':
+                    inactive_guesser.nao.mm.use_motion_library("turn_head_right")
+                elif self.robot_1.team_condition == 'P':
+                    inactive_guesser.nao.mm.use_motion_library("turn_head_left")
+                else:
+                    print("something wrong")
+            elif inactive_guesser == self.robot_2:
+                if self.robot_1.team_condition == 'O':
+                    inactive_guesser.nao.mm.use_motion_library("turn_head_left")
+                elif self.robot_1.team_condition == 'P':
+                    inactive_guesser.nao.mm.use_motion_library("turn_head_right")
+                else:
+                    print("something wrong")
+            else:
+                print("something very wrong")
 
         if isActiveHinterRobot:
             active_hinter.nao.mm.sit_gently()
@@ -358,7 +385,7 @@ class Orchestrate(object):
         isActuallyCorrectString = "correct" if isActuallyCorrect else "incorrect"
 
 
-        #todo: account for partner vs opponent
+        # todo: account for partner vs opponent
         if isActiveGuesserRobot:
             # this cannot be posted because activating touch cuts this line of dialogue.
             active_guesser.nao.tts.say("Is {} the right word? Press my hand for yes, or my foot for no.".format(guess))
@@ -367,11 +394,11 @@ class Orchestrate(object):
 
             if isClaimedToBeCorrect and isActuallyCorrect:
                 active_guesser.nao.audio_player.playFile(sound_library["correct_sound_a"])
-                active_guesser.nao.tts.say("Woohoo!") #todo: celebration options
+                active_guesser.nao.tts.say("Woohoo!") # todo: celebration options
                 return "correct"
             
             if not isClaimedToBeCorrect and not isActuallyCorrect:
-                active_guesser.nao.tts.say("How disappointing!") #todo: sad options
+                active_guesser.nao.tts.say("How disappointing!") # todo: sad options
                 return "incorrect"
 
             isFalsePositive = isClaimedToBeCorrect and not isActuallyCorrect
