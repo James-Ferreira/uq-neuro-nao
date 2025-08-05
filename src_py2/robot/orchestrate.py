@@ -327,28 +327,65 @@ class Orchestrate(object):
             active_guesser.nao.mm.sit_gently()
 
         if len(already_hinted) == 0:
-            if isActiveHinterRobot:
-                active_hinter.nao.tts.say("The hinters will be: {}: that's me, and: {}.  I will hint first".format(active_hinter.name, inactive_hinter.name))
+            team_condition = next(
+                p.team_condition for p, is_robot in [
+                    (active_hinter, isActiveHinterRobot),
+                    (inactive_hinter, isInactiveHinterRobot),
+                    (active_guesser, isActiveGuesserRobot),
+                    (inactive_guesser, isInactiveGuesserRobot),
+                ] if is_robot)
 
+            is_partner = team_condition == "P"
+            is_opponent = team_condition == "O"
+
+            if isActiveHinterRobot:
+                introducer = active_hinter
+                phrase_intro = "The hinters will be: {}: that's me, and: {}. I will hint first.".format(active_hinter.name, inactive_hinter.name)
+            elif isInactiveHinterRobot:
+                introducer = inactive_hinter
+                phrase_intro = "The hinters will be: {} and: {}: that's me. {} will hint first.".format(active_hinter.name, inactive_hinter.name, active_hinter.name)
+            elif isActiveGuesserRobot:
+                introducer = active_guesser
+                phrase_intro = "The hinters will be: {} and: {}. {} will hint first.".format(active_hinter.name, inactive_hinter.name, active_hinter.name)
+
+            introducer.nao.tts.say(phrase_intro)
+
+            if is_partner and isActiveHinterRobot:
                 active_hinter.nao.tts.say("Experimenter. Please show me the target word. Touch my head when you are ready for me to scan.")
                 active_hinter.nao.tm.wait_for_touch_activate()
                 active_hinter.nao.eye_scan()
                 active_hinter.nao.tts.say("I see the target word in quadrant {}.".format(target_with_quadrants["position_1"]))
+                active_hinter.nao.tts.say("Is that correct? Press my hand for yes, or my foot for no.")
+                active_hinter.nao.tm.wait_for_touch_confirm()
 
-                if active_hinter.team_condition == "P":
-                    if isInactiveHinterRobot:
-                        inactive_hinter.nao.mm.sit_gently(post=True)
-                        inactive_hinter.nao.tts.say("Please let me see the target word, too.  Touch my head when you are ready for me to scan.")  
-                        inactive_hinter.nao.tm.wait_for_touch_activate()
-                        inactive_hinter.nao.eye_scan()
-                        inactive_hinter.nao.tts.say("I see the target word in position {}.".format(target_with_quadrants["position_2"]))
-                    else:
-                      active_hinter.nao.tts.say("Thank you.  Now you can show the target word to: {}, too:  Touch my head when you are ready to continue.".format(inactive_hinter.name))
-                      active_hinter.nao.tm.wait_for_touch_activate()
-            elif isInactiveHinterRobot:
-                inactive_hinter.nao.tts.say("The hinters will be: {} and: {}: that's me.  {} will hint first".format(active_hinter.name, inactive_hinter.name, active_hinter.name))
-            elif isActiveGuesserRobot:
-                active_guesser.nao.tts.say("The hinters will be: {} and: {}.  {} will hint first.".format(active_hinter.name, inactive_hinter.name, active_hinter.name))
+                inactive_hinter.nao.mm.sit_gently(post=True)
+                inactive_hinter.nao.tts.say("Please let me see the target word, too. Touch my head when you are ready for me to scan.")
+                inactive_hinter.nao.tm.wait_for_touch_activate()
+                inactive_hinter.nao.eye_scan()
+                inactive_hinter.nao.tts.say("I see the target word in quadrant {}.".format(target_with_quadrants["position_2"]))
+                inactive_hinter.nao.tts.say("Is that correct? Press my hand for yes, or my foot for no.")
+                inactive_hinter.nao.tm.wait_for_touch_confirm()
+
+            elif is_opponent:
+                if isActiveHinterRobot:
+                    robot_hinter = active_hinter
+                    human_hinter = inactive_hinter
+                    quadrant_key = "position_1"
+                else:
+                    robot_hinter = inactive_hinter
+                    human_hinter = active_hinter
+                    quadrant_key = "position_2"
+
+                robot_hinter.nao.mm.sit_gently(post=True)
+                robot_hinter.nao.tts.say("Experimenter. Please show me the target word. Touch my head when you are ready for me to scan.")
+                robot_hinter.nao.tm.wait_for_touch_activate()
+                robot_hinter.nao.eye_scan()
+                robot_hinter.nao.tts.say("I see the target word in quadrant {}.".format(target_with_quadrants[quadrant_key]))
+                robot_hinter.nao.tts.say("Is that correct? Press my hand for yes, or my foot for no.")
+                robot_hinter.nao.tm.wait_for_touch_confirm()
+
+                robot_hinter.nao.tts.say("Thank you. Now you can show the target word to: {}, too. Touch my head when you are ready to continue.".format(human_hinter.name))
+                robot_hinter.nao.tm.wait_for_touch_activate()
 
     def before_guess(self, active_team, inactive_team):
         active_hinter = active_team.get_hinter()

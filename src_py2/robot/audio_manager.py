@@ -81,9 +81,7 @@ class AudioManager:
 
                 cleaned_input = clean_string(transcription)
 
-                self.nao.tts.post.say(
-                    "I heard {}. Is that correct? "
-                    "Press my hand for yes, or my foot for no.".format(cleaned_input))
+                self.nao.tts.post.say("I heard {}. Is that correct? Press my hand for yes, or my foot for no.".format(cleaned_input))
                 
                 confirmed = self.nao.tm.wait_for_touch_confirm()
 
@@ -109,11 +107,10 @@ class AudioManager:
                     print("No input received.")
                     continue
 
+                self.nao.tts.post.say("I heard {}. Is that correct? Press my hand for yes, or my foot for no.".format(input))
 
-                self.nao.tts.post.say(
-                "I heard {}. Is that correct? "
-                "Press my hand for yes, or my foot for no.".format(input))
                 confirmed = self.nao.tm.wait_for_touch_confirm()
+
                 if not confirmed:
                     self.nao.tts.say("REJECTED")
                     continue

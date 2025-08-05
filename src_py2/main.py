@@ -27,9 +27,6 @@ def play_password(robot_1, robot_2, hasDemo, game_condition):
     p1_identifier = "Dr. Sarah Grainger"
     p2_identifier = "Prof. Natalie Ebner"
 
-    # need hard-coded player names if running without simple_welcome()
-    # p1_name, p2_name = "Sarah", "Natalie"
-
 
     ### OUTRO DEBUG ###
     # orchestrate.simple_outro(p1_name, p2_name)
@@ -37,8 +34,13 @@ def play_password(robot_1, robot_2, hasDemo, game_condition):
     ### #### ###
 
 
-    p1_name, p2_name = orchestrate.simple_welcome()
-    orchestrate.simple_hobby(p1_name, p2_name)
+    ### INTRO DEBUG ###
+    # need hard-coded player names if running without simple_welcome()
+    p1_name, p2_name = "Sarah", "Natalie"
+    # p1_name, p2_name = orchestrate.simple_welcome()
+    #orchestrate.simple_hobby(p1_name, p2_name)
+    ### #### ###
+
 
     # todo: counterbalance/randomise which team goes first
     if game_condition["team_condition"] == "O":
