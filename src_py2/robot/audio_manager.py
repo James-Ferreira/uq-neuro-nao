@@ -24,14 +24,12 @@ class AudioManager:
         # Needed because any break in a recording script will cause the recording not to stop, even when command window closed??
         self.nao.audio_recorder.stopMicrophonesRecording()
 
-    # add parameter for announcing, "I'm listening"?
-    # THIS IS NOT USED IN PASSWORD. KEEP FOR CONVO?
     def listen(self, duration):
         try:
             self.nao.tts.say("I'm listening.")
             self.nao.audio_player.post.playFile(sound_library["start_listening"])
             
-            self.nao.leds.post.fadeRGB("AllLeds", 0xFF0000, 0.1)
+            self.nao.leds.post.fadeRGB("AllLeds", 0x00FF00, 0.1)
             audio_path = "/tmp/recorded_speech.wav"
             self.record_audio(duration, audio_path)
             self.nao.leds.post.fadeRGB("AllLeds", 0xFFFFFF, 0.1)
@@ -43,9 +41,7 @@ class AudioManager:
 
             transcription = transcribe.transcribe_filepath(audio_path)
             if transcription:
-                # self.nao.leds.post.fadeRGB("AllLeds", 0x00FF00, 0.1)
                 # self.nao.tts.say("I think you said: " + str(transcription))
-                # self.nao.leds.post.fadeRGB("AllLeds", 0xFFFFFF, 0.1)
 
                 return clean_string(transcription)
             else:
@@ -61,14 +57,19 @@ class AudioManager:
         while True:
             try:
                 self.nao.leds.post.fadeRGB("FaceLeds", 0x00FF00, 0.1)
+                # todo: move this dialogue into the main script (once participants become familiar with listening behaviour), for example:
+                # 1st instance, say "When I'm listening my eyes turn green" then eyes turn green
+                # 2nd instance, say "I'm listening" then eyes turn green"
+                # 3rd and subsequent instances, only eyes turn green (no more speaking)
+
                 self.nao.tts.say("I'm listening")
-                # might switch these two things eventually within a session (once participants become familiar with it)
                 # self.nao.audio_player.post.playFile(sound_library["start_listening"])
 
                 audio_path = "/tmp/recorded_speech.wav"
                 self.record_audio(duration, audio_path)
                 self.nao.leds.post.fadeRGB("FaceLeds", 0xFFFFFF, 0.1)
 
+                # todo: Determine whether this should be checking the output_path or input_path from record audio. audio_path is defined about so will surely exist. This probably doesn't check the newly recorded file, which would be output_path?
                 if not os.path.exists(audio_path) or os.path.getsize(audio_path) == 0:
                     raise ValueError("Zero-length audio can cause recognition failure or hang")
 
@@ -81,7 +82,7 @@ class AudioManager:
 
                 cleaned_input = clean_string(transcription)
 
-                self.nao.tts.post.say("I heard {}. Is that correct? Press my hand for yes, or my foot for no.".format(cleaned_input))
+                self.nao.tts.post.say("I heard {}. Is that correct? Press my hand for yes, or my foot for no.".format(cleaned_input)) # use spelling logic. after, speaking robot says yes/no. compare transcription for listenin robot with output (from speaking robot. if same, progress. if not same, speaking robot repeats with spelling, and (while listening, green eyes) listening robot repeats with spelling (NO TRASCRIPTION). 
                 
                 confirmed = self.nao.tm.wait_for_touch_confirm()
 
@@ -157,6 +158,7 @@ class AudioManager:
             
         self.nao.download_file_from_nao(remote_file_path=internal_path, local_file_path=output_path)
 
+# todo: make this part of the Class (self as first parameter and check how it's called --  will need self.clean_string() -- )
 def clean_string(text):
     text = text.strip()
     return ''.join([c for c in text.lower() if c == ' ' or (c not in string.punctuation and c not in string.whitespace.replace(' ', ''))])

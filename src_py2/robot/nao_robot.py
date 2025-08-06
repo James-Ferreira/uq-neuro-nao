@@ -4,6 +4,7 @@ import random
 from touch_manager import TouchModule
 from motion_manager import MotionManager
 from audio_manager import AudioManager, sound_library
+# from audio_manager_duo import AudioManagerDuo
 
 class NAORobot:
     def __init__(self, name, ip, port, usrnme, pword, reversed):
@@ -30,6 +31,7 @@ class NAORobot:
         self.am = AudioManager(self)
         self.broker = ALBroker("broker-{}".format(name), "0.0.0.0", 0, self.ip, self.port)
         self.tm = TouchModule(self, "touch_{}".format(name))
+        # self.amd = AudioManagerDuo(self, None, None)
 
     def initialize_proxies(self): 
         self.animation = ALProxy("ALAnimationPlayer", self.ip, self.port)
