@@ -1,5 +1,5 @@
 import os
-import api.transcribe as transcribe
+import src_py2.api.transcribe as transcribe
 import time
 import string
 

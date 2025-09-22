@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
 import time
-from game.save import Save
-from game.team import Team
+from src_py2.game.save import Save
+from src_py2.game.team import Team
 from termcolor import colored
-from game.robot_player import RobotPlayer
+from src_py2.game.robot_player import RobotPlayer
 
 class Loop:
     def __init__(self, initial_state, save, orchestrate):

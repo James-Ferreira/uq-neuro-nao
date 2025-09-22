@@ -1,4 +1,4 @@
-from game.round import Round
+from src_py2.game.round import Round
 from termcolor import colored
 import copy
 import pprint
@@ -245,7 +245,7 @@ class Save(object):
             
         pprint.pprint(data, indent=2)
         now = datetime.datetime.now()
-        filename = "session_data+{}+{:02d}{:02d}.json".format(
+        filename = "game/saved_data/session_data+{}+{:02d}{:02d}.json".format(
             now.date(), now.hour, now.minute
         )
         with open(filename, "w") as f:

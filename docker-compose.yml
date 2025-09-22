@@ -1,7 +1,7 @@
 services:
   py2:
     build: ./src_py2
-    command: python2 -i main.py 
+    command: python2 -i password.py 
     volumes:
       - ./src_py2:/src
     working_dir: /src 

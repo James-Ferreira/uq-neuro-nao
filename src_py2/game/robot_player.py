@@ -1,6 +1,6 @@
-from game.player import Player
-from robot.nao_robot import NAORobot
-from api.dialog import generate_ai_guess, generate_ai_hint, generate_hobby_opinion
+from src_py2.game.player import Player
+from src_py2.robot.nao_robot import NAORobot
+from src_py2.api.dialog import generate_ai_guess, generate_ai_hint, generate_hobby_opinion
 
 class RobotPlayer(Player):
     def __init__(self, identifier, name, variant, ip_address, pitch, team_condition, orientation, reversed, user='nao', pword='nao', port=9559):

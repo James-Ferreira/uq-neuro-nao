@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 import random
 import time
-from game.robot_player import RobotPlayer
+from src_py2.game.robot_player import RobotPlayer
 from audio_manager import sound_library
-from api.async_wrapper import make_async_func
-from audio_manager_duo import AudioManagerDuo
+from src_py2.api.async_wrapper import make_async_func
+# from audio_manager_duo import AudioManagerDuo
 
 class Orchestrate(object):
     def __init__(self, robot_1, robot_2):
@@ -23,8 +23,12 @@ class Orchestrate(object):
 
         ### ### ###
 
+        ### ROBOT-TO-ROBOT CONVO ###
+
         #amd = AudioManagerDuo(self.robot_1, self.robot_2)
         #amd.record_audio(playback=True)
+
+        ### ### ###
 
         self.robot_1.nao.tm.wait_for_touch_activate()
         self.robot_1.nao.mm.use_motion_library("head_touch_up")

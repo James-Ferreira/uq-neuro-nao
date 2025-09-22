@@ -1,4 +1,4 @@
-import api.transcribe as transcribe
+import src_py2.api.transcribe as transcribe
 import os
 import random
 import string

@@ -1,11 +1,13 @@
-from game.save import Save
-from game.loop import Loop
-from game.team import Team
-from game.player import Player, Variant
-from game.robot_player import RobotPlayer
-from robot.orchestrate import Orchestrate
-from conditions import all_conditions
-from target_words import demo_targets, actual_targets
+from __future__ import absolute_import
+
+from src_py2.game.save import Save
+from src_py2.game.loop import Loop
+from src_py2.game.team import Team
+from src_py2.game.player import Player, Variant
+from src_py2.game.robot_player import RobotPlayer
+from src_py2.robot.orchestrate import Orchestrate
+from src_py2.game.constant.conditions import all_conditions
+from src_py2.game.constant.target_words import demo_targets, actual_targets
 
 # not exactly sure where to put this...
 def custom_condition(game_condition):
@@ -136,7 +138,7 @@ if __name__ == "__main__":
       "Orientation: {}\n"
       "Reverse: {}".format(robot_2.identifier, robot_2.team_condition, robot_2.orientation, robot_2.reversed))
 
-    raw_input("Breakpoint. Press ENTER")  # type: ignore (suppressess superfluous warning)
+    # raw_input("Breakpoint. Press ENTER")  # type: ignore (suppressess superfluous warning)
 
     print("Please select an option or exit for free play")
     print("0. Play Password Game")

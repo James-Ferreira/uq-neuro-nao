@@ -1,6 +1,6 @@
-from game.player import Roles
-from game.robot_player import RobotPlayer
-from robot.audio_manager import sound_library
+from src_py2.game.player import Roles
+from src_py2.game.robot_player import RobotPlayer
+from src_py2.robot.audio_manager import sound_library
 import time
 
 class Team(object):
