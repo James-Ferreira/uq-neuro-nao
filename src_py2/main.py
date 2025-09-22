@@ -38,7 +38,7 @@ def play_password(robot_1, robot_2, hasDemo, game_condition):
     # need hard-coded player names if running without simple_welcome()
     # p1_name, p2_name = "Sarah", "Natalie"
     p1_name, p2_name = orchestrate.simple_welcome()
-    #orchestrate.simple_hobby(p1_name, p2_name)
+    orchestrate.simple_hobby(p1_name, p2_name)
     ### #### ###
 
 

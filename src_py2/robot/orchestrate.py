@@ -23,8 +23,8 @@ class Orchestrate(object):
 
         ### ### ###
 
-        amd = AudioManagerDuo(self.robot_1, self.robot_2)
-        amd.record_audio(playback=True)
+        #amd = AudioManagerDuo(self.robot_1, self.robot_2)
+        #amd.record_audio(playback=True)
 
         self.robot_1.nao.tm.wait_for_touch_activate()
         self.robot_1.nao.mm.use_motion_library("head_touch_up")
