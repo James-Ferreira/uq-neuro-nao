@@ -7,19 +7,19 @@ from audio_manager import AudioManager, sound_library
 # from audio_manager_duo import AudioManagerDuo
 
 class NAORobot:
-    def __init__(self, name, ip, port, usrnme, pword, reversed):
-        self.ip = ip
-        self.port = port
+    def __init__(self, name, ip, reversed=False, usrnme="nao", pword="nao123", port=9559):
         self.name = name
-        self.pword = pword
-        self.usrnme = usrnme
-        self.initialize_proxies()
+        self.ip = ip
         self.reversed = reversed
+        self.usrnme = usrnme
+        self.pword = pword
+        self.port = port
+        self.initialize_proxies()
 
-        if name == "192.168.0.183": #classact
-            self.dialog_off()
-        elif name == "192.168.0.78" or name == "192.168.0.79": #metalhead
-            self.aware_off()
+        # if name == "192.168.0.183": #classact
+        #     self.dialog_off()
+        # elif name == "192.168.0.78" or name == "192.168.0.79": #metalhead
+        #     self.aware_off()
 
         #clas.tts.say("{}".format(clas.name))
         self.audio_device.setOutputVolume(65)

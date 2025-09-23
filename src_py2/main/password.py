@@ -93,40 +93,102 @@ if __name__ == "__main__":
     robot_2_pitch = 1 if robot_1_pitch == 0.85 else 0.85
     robot_2_orientation = "L" if robot_1_orientation == "R" else "R"
 
-    robot_1_ip = "192.168.0.183" if robot_1_identifier == 'clas' else '192.168.0.78'
-    robot_2_ip = "192.168.0.78" if robot_1_identifier == 'clas' else '192.168.0.183'
-
-
     # if robot_1 is on the right, robot_1's motions should be reversed and robot_2s shouldnt be
     # WORK IN PROGRESS!!!
 
     robot_1_motion_reverse = robot_2_motion_reverse = (robot_1_orientation == 'R')
 
+    # if robot_1_identifier == "meta":
+    #     ip_switcher_number, ip_switcher_identifier, ip_switcher_pitch, ip_switcher_name, ip_switcher_orientation, ip_switcher_reverse = 1, robot_1_identifier, robot_1_pitch, robot_1_name, robot_1_orientation, robot_1_motion_reverse
+    #     ip_constant_number, ip_constant_identifier, ip_constant_pitch, ip_constant_name, ip_constant_orientation, ip_constant_reverse = 2, robot_2_identifier, robot_2_pitch, robot_2_name, robot_2_orientation, robot_2_motion_reverse
+        
+    # else:
+    #     ip_switcher_number, ip_switcher_identifier, ip_switcher_pitch, ip_switcher_name, ip_switcher_orientation, ip_switcher_reverse = 2, robot_2_identifier, robot_2_pitch, robot_2_name, robot_2_orientation, robot_2_motion_reverse
+    #     ip_constant_number, ip_constant_identifier, ip_constant_pitch, ip_constant_name, ip_constant_orientation, ip_constant_reverse = 1, robot_1_identifier, robot_1_pitch, robot_1_name, robot_1_orientation, robot_1_motion_reverse
 
-    ### ### ###
+    # ip_switcher_ips = ['192.168.0.78', '192.168.0.79'] 
+    # ip_constant_ip = '192.168.0.183'
+
+    # for ip in ip_switcher_ips:
+    #     try:
+    #         ip_switcher = RobotPlayer(
+    #             ip_switcher_identifier,
+    #             ip_switcher_name,
+    #             Variant.AUTO,
+    #             ip,
+    #             pitch=ip_switcher_pitch,
+    #             team_condition=team_condition,
+    #             orientation=ip_switcher_orientation,
+    #             reversed=ip_switcher_reverse
+    #         )
+    #     except Exception as e:
+    #         print("WARN: could not connect to {} ({}) - skipping".format(ip, e))
+
+    # ip_constant = RobotPlayer(
+    #         ip_constant_identifier,
+    #         ip_constant_name,
+    #         Variant.AUTO,
+    #         ip_constant_ip,
+    #         pitch=ip_constant_pitch,
+    #         team_condition=team_condition,
+    #         orientation=ip_constant_orientation,
+    #         reversed=ip_constant_reverse
+    #     )
+    
 
 
-    robot_1 = RobotPlayer(
-            robot_1_identifier,
-            robot_1_name,
-            Variant.AUTO,
-            robot_1_ip,
-            pitch=robot_1_pitch,
-            team_condition=team_condition,
-            orientation=robot_1_orientation,
-            reversed=robot_1_motion_reverse
+    # robot_1 = ip_switcher if ip_switcher_number == 1 else ip_constant
+    # robot_2 = ip_switcher if ip_switcher_number == 2 else ip_constant
+
+    # if ip_switcher_number == 1:
+    #     robot_1 = ip_switcher
+    #     robot_2 = ip_constant
+    # else:
+    #     robot_2 = ip_switcher
+    #     robot_1 = ip_constant
+
+
+    ### Hybridisation of Grok and ChatGPT's refactors —- yet to test/run, as Classact "could not connect to the network." 
+    ##########################################################################################################################
+
+    IP_CANDIDATES = {
+        "meta": ["192.168.0.78", "192.168.0.79"],
+        "clas": ["192.168.0.183"],
+    }
+
+    def create_robot(identifier, name, pitch, orientation, reversed_flag, team_condition):
+        ips = IP_CANDIDATES.get(identifier, [])
+        errors = []
+        for ip in ips:
+            try:
+                return RobotPlayer(
+                    identifier,
+                    name,
+                    Variant.AUTO,
+                    ip,
+                    pitch=pitch,
+                    team_condition=team_condition,
+                    orientation=orientation,
+                    reversed=reversed_flag
+                )
+            except Exception as e:
+                msg = "WARN: could not connect to {} @ {} ({}) - skipping".format(identifier, ip, e)
+                print(msg)
+                errors.append(msg)
+        raise RuntimeError("ERROR: Could not connect to {}. Tried: {}. {}".format(
+            identifier, ", ".join(ips), " | ".join(errors))
         )
 
-    robot_2 = RobotPlayer(
-            robot_2_identifier,
-            robot_2_name,
-            Variant.AUTO,
-            robot_2_ip,
-            pitch=robot_2_pitch,
-            team_condition=team_condition,
-            orientation=robot_2_orientation,
-            reversed=robot_2_motion_reverse
-        )
+    # Create robots (meta will automatically get two attempts)
+    robot_1 = create_robot(
+        robot_1_identifier, robot_1_name, robot_1_pitch, robot_1_orientation, robot_1_motion_reverse, team_condition
+    )
+    robot_2 = create_robot(
+        robot_2_identifier, robot_2_name, robot_2_pitch, robot_2_orientation, robot_2_motion_reverse, team_condition
+    )
+
+    ########################################################################################################################
+
 
     print("Robot 1: {}\n"
       "Team condition: {}\n"
