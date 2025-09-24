@@ -1,11 +1,14 @@
-from game.save import Save
-from game.loop import Loop
-from game.team import Team
-from game.player import Player, Variant
-from game.robot_player import RobotPlayer
-from robot.orchestrate import Orchestrate
-from conditions import all_conditions
-from target_words import demo_targets, actual_targets
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import
+
+from src_py2.game.save import Save
+from src_py2.game.loop import Loop
+from src_py2.game.team import Team
+from src_py2.game.player import Player, Variant
+from src_py2.game.robot_player import RobotPlayer
+from src_py2.robot.orchestrate import Orchestrate
+from src_py2.game.constant.conditions import all_conditions
+from src_py2.game.constant.target_words import demo_targets, actual_targets
 
 # not exactly sure where to put this...
 def custom_condition(game_condition):
@@ -35,10 +38,13 @@ def play_password(robot_1, robot_2, hasDemo, game_condition):
 
 
     ### INTRO DEBUG ###
+
     # need hard-coded player names if running without simple_welcome()
     # p1_name, p2_name = "Sarah", "Natalie"
     p1_name, p2_name = orchestrate.simple_welcome()
-    #orchestrate.simple_hobby(p1_name, p2_name)
+
+    orchestrate.simple_hobby(p1_name, p2_name)
+    
     ### #### ###
 
 
@@ -91,40 +97,46 @@ if __name__ == "__main__":
     robot_2_pitch = 1 if robot_1_pitch == 0.85 else 0.85
     robot_2_orientation = "L" if robot_1_orientation == "R" else "R"
 
-    robot_1_ip = "192.168.0.183" if robot_1_identifier == 'clas' else '192.168.0.78'
-    robot_2_ip = "192.168.0.78" if robot_1_identifier == 'clas' else '192.168.0.183'
-
-
     # if robot_1 is on the right, robot_1's motions should be reversed and robot_2s shouldnt be
     # WORK IN PROGRESS!!!
 
     robot_1_motion_reverse = robot_2_motion_reverse = (robot_1_orientation == 'R')
 
+    IP_CANDIDATES = {
+        "meta": ["192.168.0.78", "192.168.0.79"],
+        "clas": ["192.168.0.183"],
+    }
 
-    ### ### ###
-
-
-    robot_1 = RobotPlayer(
-            robot_1_identifier,
-            robot_1_name,
-            Variant.AUTO,
-            robot_1_ip,
-            pitch=robot_1_pitch,
-            team_condition=team_condition,
-            orientation=robot_1_orientation,
-            reversed=robot_1_motion_reverse
+    def create_robot(identifier, name, pitch, orientation, reversed_flag, team_condition):
+        ips = IP_CANDIDATES.get(identifier, [])
+        errors = []
+        for ip in ips:
+            try:
+                return RobotPlayer(
+                    identifier,
+                    name,
+                    Variant.AUTO,
+                    ip,
+                    pitch=pitch,
+                    team_condition=team_condition,
+                    orientation=orientation,
+                    reversed=reversed_flag
+                )
+            except Exception as e:
+                msg = "WARN: could not connect to {} @ {} ({}) - skipping".format(identifier, ip, e)
+                print(msg)
+                errors.append(msg)
+        raise RuntimeError("ERROR: Could not connect to {}. Tried: {}. {}".format(
+            identifier, ", ".join(ips), " | ".join(errors))
         )
 
-    robot_2 = RobotPlayer(
-            robot_2_identifier,
-            robot_2_name,
-            Variant.AUTO,
-            robot_2_ip,
-            pitch=robot_2_pitch,
-            team_condition=team_condition,
-            orientation=robot_2_orientation,
-            reversed=robot_2_motion_reverse
-        )
+    # Create robots (meta will automatically get two attempts)
+    robot_1 = create_robot(
+        robot_1_identifier, robot_1_name, robot_1_pitch, robot_1_orientation, robot_1_motion_reverse, team_condition
+    )
+    robot_2 = create_robot(
+        robot_2_identifier, robot_2_name, robot_2_pitch, robot_2_orientation, robot_2_motion_reverse, team_condition
+    )
 
     print("Robot 1: {}\n"
       "Team condition: {}\n"
@@ -136,7 +148,7 @@ if __name__ == "__main__":
       "Orientation: {}\n"
       "Reverse: {}".format(robot_2.identifier, robot_2.team_condition, robot_2.orientation, robot_2.reversed))
 
-    raw_input("Breakpoint. Press ENTER")  # type: ignore (suppressess superfluous warning)
+    # raw_input("Breakpoint. Press ENTER")  # type: ignore (suppressess superfluous warning)
 
     print("Please select an option or exit for free play")
     print("0. Play Password Game")

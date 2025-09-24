@@ -1,5 +1,5 @@
 import os
-import api.transcribe as transcribe
+import src_py2.api.transcribe as transcribe
 import time
 import string
 
@@ -24,10 +24,13 @@ class AudioManager:
         # Needed because any break in a recording script will cause the recording not to stop, even when command window closed??
         self.nao.audio_recorder.stopMicrophonesRecording()
 
-    def listen(self, duration):
+    def listen(self, duration, speech=False, start_sound=False, end_sound=False):
         try:
-            self.nao.tts.say("I'm listening.")
-            self.nao.audio_player.post.playFile(sound_library["start_listening"])
+            if speech:
+                self.nao.tts.say("I'm listening.")
+
+            if start_sound:
+                self.nao.audio_player.post.playFile(sound_library["start_listening"])
             
             self.nao.leds.post.fadeRGB("AllLeds", 0x00FF00, 0.1)
             audio_path = "/tmp/recorded_speech.wav"
@@ -37,7 +40,8 @@ class AudioManager:
             if not os.path.exists(audio_path) or os.path.getsize(audio_path) == 0:
                 raise ValueError("Zero-length audio can cause recognition failure or hang")
 
-            self.nao.audio_player.post.playFile(sound_library["stop_listening"])
+            if end_sound:
+                self.nao.audio_player.post.playFile(sound_library["stop_listening"])
 
             transcription = transcribe.transcribe_filepath(audio_path)
             if transcription:
@@ -53,7 +57,7 @@ class AudioManager:
         
         self.nao.tts.say("Sorry, I couldn't understand. Let's try again later.")
 
-    def listen_until_confirmed(self, duration=2.5):
+    def listen_until_confirmed(self, duration=2.5, speech=False, start_sound=False, end_sound=False, laconic=True):
         while True:
             try:
                 self.nao.leds.post.fadeRGB("FaceLeds", 0x00FF00, 0.1)
@@ -61,9 +65,12 @@ class AudioManager:
                 # 1st instance, say "When I'm listening my eyes turn green" then eyes turn green
                 # 2nd instance, say "I'm listening" then eyes turn green"
                 # 3rd and subsequent instances, only eyes turn green (no more speaking)
+                
+                if speech:
+                    self.nao.tts.say("I'm listening with green eyes.")
 
-                self.nao.tts.say("I'm listening")
-                # self.nao.audio_player.post.playFile(sound_library["start_listening"])
+                if start_sound:
+                    self.nao.audio_player.post.playFile(sound_library["start_listening"])
 
                 audio_path = "/tmp/recorded_speech.wav"
                 self.record_audio(duration, audio_path)
@@ -74,7 +81,8 @@ class AudioManager:
                     raise ValueError("Zero-length audio can cause recognition failure or hang")
 
                 # removing .post from below to see if that stops speech from occuring as end sound plays
-                self.nao.audio_player.playFile(sound_library["stop_listening"])
+                if end_sound:
+                    self.nao.audio_player.playFile(sound_library["stop_listening"])
 
                 transcription = transcribe.transcribe_filepath(audio_path)
                 if not transcription:
@@ -82,7 +90,9 @@ class AudioManager:
 
                 cleaned_input = clean_string(transcription)
 
-                self.nao.tts.post.say("I heard {}. Is that correct? Press my hand for yes, or my foot for no.".format(cleaned_input)) # use spelling logic. after, speaking robot says yes/no. compare transcription for listenin robot with output (from speaking robot. if same, progress. if not same, speaking robot repeats with spelling, and (while listening, green eyes) listening robot repeats with spelling (NO TRASCRIPTION). 
+                instruction = "" if laconic else "Press my hand for yes, or my foot for no."
+
+                self.nao.tts.say("I heard {}. Is that correct? {}".format(cleaned_input, instruction)) # use spelling logic. after, speaking robot says yes/no. compare transcription for listenin robot with output (from speaking robot. if same, progress. if not same, speaking robot repeats with spelling, and (while listening, green eyes) listening robot repeats with spelling (NO TRASCRIPTION). 
                 
                 confirmed = self.nao.tm.wait_for_touch_confirm()
 

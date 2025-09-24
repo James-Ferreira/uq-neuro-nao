@@ -1,4 +1,4 @@
-from game.round import Round
+from src_py2.game.round import Round
 from termcolor import colored
 import copy
 import pprint
@@ -191,7 +191,8 @@ class Save(object):
                     colored(self.team_2.team_name + ':', 'cyan') + ' ' + str(team_2_score) + ' points'
 
         hinter_str = colored('(Hinter: ' + self.get_active_team().get_hinter().name + ')', 'magenta')
-        print(round_str + '  ' + turn_str + '  ' + score_str + ' ' + hinter_str)
+        guesser_str = colored('(Guesser: ' + self.get_active_team().get_guesser().name + ')', 'yellow')
+        print(round_str + '  ' + turn_str + '  ' + score_str + ' ' + hinter_str + ' ' + guesser_str)
 
     def export_save(self):
         print("=== Exporting Save ===\n\n\n\n")
@@ -245,7 +246,7 @@ class Save(object):
             
         pprint.pprint(data, indent=2)
         now = datetime.datetime.now()
-        filename = "session_data+{}+{:02d}{:02d}.json".format(
+        filename = "game/saved_data/session_data+{}+{:02d}{:02d}.json".format(
             now.date(), now.hour, now.minute
         )
         with open(filename, "w") as f:

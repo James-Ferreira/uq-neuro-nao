@@ -3,7 +3,7 @@
         {
             "label": "Run Local",
             "type": "shell",
-            "command": "python2 -i ${workspaceFolder}/src_py2/main.py",
+            "command": "python2 -i ${workspaceFolder}/src_py2/password.py",
             "group": {
                 "kind": "build",
                 "isDefault": true
