@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from __future__ import absolute_import
 
 from src_py2.game.save import Save
@@ -37,10 +38,13 @@ def play_password(robot_1, robot_2, hasDemo, game_condition):
 
 
     ### INTRO DEBUG ###
+
     # need hard-coded player names if running without simple_welcome()
     # p1_name, p2_name = "Sarah", "Natalie"
     p1_name, p2_name = orchestrate.simple_welcome()
+
     orchestrate.simple_hobby(p1_name, p2_name)
+    
     ### #### ###
 
 
@@ -98,59 +102,6 @@ if __name__ == "__main__":
 
     robot_1_motion_reverse = robot_2_motion_reverse = (robot_1_orientation == 'R')
 
-    # if robot_1_identifier == "meta":
-    #     ip_switcher_number, ip_switcher_identifier, ip_switcher_pitch, ip_switcher_name, ip_switcher_orientation, ip_switcher_reverse = 1, robot_1_identifier, robot_1_pitch, robot_1_name, robot_1_orientation, robot_1_motion_reverse
-    #     ip_constant_number, ip_constant_identifier, ip_constant_pitch, ip_constant_name, ip_constant_orientation, ip_constant_reverse = 2, robot_2_identifier, robot_2_pitch, robot_2_name, robot_2_orientation, robot_2_motion_reverse
-        
-    # else:
-    #     ip_switcher_number, ip_switcher_identifier, ip_switcher_pitch, ip_switcher_name, ip_switcher_orientation, ip_switcher_reverse = 2, robot_2_identifier, robot_2_pitch, robot_2_name, robot_2_orientation, robot_2_motion_reverse
-    #     ip_constant_number, ip_constant_identifier, ip_constant_pitch, ip_constant_name, ip_constant_orientation, ip_constant_reverse = 1, robot_1_identifier, robot_1_pitch, robot_1_name, robot_1_orientation, robot_1_motion_reverse
-
-    # ip_switcher_ips = ['192.168.0.78', '192.168.0.79'] 
-    # ip_constant_ip = '192.168.0.183'
-
-    # for ip in ip_switcher_ips:
-    #     try:
-    #         ip_switcher = RobotPlayer(
-    #             ip_switcher_identifier,
-    #             ip_switcher_name,
-    #             Variant.AUTO,
-    #             ip,
-    #             pitch=ip_switcher_pitch,
-    #             team_condition=team_condition,
-    #             orientation=ip_switcher_orientation,
-    #             reversed=ip_switcher_reverse
-    #         )
-    #     except Exception as e:
-    #         print("WARN: could not connect to {} ({}) - skipping".format(ip, e))
-
-    # ip_constant = RobotPlayer(
-    #         ip_constant_identifier,
-    #         ip_constant_name,
-    #         Variant.AUTO,
-    #         ip_constant_ip,
-    #         pitch=ip_constant_pitch,
-    #         team_condition=team_condition,
-    #         orientation=ip_constant_orientation,
-    #         reversed=ip_constant_reverse
-    #     )
-    
-
-
-    # robot_1 = ip_switcher if ip_switcher_number == 1 else ip_constant
-    # robot_2 = ip_switcher if ip_switcher_number == 2 else ip_constant
-
-    # if ip_switcher_number == 1:
-    #     robot_1 = ip_switcher
-    #     robot_2 = ip_constant
-    # else:
-    #     robot_2 = ip_switcher
-    #     robot_1 = ip_constant
-
-
-    ### Hybridisation of Grok and ChatGPT's refactors —- yet to test/run, as Classact "could not connect to the network." 
-    ##########################################################################################################################
-
     IP_CANDIDATES = {
         "meta": ["192.168.0.78", "192.168.0.79"],
         "clas": ["192.168.0.183"],
@@ -186,9 +137,6 @@ if __name__ == "__main__":
     robot_2 = create_robot(
         robot_2_identifier, robot_2_name, robot_2_pitch, robot_2_orientation, robot_2_motion_reverse, team_condition
     )
-
-    ########################################################################################################################
-
 
     print("Robot 1: {}\n"
       "Team condition: {}\n"

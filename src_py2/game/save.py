@@ -191,7 +191,8 @@ class Save(object):
                     colored(self.team_2.team_name + ':', 'cyan') + ' ' + str(team_2_score) + ' points'
 
         hinter_str = colored('(Hinter: ' + self.get_active_team().get_hinter().name + ')', 'magenta')
-        print(round_str + '  ' + turn_str + '  ' + score_str + ' ' + hinter_str)
+        guesser_str = colored('(Guesser: ' + self.get_active_team().get_guesser().name + ')', 'yellow')
+        print(round_str + '  ' + turn_str + '  ' + score_str + ' ' + hinter_str + ' ' + guesser_str)
 
     def export_save(self):
         print("=== Exporting Save ===\n\n\n\n")

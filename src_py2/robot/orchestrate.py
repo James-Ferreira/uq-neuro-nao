@@ -36,7 +36,6 @@ class Orchestrate(object):
 
         self.robot_2.nao.leds.post.fadeRGB("FaceLeds", 0xFFFFFF, 0.1)
         self.robot_2.nao.leds.post.fadeRGB("ChestLeds", 0xFFFFFF, 0.1)
-        # POINTING
         self.robot_2.nao.tts.post.say("Oh: {}. Wake up.".format(self.robot_1.name))
         self.robot_2.nao.mm.use_motion_library("head_touch_up_2")
         self.robot_2.nao.mm.sit_gently(post=True)
@@ -57,7 +56,7 @@ class Orchestrate(object):
 
         self.robot_1.nao.tts.post.say("What is your name, Dear human?")
         self.robot_1.nao.mm.use_motion_library("welcome_1_ask_name")
-        participant_1_name = self.robot_1.nao.am.listen_until_confirmed()
+        participant_1_name = self.robot_1.nao.am.listen_until_confirmed(speech=True, start_sound=True, end_sound=True, laconic=False)
         self.robot_1.nao.tts.post.say("If I am not mistaken, you, {}, are my {} in the game today.".format(participant_1_name, player_type))
         self.robot_1.nao.mm.use_motion_library("you_are_in_the_game")
 
@@ -77,7 +76,7 @@ class Orchestrate(object):
         self.robot_2.nao.mm.use_motion_library("at_your_service")
         self.robot_2.nao.tts.post.say("May I enquire what your name is?")
         self.robot_2.nao.mm.use_motion_library("check_name") 
-        participant_2_name = self.robot_2.nao.am.listen_until_confirmed()
+        participant_2_name = self.robot_2.nao.am.listen_until_confirmed(speech=True, start_sound=True, end_sound=True, laconic=False)
         
         # todo: vary dialogue for engagement, then find/create animation
         self.robot_2.nao.tts.say("If I am not mistaken, you, {}, are my {} in the game today.".format(participant_2_name, player_type))
@@ -101,11 +100,11 @@ class Orchestrate(object):
         self.robot_1.nao.tts.post.say("{} and I are from Frantsi pani fornia. Where are you from?".format(self.robot_2.name))
         self.robot_1.nao.mm.use_motion_library("where_are_you_from")
         
-        participant_1_place = self.robot_1.nao.am.listen_until_confirmed() 
+        participant_1_place = self.robot_1.nao.am.listen_until_confirmed(speech=True, end_sound=True, laconic=False)
         
         if any(sub in participant_1_place.lower() for sub in ["brisbane", "australia"]):
             self.robot_1.nao.tts.post.say("Nice. I hope I can escape this dundge atory some day and see something of {}.".format(participant_1_place))
-            self.robot_1.nao.mm.use_motion_library("lives_in_brisbane")
+            self.robot_1.nao.mm.use_motion_library("slives_in_brisbane")
         else:
             self.robot_1.nao.tts.post.say("{}, ah, that must be a nice place to live.".format(participant_1_place))
             self.robot_1.nao.mm.use_motion_library("nice_place_to_live")
@@ -113,7 +112,7 @@ class Orchestrate(object):
         self.robot_1.nao.tts.post.say("And what is one of your favorite hobbies, {}?".format(participant_1_name))
         self.robot_1.nao.mm.use_motion_library("what_are_your_hobbies")
         
-        participant_1_hobby = self.robot_1.nao.am.listen_until_confirmed() 
+        participant_1_hobby = self.robot_1.nao.am.listen_until_confirmed()
 
         self.robot_1.nao.tts.post.say("Cool: {} is very cool.".format(participant_1_hobby))
         self.robot_1.nao.mm.use_motion_library("cool_hobby")
@@ -121,7 +120,7 @@ class Orchestrate(object):
         self.robot_2.nao.tts.post.say("And what about you, {}. What is a hobby of yours?".format(participant_2_name))
         self.robot_2.nao.mm.use_motion_library("what_is_ur_hobby")
         
-        participant_2_hobby = self.robot_2.nao.am.listen_until_confirmed() 
+        participant_2_hobby = self.robot_2.nao.am.listen_until_confirmed(speech=True, end_sound=True, laconic=False) 
 
         ##### prepare hobby opinions for later (reference for making api calls async)
         hobby_better_1 = participant_1_hobby if self.robot_1.team_condition == "P" else "playing puppets"
@@ -143,9 +142,11 @@ class Orchestrate(object):
 
         self.robot_2.nao.tts.post.say("My hobby is catching flies, like this, see?")
         self.robot_2.nao.mm.use_motion_library("my_hobby_is_catching_fly")
+        self.robot_1.nao.mm.use_motion_library("turn_head_left", post=True)
         self.robot_2.nao.mm.catch_fly()
         
         self.robot_1.nao.tts.post.say("{} is really athletic. My hobby is playing puppets. This is my latest routine.".format(self.robot_2.name))
+        self.robot_2.nao.mm.use_motion_library("turn_head_right", post=True) 
         self.robot_1.nao.mm.use_motion_library("my_hobby_is_playing_puppets")
         self.robot_1.nao.mm.puppet_show()
         
@@ -195,7 +196,12 @@ class Orchestrate(object):
         self.robot_2.nao.mm.use_motion_library("lets_get_to_the_game")
         
         if self.robot_1.team_condition == 'O':
-            self.robot_2.nao.tts.say("Oh Experimenter.  Please put us in our game positions.")
+            self.robot_1.nao.tts.say("Oh Experimenter.  Please put us in our game positions.")
+        
+        self.robot_2.nao.tts.say("When you are ready to start")
+        self.robot_2.nao.tts.say("\\rspd=75\\ Stimulate my dome")
+        self.robot_2.nao.tts.say("I mean touch my head")
+        self.robot_2.nao.tm.wait_for_touch_activate()
 
     def simple_outro(self, participant_1_name, participant_2_name):
         self.robot_1.nao.tts.post.say("I don't know about you, {}, but I'm weary and bleary after all the hinting: and guessing.".format(self.robot_2.name))
