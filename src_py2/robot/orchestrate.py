@@ -114,6 +114,7 @@ class Orchestrate(object):
         
         participant_1_hobby = self.robot_1.nao.am.listen_until_confirmed()
 
+        # NAO seemed to RECORD ITSELF saying somehting about Brisbane when it reported the hobby here.
         self.robot_1.nao.tts.post.say("Cool: {} is very cool.".format(participant_1_hobby))
         self.robot_1.nao.mm.use_motion_library("cool_hobby")
 
@@ -439,7 +440,7 @@ class Orchestrate(object):
         # todo: account for partner vs opponent
         if isActiveGuesserRobot:
             # this cannot be posted because activating touch cuts this line of dialogue.
-            active_guesser.nao.tts.say("Is {} the right word? Press my hand for yes, or my foot for no.".format(guess))
+            active_guesser.nao.tts.post.say("Is {} the right word? Press my hand for yes, or my foot for no.".format(guess))
             isClaimedToBeCorrect = active_guesser.nao.tm.wait_for_touch_confirm()
             active_guesser.nao.tts.stopAll()
 

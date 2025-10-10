@@ -129,6 +129,9 @@ class NAORobot:
             # Cleanup
             sftp.close()
             ssh.close()
+ 
+
+    # NOT BASIC, PROBABLY DON'T BELONG HERE      
 
     def speak_and_move(self, message, motion_key):
         self.tts.post.say(message)
