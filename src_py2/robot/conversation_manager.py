@@ -33,6 +33,7 @@ class Converse(object):
         self.gest_duration_hand = 0.8
         self.gest_duration_head = 0.5
         self.sleep_duration = 0.2 
+
         # sets of joints
         self.joints_arms =[
                                     'LShoulderPitch', 'LShoulderRoll', 'LElbowYaw', 'LElbowRoll', 
@@ -46,19 +47,82 @@ class Converse(object):
                                     'RShoulderPitch', 'RShoulderRoll', 'RElbowYaw', 'RElbowRoll', 
                                     'HeadYaw', 'HeadPitch', 
                                       ]
-        # sets of angles         
-        self.angles_other_hand = [[0], [0.4]]        
+        self.joints_headarmshands = [
+                                    'LShoulderPitch', 'LShoulderRoll', 'LElbowYaw', 'LElbowRoll', 
+                                    'RShoulderPitch', 'RShoulderRoll', 'RElbowYaw', 'RElbowRoll', 
+                                    'HeadYaw', 'HeadPitch', 
+                                    'RWristYaw', 'RHand',
+                                    'LWristYaw', 'LHand']
+                                
+        self.joints_dict = {
+                'shake head no': ['HeadYaw'],
+                'nod yes': ['HeadPitch']
+                # 'point forward': self.joints_headarmshands,
+                # 'point to self': self.joints_headarmshands,
+                # 'lower head': self.joints_headarmshands,
+                # 'shake lowered head': self.joints_headarmshands,
+                # 'pump fist': self.joints_headarmshands,
+                # 'wave fist': self.joints_headarmshands,
+                # 'wave hand': self.joints_headarmshands,
+                # 'spread arms': self.joints_headarmshands,
+                # 'raise arm': self.joints_headarmshands,
+                # 'shrug': self.joints_headarmshands
+            }
+        
+        # sets of angles
+        self.angles_other_hand = [[0], [0.4]]         
         self.angles_dict = {
-                                'left_out': [[angle] for  _, angle in [['LShoulderPitch', 0.9556400775909424], ['LShoulderRoll', 0.45095396041870117], ['LElbowYaw', -2.074009895324707], ['LElbowRoll', -1.178070068359375], ['RShoulderPitch', 0.9357819557189941], ['RShoulderRoll', -0.2945699691772461], ['RElbowYaw', 0.4524879455566406], ['RElbowRoll', 1.1674160957336426]]],
-                                'left_up': [[angle] for  _, angle in [['LShoulderPitch', 0.8129780292510986], ['LShoulderRoll', 0.14108610153198242], ['LElbowYaw', -1.4420018196105957], ['LElbowRoll', -1.3222661018371582], ['RShoulderPitch', 0.9342479705810547], ['RShoulderRoll', -0.29610395431518555], ['RElbowYaw', 0.4524879455566406], ['RElbowRoll', 1.1612801551818848]]],
-                                'left_over': [[angle] for  _, angle in [['LShoulderPitch', 0.760822057723999], ['LShoulderRoll', -0.0061779022216796875], ['LElbowYaw', -0.6121079921722412], ['LElbowRoll', -1.2056820392608643], ['RShoulderPitch', 0.9357819557189941], ['RShoulderRoll', -0.29917192459106445], ['RElbowYaw', 0.4540219306945801], ['RElbowRoll', 1.1873579025268555]]],
-                                'right_out': [[angle] for  _, angle in [['LShoulderPitch', 0.9080860614776611], ['LShoulderRoll', 0.2438640594482422], ['LElbowYaw', -0.4556400775909424], ['LElbowRoll', -1.0752921104431152], ['RShoulderPitch', 0.6243798732757568], ['RShoulderRoll', -0.09208202362060547], ['RElbowYaw', 2.0248379707336426], ['RElbowRoll', 1.1704840660095215]]],
-                                'right_over': [[angle] for  _, angle in [['LShoulderPitch', 0.9080860614776611], ['LShoulderRoll', 0.24539804458618164], ['LElbowYaw', -0.4556400775909424], ['LElbowRoll', -1.0768260955810547], ['RShoulderPitch', 0.5737578868865967], ['RShoulderRoll', -0.033789873123168945], ['RElbowYaw', 0.3282339572906494], ['RElbowRoll', 1.415924072265625]]],
-                                'right_up':  [[angle] for  _, angle in [['LShoulderPitch', 0.9080860614776611], ['LShoulderRoll', 0.23926210403442383], ['LElbowYaw', -0.45717406272888184], ['LElbowRoll', -1.0722241401672363], ['RShoulderPitch', 0.8007900714874268], ['RShoulderRoll', 0.06592011451721191], ['RElbowYaw', 1.366752028465271], ['RElbowRoll', 1.4803519248962402]]],
-                            }
+                        'left_out': [[angle] for  _, angle in [['LShoulderPitch', 0.9556400775909424], ['LShoulderRoll', 0.45095396041870117], ['LElbowYaw', -2.074009895324707], ['LElbowRoll', -1.178070068359375], ['RShoulderPitch', 0.9357819557189941], ['RShoulderRoll', -0.2945699691772461], ['RElbowYaw', 0.4524879455566406], ['RElbowRoll', 1.1674160957336426]]],
+                        'left_up': [[angle] for  _, angle in [['LShoulderPitch', 0.8129780292510986], ['LShoulderRoll', 0.14108610153198242], ['LElbowYaw', -1.4420018196105957], ['LElbowRoll', -1.3222661018371582], ['RShoulderPitch', 0.9342479705810547], ['RShoulderRoll', -0.29610395431518555], ['RElbowYaw', 0.4524879455566406], ['RElbowRoll', 1.1612801551818848]]],
+                        'left_over': [[angle] for  _, angle in [['LShoulderPitch', 0.760822057723999], ['LShoulderRoll', -0.0061779022216796875], ['LElbowYaw', -0.6121079921722412], ['LElbowRoll', -1.2056820392608643], ['RShoulderPitch', 0.9357819557189941], ['RShoulderRoll', -0.29917192459106445], ['RElbowYaw', 0.4540219306945801], ['RElbowRoll', 1.1873579025268555]]],
+                        'right_out': [[angle] for  _, angle in [['LShoulderPitch', 0.9080860614776611], ['LShoulderRoll', 0.2438640594482422], ['LElbowYaw', -0.4556400775909424], ['LElbowRoll', -1.0752921104431152], ['RShoulderPitch', 0.6243798732757568], ['RShoulderRoll', -0.09208202362060547], ['RElbowYaw', 2.0248379707336426], ['RElbowRoll', 1.1704840660095215]]],
+                        'right_over': [[angle] for  _, angle in [['LShoulderPitch', 0.9080860614776611], ['LShoulderRoll', 0.24539804458618164], ['LElbowYaw', -0.4556400775909424], ['LElbowRoll', -1.0768260955810547], ['RShoulderPitch', 0.5737578868865967], ['RShoulderRoll', -0.033789873123168945], ['RElbowYaw', 0.3282339572906494], ['RElbowRoll', 1.415924072265625]]],
+                        'right_up':  [[angle] for  _, angle in [['LShoulderPitch', 0.9080860614776611], ['LShoulderRoll', 0.23926210403442383], ['LElbowYaw', -0.45717406272888184], ['LElbowRoll', -1.0722241401672363], ['RShoulderPitch', 0.8007900714874268], ['RShoulderRoll', 0.06592011451721191], ['RElbowYaw', 1.366752028465271], ['RElbowRoll', 1.4803519248962402]]],
+                        'shake head no': [[0.6, -0.6]],
+                        'nod yes': [[0.7, -0.1]],
+                        'point forward': [],
+                        'point to self': [],
+                        'lower head': [],
+                        'shake lowered head': [],
+                        'pump fist': [],
+                        'wave fist': [],
+                        'wave hand': [],
+                        'spread arms': [],
+                        'raise arm': [],
+                        'shrug': []                
+                        }
         
         # sets of time points
         self.timepoints_other_hand = [[0.75], [1.5]]
+        self.timepoints_dict = {
+                                'shake head no': [[0.5, 1.5]],
+                                'nod yes': [[0.67, 1.3]],
+                                'point forward': [],
+                                'point to self': [],
+                                'lower head': [],
+                                'shake lowered head': [],
+                                'pump fist': [],
+                                'wave fist': [],
+                                'wave hand': [],
+                                'spread arms': [],
+                                'raise arm': [],
+                                'shrug': []  
+                                }
+
+        # set special gesture tags
+        self.gesture_tags = [
+                        "[point forward]", 
+                        "[point to self]", 
+                        "[shake head no]", 
+                        "[nod yes]", 
+                        "[lower head]", 
+                        "[shake lowered head]", 
+                        "[pump fist]", 
+                        "[wave fist]", 
+                        "[wave hand]",
+                        "[spread arms]", 
+                        "[shrug]"
+                    ]
 
     # REAMS OF CHAT-WRITTEN IP-HANDLING    
 
@@ -126,7 +190,51 @@ class Converse(object):
         robot = self.getrobot()
         return getattr(robot, attr)
     
-    # SPEAKING
+    # TAGGED GESTURE HANDLING
+
+    def check_for_tags(self, segment):
+
+        text = segment.lower()
+        pattern = r"\[[^\[\]]+\]"
+
+        match = re.search(pattern, text)
+        if match:
+            matched_tag = match.group()  # e.g., "[nod yes]"
+            if matched_tag in self.gesture_tags:
+                return matched_tag[1:-1]  # remove brackets
+        return None
+
+    def remove_tags(self, segment):
+
+        return re.sub(r"\[.*?\]", '', segment)
+    
+    def set_gest_tag(self, tagged_seg, duration):
+
+        # this is for cyclical gestures!!!
+
+        joints = self.joints_dict[tagged_seg]
+        
+        timepoints_min = self.timepoints_dict[tagged_seg]
+        timepoints_max = []
+        print("timepoints_min: {}".format(timepoints_min))
+        final_timepoint_min = timepoints_min[-1][-1]
+        reps = int(duration / final_timepoint_min)
+
+        for i in timepoints_min:
+            maxed = self.get_cumulative_multiple(i, reps)
+            timepoints_max += [maxed]
+
+        print('reps: {}'.format(reps))
+        print("timepoints: {}".format(timepoints_max))
+
+        angles_min = self.angles_dict[tagged_seg]
+        angles_max = []
+        for i in angles_min:
+            maxed = i * reps
+            angles_max += [maxed]
+        print("angles: {}".format(angles_max))
+
+        return joints, angles_max, timepoints_max
 
 
 
@@ -226,34 +334,6 @@ class Converse(object):
 
         return gesture_arm
     
-    # def set_gest_special(self, keyword, duration):
-
-    #     # this is for cyclical gestures!!!
-
-    #     joints = self.joints_dict[keyword]
-        
-    #     timepoints_min = self.timepoints_dict[keyword]
-    #     timepoints_max = []
-    #     print("timepoints_min: {}".format(timepoints_min))
-    #     final_timepoint_min = timepoints_min[-1][-1]
-    #     reps = int(duration / final_timepoint_min)
-
-    #     for i in timepoints_min:
-    #         maxed = self.get_cumulative_multiple(i, reps)
-    #         timepoints_max += [maxed]
-
-    #     print('reps: {}'.format(reps))
-    #     print("timepoints: {}".format(timepoints_max))
-
-    #     angles_min = self.angles_dict[keyword]
-    #     angles_max = []
-    #     for i in angles_min:
-    #         maxed = i * reps
-    #         angles_max += [maxed]
-    #     print("angles: {}".format(angles_max))
-
-    #     return joints, angles_max, timepoints_max
-    
     def set_gest_standard(self, duration):
 
         # Side
@@ -336,10 +416,9 @@ class Converse(object):
     def gns(self, text):
 
         """
-        Speak via NAORobot TTS and simultaneously gesture randomly.
+        Speak via NAORobot TTS and simultaneously gesture.
         """
 
-        #Segment text on full stops and semicolons
         segments = self.split_text(text)
         print("segments: {}".format(segments))
         #Estimate segment durations
@@ -347,22 +426,26 @@ class Converse(object):
 
         start_time = time.time()
 
-        # loop through segments, assign movements, execute simultaneously
         for index, segment in enumerate(segments):
 
-            # Set duration for the current segment
-            duration = durations[index] 
+            segment_untagged = self.remove_tags(segment)    
 
-            # # Identify keyword, if present
-            # keyword = self.check_for_key_words(segment)
-            # print("keyword: {}".format(keyword))
+            # Set duration for the current segment
+            duration = self.estimate_duration(segment_untagged)
+
+            # Identify tag, if present
+            tagged_seg = self.check_for_tags(segment)
+            print("keyword: {}".format(tagged_seg))
         
             # Set joints, angles and timepoints
-            joints, angles, timepoints = self.set_gest_standard(duration)
+            if tagged_seg == None:
+                joints, angles, timepoints = self.set_gest_standard(duration)
+            else:
+                joints, angles, timepoints = self.set_gest_tag(tagged_seg, duration)
 
             # Execute
             self.robot.motion.post.angleInterpolation(joints, angles, timepoints, True)
-            self.robot.tts.say(segment)            
+            self.robot.tts.say(segment_untagged)            
 
 
         end_time = time.time()
