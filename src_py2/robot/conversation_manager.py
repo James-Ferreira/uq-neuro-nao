@@ -128,13 +128,7 @@ class Converse(object):
     
     # SPEAKING
 
-    def say(self, quote):
-        """
-        Speak via NAORobot TTS, connecting on-demand if needed.
-        """
-        if not self.robot:
-            self.connect()
-        self.robot.tts.say(quote)
+
 
     # RANDOM GESTURE HANDLING
 
@@ -329,8 +323,21 @@ class Converse(object):
 
         return segments 
     
-    ### MAIN GESTURE AND SPEAK FUNCTION ###
+    ### MAIN FUNCTIONS ###
+
+    def say(self, text):
+        """
+        Speak via NAORobot TTS.
+        """
+        if not self.robot:
+            self.connect()
+        self.robot.tts.say(text)
+
     def gns(self, text):
+
+        """
+        Speak via NAORobot TTS and simultaneously gesture randomly.
+        """
 
         #Segment text on full stops and semicolons
         segments = self.split_text(text)
