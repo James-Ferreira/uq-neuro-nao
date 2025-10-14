@@ -7,7 +7,10 @@ import re
 import time
 import unittest
 
-
+#td timing not good for head shakes and in general could be refined using syllable instead of letter breakdown
+#td tagged motions should start when the tags are called and should involve arms so arms are not frozen in end position of previous gesture
+#td some tagged motions should loop, some should happen once as long as there is sufficient time
+#td animate more tagged motions
 
 class Converse(object):
     """
@@ -27,12 +30,25 @@ class Converse(object):
         self._ip_pool = self._ips_for(name)
         if connect_on_init:
             self.connect()
+
+        self.set_duration_variables()
+        self.set_joint_variables()
+        self.set_gesture_tags()
+
+    def set_duration_variables(self):        
         # durations
         self.character_duration = 0.075
+        self.short_pause_duration = 0.03
+        self.long_pause_duration = 0.1
+        self.short_weight = 0.1
+        self.long_weight = 0.15
+
         self.gest_duration_arm = 1.2
         self.gest_duration_hand = 0.8
         self.gest_duration_head = 0.5
         self.sleep_duration = 0.2 
+
+    def set_joint_variables(self):
 
         # sets of joints
         self.joints_arms =[
@@ -95,7 +111,7 @@ class Converse(object):
         # sets of time points
         self.timepoints_other_hand = [[0.75], [1.5]]
         self.timepoints_dict = {
-                                'shake head no': [[0.5, 1.5]],
+                                'shake head no': [[0.3, 0.7]],
                                 'nod yes': [[0.67, 1.3]],
                                 'point forward': [],
                                 'point to self': [],
@@ -109,20 +125,25 @@ class Converse(object):
                                 'shrug': []  
                                 }
 
+
+    def set_gesture_tags(self):
         # set special gesture tags
-        self.gesture_tags = [
-                        "[point forward]", 
-                        "[point to self]", 
-                        "[shake head no]", 
-                        "[nod yes]", 
-                        "[lower head]", 
-                        "[shake lowered head]", 
-                        "[pump fist]", 
-                        "[wave fist]", 
-                        "[wave hand]",
-                        "[spread arms]", 
-                        "[shrug]"
-                    ]
+        # 1 = single, 2 = cyclical
+        self.gesture_tags = {
+                        "[point forward]": 1, 
+                        "[point to self]": 1,
+                        "[point up]": 1,
+                        "[point down]": 1, 
+                        "[shake head no]": 2, 
+                        "[nod yes]": 2, 
+                        "[lower head]": 1, 
+                        "[shake lowered head]": 2, 
+                        "[pump fist]": 2, 
+                        "[wave fist]": 2, 
+                        "[wave hand]": 2,
+                        "[spread arms]": 1, 
+                        "[shrug]": 1
+                        }
 
     # REAMS OF CHAT-WRITTEN IP-HANDLING    
 
@@ -190,73 +211,169 @@ class Converse(object):
         robot = self.getrobot()
         return getattr(robot, attr)
     
-    # TAGGED GESTURE HANDLING
-
-    def check_for_tags(self, segment):
-
-        text = segment.lower()
-        pattern = r"\[[^\[\]]+\]"
-
-        match = re.search(pattern, text)
-        if match:
-            matched_tag = match.group()  # e.g., "[nod yes]"
-            if matched_tag in self.gesture_tags:
-                return matched_tag[1:-1]  # remove brackets
-        return None
-
-    def remove_tags(self, segment):
-
-        return re.sub(r"\[.*?\]", '', segment)
     
-    def set_gest_tag(self, tagged_seg, duration):
+    ###  TEXT HANDLING
 
-        # this is for cyclical gestures!!!
+    def merge_short_segments(segments):
+        ##this is main branch
 
-        joints = self.joints_dict[tagged_seg]
-        
-        timepoints_min = self.timepoints_dict[tagged_seg]
-        timepoints_max = []
-        print("timepoints_min: {}".format(timepoints_min))
-        final_timepoint_min = timepoints_min[-1][-1]
-        reps = int(duration / final_timepoint_min)
+    def split_text(self, text):        
 
-        for i in timepoints_min:
-            maxed = self.get_cumulative_multiple(i, reps)
-            timepoints_max += [maxed]
+        # Split on periods or commas while preserving punctuation
+        segments = re.findall(r'[^.;!?]+[.;!?]', text)
 
-        print('reps: {}'.format(reps))
-        print("timepoints: {}".format(timepoints_max))
+        # remove any leading/trailing whitespace
+        segments = [segment.strip() for segment in segments]
 
-        angles_min = self.angles_dict[tagged_seg]
-        angles_max = []
-        for i in angles_min:
-            maxed = i * reps
-            angles_max += [maxed]
-        print("angles: {}".format(angles_max))
+        segments = self.merge_short_segments(segments)
 
-        return joints, angles_max, timepoints_max
+        return segments 
 
 
+    ### DURATION HANDLING   
 
-    # RANDOM GESTURE HANDLING
-
-    def estimate_duration(self, text):
+    def estimate_duration_old(self, text):
         length = len(text)
         duration_est = round(length * self.character_duration, 2)
 
-        return duration_est
+        return duration_est    
     
-    def estimate_durations(self, text):
-        # Split the text into segments based on punctuation
-        segments = self.split_text(text)
+    def is_vowel(char):
+        return char.lower() in 'aeiouy'
 
-        # Calculate the estimated duration for each segment
-        durations_est = [round(len(segment) * self.character_duration, 2) for segment in segments]
+    def classify_syllable(syl):
+        if syl and not self.is_vowel(syl[-1]):
+            return 'long'
+        else:
+            return 'short'
 
-        # Sum the timepoints to get the total estimated duration
-        total_duration_est = sum(durations_est)
+    def split_into_syllables(segment):
+        segment = segment.lower()
+        vowels_pat = '[aeiou]'
+        cons_pat = '[bcdfghjklmnpqrstvwxyz]'
+        
+        # Insert hyphen after each vowel
+        segment = re.sub('({})'.format(vowels_pat), r'\1-', segment)
+        
+        # Remove trailing hyphen
+        segment = re.sub(r'-$', '', segment)
+        
+        # Remove hyphen before final consonant
+        segment = re.sub('-({})$'.format(cons_pat), r'\1', segment)
+        
+        # Fix certain consonant clusters (e.g., -nt to n-t)
+        segment = re.sub(r'-(n|r|st)(t|n|d|f)', r'\1-\2', segment)
+        
+        # Fix s-clusters after vowels (e.g., as-t to as-t)
+        segment = re.sub('({})-s([tpnml])'.format(vowels_pat), r'\1s-\2', segment)
+        
+        # Split into initial syllables
+        syllables = segment.split('-')
+        
+        # Merge any vowelless fragments to the previous syllable
+        merged = []
+        for syl in syllables:
+            if syl and re.search(vowels_pat, syl) is None:
+                if merged:
+                    merged[-1] += syl
+                else:
+                    merged.append(syl)
+            else:
+                merged.append(syl)
+        
+        return merged
 
-        return durations_est, total_duration_est   
+    def analyze_segment(segment):
+        syls = self.split_into_syllables(segment)
+        types = [self.classify_syllable(s) for s in syls]
+        return list(zip(syls, types))
+
+    # To estimate duration for a segment (example weights; refine via testing)
+    def estimate_duration(segment):
+
+        """
+        Use variable weights for puases 1
+        """
+
+        # Estimate total pause duration
+        short_pauses = segment.count(" ")
+        long_pauses = len(re.findall(r"[,:]", segment)) 
+        total_pause_duration = self.short_pause_duration * short_pauses + self.long_pause_duration * long_pauses
+
+        # Estimate total word duration
+        analysis = self.analyze_segment(segment)
+        total_word_duration = 0.0
+        for _, typ in analysis:
+            total_word_duration += self.short_weight if typ == 'short' else self.long_weight
+        total_duration = total_pause_duration + total_word_duration
+        return total_duration
+    
+    def estimate_durations(segments):
+
+        """
+        Apply the duration estimate to each text segment in a list.
+        """
+
+        durations = []
+        for segment in segments:
+            durations_est += [self.estimate_duration(segment)]
+        durations_total_est = sum(durations_est)
+
+        return durations, durations_total_est
+
+  
+    # TAGGED GESTURE HANDLING
+
+
+    def check_for_tags(self, segment):
+        """
+        Check for gesture tags within a segment.
+        Returns (gesture_name, gesture_type) if found, else (None, None).
+        """
+
+        text = segment.lower()
+        pattern = r"\[([^\[\]]+)\]"   # capture tag content inside [ ]
+
+        match = re.search(pattern, text)
+        if match:
+            gesture_name = match.group(1).strip()  # e.g., "shake head"
+            if gesture_name in self.gesture_tags:
+                gesture_type = self.gesture_tags[gesture_name]
+                return gesture_name, gesture_type
+
+        return None, None
+    
+    def remove_tags(self, segment):
+
+        detagged = re.sub(r"\[.*?\]", '', segment)
+        detagged_no_extra_space = " ".join(detagged.split())
+
+        return detagged_no_extra_space    
+
+    def split_on_tags(self, tagged_segment):
+        """
+        Split a text segment into parts before and after a gesture tag
+        (marked by square brackets), and extract the tag text.
+
+        Example:
+        "I have the right [brings down fist] to a fair trial."
+        → (["I have the right ", " to a fair trial."], "brings down fist")
+        """
+
+        pattern = r"\[(.*?)\]"  # match text inside [brackets]
+        match = re.search(pattern, tagged_segment)
+
+        if match:
+            tag = match.group(1).strip()
+            start, end = match.span()
+            before = tagged_segment[:start]
+            after = tagged_segment[end:]
+            subsegments = [before, after]
+        else:
+            tag = None
+            subsegments = [tagged_segment]
+
+        return subsegments, tag
 
     def get_cumulative_multiple(self, list, multiple):
 
@@ -273,22 +390,86 @@ class Converse(object):
 
         return cumulative_long_list
     
-    def merge_short_segments(self, segments, max_words=5):
-        merged = []
-        i = 0
-        while i < len(segments):
-            segment = segments[i]
-            word_count = len(segment.split())
-            # Merge if 5 words or fewer and not the last segment
-            if word_count <= max_words and i < len(segments) - 1:
-                # Merge with next segment
-                merged_segment = segment + ' ' + segments[i + 1]
-                merged.append(merged_segment.strip())
-                i += 2  # Skip next segment since it was merged
+    def set_tagged_gest_cyclical(self, tag, posttag_seg_duration):
+
+        # this is for cyclical gestures!!!
+
+        joints = self.joints_dict[tag]
+        
+        timepoints_min = self.timepoints_dict[tag]
+        timepoints_max = []
+        print("timepoints_min: {}".format(timepoints_min))
+        final_timepoint_min = timepoints_min[-1][-1]
+        reps = int(posttag_seg_duration / final_timepoint_min)
+
+        for i in timepoints_min:
+            maxed = self.get_cumulative_multiple(i, reps)
+            timepoints_max += [maxed]
+
+        print('reps: {}'.format(reps))
+        print("timepoints: {}".format(timepoints_max))
+
+        angles_min = self.angles_dict[tag]
+        angles_max = []
+        for i in angles_min:
+            maxed = i * reps
+            angles_max += [maxed]
+        print("angles: {}".format(angles_max))
+
+        return joints, angles_max, timepoints_max
+
+    def set_tagged_gest_single(self, posttag_segment, duration):
+
+        """
+        Execute a single tagged gesture
+        """      
+
+        # Only load the gesture, if its duration does not exceed the duration of the speech segment estimate by more than 0.5s
+        timepoints_check = self.timepoints_dict[posttag_segment]
+        timepoint_max = max(max(sublist) for sublist in timepoints)
+        if duration + 0.5 < timepoint_max:
+            joints = []
+            angles = []
+            timepoints = []
+        else:
+            joints = self.joints_dict[posttag_segment] 
+            angles = self.angles_dict[posttag_segment]
+            timepoints = timepoints_check
+
+        return joints, angles, timepoints
+
+    def execute_tagged_gest(tagged_segment, gest_type):               
+
+
+            # Isolate pre-/post- segments and tag
+            subsegments, tag = self.split_on_tags(tagged_segment)
+            pretag_segment = subsegments[0]
+            posttag_segment = subsegments[1]
+
+            # Estimate segment durations
+            pretag_seg_duration = self.estimate_duration(pretag_segment)
+            posttag_seg_duration = self.estimate_duration(posttag_segment)
+
+            if gest_type == 1:
+                posttag_joints, posttag_angles, posttag_timepoints = self.set_tagged_gest_single(posttag_segment, posttag_seg_duration)
+            elif gest_type == 2:
+                posttag_joints, posttag_angles, posttag_timepoints = self.set_tagged_gest_cyclical(posttag_segment, posttag_seg_duration)
             else:
-                merged.append(segment.strip())
-                i += 1
-        return merged
+                print('CUSTOM ERROR: key in gesture dictionary is neither 1 nor 2')
+
+            # Speak pretag segment, execute sit if there is time
+            if pretag_seg_duration > 1.25:
+                self.robot.mm.sit_gently(post=True)               
+            self.robot.tts.say(pretag_segment)    
+            
+            # Execute posttag segment with speech
+            self.robot.motion.post.angleInterpolation(posttag_joints, posttag_angles, posttag_timepoints, True)
+            self.robot.tts.say(posttag_segment)     
+
+
+
+
+    # RANDOM GESTURE HANDLING
     
     def set_angles_hand(self, reps_hand):
         yaws, hands = [], []
@@ -374,6 +555,14 @@ class Converse(object):
 
         return joints_torso, angles_torso, timepoints_torso
     
+    def execute_random_gests(self, segment, duration):
+
+            joints, angles, timepoints = self.set_gest_standard(duration)
+
+            # Execute posttag segment with speech
+            self.robot.motion.post.angleInterpolation(joints, angles, timepoints, True)
+            self.robot.tts.say(segment)   
+    
     def set_hand_joints(self, side):
 
         if side == 'left_':
@@ -391,62 +580,69 @@ class Converse(object):
 
         return side
     
-    def split_text(self, text):        
 
-        # Split on periods or commas while preserving punctuation
-        segments = re.findall(r'[^.;!?]+[.;!?]', text)
-
-        # remove any leading/trailing whitespace
-        segments = [segment.strip() for segment in segments]
-
-        segments = self.merge_short_segments(segments)
-
-        return segments 
-    
     ### MAIN FUNCTIONS ###
 
-    def say(self, text):
+
+    def speak(self, text):
         """
         Speak via NAORobot TTS.
         """
-        if not self.robot:
-            self.connect()
         self.robot.tts.say(text)
+
+    def speak_n_time(self, text):
+        """
+        Speak via NAORobot TTS, time duration, compare to estimated duration
+        """
+        # Divide text into sentence segments
+        segments = self.split_text(text)
+ 
+        #Estimate segment durations
+        durations, duration_total_est = self.estimate_durations(segments)   
+
+        for index, segment in enumerate(segments):
+            start = time()
+            self.robot.tts.say(text)
+            end = time()
+            duration = end - start
+            residual = duration - durations[index]
+            print("Segment: {}".format(segment))
+            print("Real Duration: {}".format(duration))
+            print("Esimated Duration: {}".format(duration_total_est))
+            print("Difference: ()".format(residual))
 
     def gns(self, text):
 
         """
         Speak via NAORobot TTS and simultaneously gesture.
         """
-
+        
+        # Divide text into segments.
         segments = self.split_text(text)
         print("segments: {}".format(segments))
+
         #Estimate segment durations
-        durations, duration_total_est = self.estimate_durations(text)   
+        durations, duration_total_est = self.estimate_durations(segments)     
 
         start_time = time.time()
 
         for index, segment in enumerate(segments):
 
-            segment_untagged = self.remove_tags(segment)    
+            # durations is based on the segments list, so indexes should match up
+            duration = durations[index]
 
-            # Set duration for the current segment
-            duration = self.estimate_duration(segment_untagged)
+            # Simply turn segments with multiple tags into untagged segments, for now.
+            if len(re.findall(r"\[.*?\]", segment)) > 1:
+                segment = self.remove_tags(text)
 
             # Identify tag, if present
-            tagged_seg = self.check_for_tags(segment)
-            print("keyword: {}".format(tagged_seg))
-        
-            # Set joints, angles and timepoints
-            if tagged_seg == None:
-                joints, angles, timepoints = self.set_gest_standard(duration)
+            tagged_gesture, gest_type = self.check_for_tags(segment)
+
+            # Speak and execute the appropriate gestures
+            if tagged_gesture is not None:
+                self.execute_tagged_gest(segment, gest_type)
             else:
-                joints, angles, timepoints = self.set_gest_tag(tagged_seg, duration)
-
-            # Execute
-            self.robot.motion.post.angleInterpolation(joints, angles, timepoints, True)
-            self.robot.tts.say(segment_untagged)            
-
+                self.execute_random_gests(segment, duration)
 
         end_time = time.time()
         elapsed_time = end_time - start_time

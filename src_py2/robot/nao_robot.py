@@ -1,9 +1,11 @@
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, print_function
 from naoqi import ALProxy, ALProxy, ALBroker
 import paramiko
 import random
-from touch_manager import TouchModule
-from motion_manager import MotionManager
-from audio_manager import AudioManager, sound_library
+from src_py2.robot.touch_manager import TouchModule
+from src_py2.robot.motion_manager import MotionManager
+from src_py2.robot.audio_manager import AudioManager, sound_library
 # from audio_manager_duo import AudioManagerDuo
 
 class NAORobot:
@@ -21,10 +23,8 @@ class NAORobot:
         # elif name == "192.168.0.78" or name == "192.168.0.79": #metalhead
         #     self.aware_off()
 
-        #clas.tts.say("{}".format(clas.name))
         self.audio_device.setOutputVolume(65)
-        self.audio_player.setMasterVolume(0.5)
-        # clas.tts.setParameter('pitchShift', 1)  
+        self.audio_player.setMasterVolume(0.5) 
         self.tts.setParameter('speed', 88)
 
         self.mm = MotionManager(self)

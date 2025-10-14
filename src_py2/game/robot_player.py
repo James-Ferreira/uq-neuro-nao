@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, print_function
 from src_py2.game.player import Player
 from src_py2.robot.nao_robot import NAORobot
 from src_py2.api.dialog import generate_ai_guess, generate_ai_hint, generate_hobby_opinion
