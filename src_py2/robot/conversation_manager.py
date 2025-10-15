@@ -7,25 +7,10 @@ import re
 import time
 import unittest
 
-class Converse(object):
-    """
-    Usage:
-        converser = Converse("meta")      # auto-connect; tries both meta IPs
-        converser.say("Hello from NAO!")  # uses the connected NAORobot
+class ConversationManager(object):
 
-        # If you created with connect_on_init=False:
-        converser = Converse("clas", connect_on_init=False)
-        converser.connect()               # connect later
-    """
-
-    def __init__(self, name, connect_on_init=True):
-        self.name = name
-        self.robot = None       # the NAORobot instance once connected
-        self.ip_used = None      # which IP actually worked
-        self._ip_pool = self._ips_for(name)
-        if connect_on_init:
-            self.connect()
-
+    def __init__(self, robot):
+        self.robot = robot
         self.set_duration_variables()
         self.set_joint_variables()
         self.set_gesture_tags()
@@ -139,73 +124,6 @@ class Converse(object):
                         "[spread arms]": 1, 
                         "[shrug]": 1,
                         }
-
-    # REAMS OF CHAT-WRITTEN IP-HANDLING    
-
-    def _ips_for(self, name):
-        if name == "meta":
-            # meta flips between these two
-            return ["192.168.0.78", "192.168.0.79"]
-        elif name == "clas":
-            return ["192.168.0.183"]
-        else:
-            return []
-
-    def connect(self):
-        """
-        Try each known IP until one succeeds. Raises if none work.
-        """
-        if not self._ip_pool:
-            raise ValueError("Unknown robot name '{}' (no IPs configured).".format(self.name))
-
-        last_err = None
-        for ip in self._ip_pool:
-            try:
-                self.robot = NAORobot(self.name, ip)
-                self.ip_used = ip
-                return self.robot
-            except Exception as e:
-                last_err = e
-                print("WARN: Failed to connect to {} @ {}: {}".format(self.name, ip, e))
-
-        # If we got here, all IPs failed
-        self.robot = None
-        self.ip_used = None
-        raise RuntimeError(
-            "Could not connect to {} using any known IPs: {}. Last error: {}".format(
-                self.name, ", ".join(self._ip_pool), last_err
-            )
-        )
-
-    @property
-    def is_connected(self):
-        return self.robot is not None
-
-    def getrobot(self):
-        """
-        Access the underlying NAORobot (connects on-demand).
-        """
-        if not self.robot:
-            self.connect()
-        return self.robot
-
-    def reconnect(self, ip=None):
-        """
-        Force a reconnect. Optionally prefer a specific IP first.
-        """
-        if ip is not None:
-            # Put the requested IP at the front of the pool if not already there
-            self._ip_pool = [ip] + [x for x in self._ip_pool if x != ip]
-        return self.connect()
-
-    def __getattr__(self, attr):
-        """
-        Delegate unknown attributes/methods to the underlying NAORobot,
-        so you can do converser.motion, converser.posture, etc.
-        """
-        robot = self.getrobot()
-        return getattr(robot, attr)
-    
     
     ###  TEXT HANDLING
 

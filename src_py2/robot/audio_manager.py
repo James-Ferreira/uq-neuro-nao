@@ -4,48 +4,48 @@ import time
 import string
 
 class AudioManager:
-    def __init__(self, nao):
-        self.nao = nao
+    def __init__(self, robot):
+        self.robot = robot
 
     def pitch_change(self):
-        current_pitch = self.nao.tts.getParameter('pitchShift')
+        current_pitch = self.robot.tts.getParameter('pitchShift')
         print("Current pitch: {}".format(current_pitch))
         print("Pitch range: 0.5 - 4")
         user_input = raw_input("Please enter a value for pitch: ")  # type: ignore (suppressess superfluous warning)
-        self.nao.tts.setParameter("pitchShift", float(user_input))
+        self.robot.tts.setParameter("pitchShift", float(user_input))
 
     def set_pitch(self, value):
-        self.nao.tts.setParameter("pitchShift", float(value))
+        self.robot.tts.setParameter("pitchShift", float(value))
 
     def set_volume(self, value):
-        self.nao.audio_player.setMasterVolume(float(value))
+        self.robot.audio_player.setMasterVolume(float(value))
 
     def stop_rec(self):
         # Needed because any break in a recording script will cause the recording not to stop, even when command window closed??
-        self.nao.audio_recorder.stopMicrophonesRecording()
+        self.robot.audio_recorder.stopMicrophonesRecording()
 
     def listen(self, duration, speech=False, start_sound=False, end_sound=False):
         try:
             if speech:
-                self.nao.tts.say("I'm listening.")
+                self.robot.tts.say("I'm listening.")
 
             if start_sound:
-                self.nao.audio_player.post.playFile(sound_library["start_listening"])
+                self.robot.audio_player.post.playFile(sound_library["start_listening"])
             
-            self.nao.leds.post.fadeRGB("AllLeds", 0x00FF00, 0.1)
+            self.robot.leds.post.fadeRGB("AllLeds", 0x00FF00, 0.1)
             audio_path = "/tmp/recorded_speech.wav"
             self.record_audio(duration, audio_path)
-            self.nao.leds.post.fadeRGB("AllLeds", 0xFFFFFF, 0.1)
+            self.robot.leds.post.fadeRGB("AllLeds", 0xFFFFFF, 0.1)
 
             if not os.path.exists(audio_path) or os.path.getsize(audio_path) == 0:
                 raise ValueError("Zero-length audio can cause recognition failure or hang")
 
             if end_sound:
-                self.nao.audio_player.post.playFile(sound_library["stop_listening"])
+                self.robot.audio_player.post.playFile(sound_library["stop_listening"])
 
             transcription = transcribe.transcribe_filepath(audio_path)
             if transcription:
-                # self.nao.tts.say("I think you said: " + str(transcription))
+                # self.robot.tts.say("I think you said: " + str(transcription))
 
                 return clean_string(transcription)
             else:
@@ -53,28 +53,28 @@ class AudioManager:
             
         except Exception as e:
             print("Listening error: %s " % (e))
-            self.nao.tts.say("I'm sorry, I didn't catch that. Please say it again.")
+            self.robot.tts.say("I'm sorry, I didn't catch that. Please say it again.")
         
-        self.nao.tts.say("Sorry, I couldn't understand. Let's try again later.")
+        self.robot.tts.say("Sorry, I couldn't understand. Let's try again later.")
 
     def listen_until_confirmed(self, duration=2.5, speech=False, start_sound=False, end_sound=False, laconic=True):
         while True:
             try:
-                self.nao.leds.post.fadeRGB("FaceLeds", 0x00FF00, 0.1)
+                self.robot.leds.post.fadeRGB("FaceLeds", 0x00FF00, 0.1)
                 # todo: move this dialogue into the main script (once participants become familiar with listening behaviour), for example:
                 # 1st instance, say "When I'm listening my eyes turn green" then eyes turn green
                 # 2nd instance, say "I'm listening" then eyes turn green"
                 # 3rd and subsequent instances, only eyes turn green (no more speaking)
                 
                 if speech:
-                    self.nao.tts.say("I'm listening with green eyes.")
+                    self.robot.tts.say("I'm listening with green eyes.")
 
                 if start_sound:
-                    self.nao.audio_player.post.playFile(sound_library["start_listening"])
+                    self.robot.audio_player.post.playFile(sound_library["start_listening"])
 
                 audio_path = "/tmp/recorded_speech.wav"
                 self.record_audio(duration, audio_path)
-                self.nao.leds.post.fadeRGB("FaceLeds", 0xFFFFFF, 0.1)
+                self.robot.leds.post.fadeRGB("FaceLeds", 0xFFFFFF, 0.1)
 
                 # todo: Determine whether this should be checking the output_path or input_path from record audio. audio_path is defined about so will surely exist. This probably doesn't check the newly recorded file, which would be output_path?
                 if not os.path.exists(audio_path) or os.path.getsize(audio_path) == 0:
@@ -82,7 +82,7 @@ class AudioManager:
 
                 # removing .post from below to see if that stops speech from occuring as end sound plays
                 if end_sound:
-                    self.nao.audio_player.playFile(sound_library["stop_listening"])
+                    self.robot.audio_player.playFile(sound_library["stop_listening"])
 
                 transcription = transcribe.transcribe_filepath(audio_path)
                 if not transcription:
@@ -92,20 +92,20 @@ class AudioManager:
 
                 instruction = "" if laconic else "Press my hand for yes, or my foot for no."
 
-                self.nao.tts.say("I heard {}. Is that correct? {}".format(cleaned_input, instruction)) # use spelling logic. after, speaking robot says yes/no. compare transcription for listenin robot with output (from speaking robot. if same, progress. if not same, speaking robot repeats with spelling, and (while listening, green eyes) listening robot repeats with spelling (NO TRASCRIPTION). 
+                self.robot.tts.say("I heard {}. Is that correct? {}".format(cleaned_input, instruction)) # use spelling logic. after, speaking robot says yes/no. compare transcription for listenin robot with output (from speaking robot. if same, progress. if not same, speaking robot repeats with spelling, and (while listening, green eyes) listening robot repeats with spelling (NO TRASCRIPTION). 
                 
-                confirmed = self.nao.tm.wait_for_touch_confirm()
+                confirmed = self.robot.tm.wait_for_touch_confirm()
 
                 if confirmed:
-                    # self.nao.tts.say("Confirmed.")
+                    # self.robot.tts.say("Confirmed.")
                     return cleaned_input
                 else:
-                    self.nao.tts.say("Okay, let's try again.")
+                    self.robot.tts.say("Okay, let's try again.")
             
             except Exception as e:
                 print("Listening error: %s" % e)
-                self.nao.tts.say("I'm sorry, I didn't catch that.")
-                self.nao.tts.say("Let's try again.")    
+                self.robot.tts.say("I'm sorry, I didn't catch that.")
+                self.robot.tts.say("Let's try again.")    
 
     def converse(self, rounds=3):
         transcription = ""
@@ -118,21 +118,21 @@ class AudioManager:
                     print("No input received.")
                     continue
 
-                self.nao.tts.post.say("I heard {}. Is that correct? Press my hand for yes, or my foot for no.".format(input))
+                self.robot.tts.post.say("I heard {}. Is that correct? Press my hand for yes, or my foot for no.".format(input))
 
-                confirmed = self.nao.tm.wait_for_touch_confirm()
+                confirmed = self.robot.tm.wait_for_touch_confirm()
 
                 if not confirmed:
-                    self.nao.tts.say("REJECTED")
+                    self.robot.tts.say("REJECTED")
                     continue
 
-                self.nao.tts.say("CONFIRMED")
+                self.robot.tts.say("CONFIRMED")
 
                 transcription += "Speaker: {}\n".format(input)
 
                 ai_reply = transcribe.reply(transcription)
                 if ai_reply:
-                    self.nao.tts.say(str(ai_reply))
+                    self.robot.tts.say(str(ai_reply))
                     transcription += "Robot: {}\n".format(ai_reply)
                 else:
                     print("AI did not return a reply.\n")
@@ -145,7 +145,7 @@ class AudioManager:
     def record_audio(self, duration, output_path, playback=False):
         self.stop_rec()
 
-        internal_path = '/home/nao/recordings/audio/audio_recording.wav'
+        internal_path = '/home/robot/recordings/audio/audio_recording.wav'
         
         # channels can be =
         # [1, 0, 0, 0] for left microphone only
@@ -155,18 +155,18 @@ class AudioManager:
         # [1, 1, 1, 1] for all microphnes
         channels = [0, 0, 1, 0]
         
-        self.nao.audio_recorder.startMicrophonesRecording(internal_path, 'wav', 16000, channels)
+        self.robot.audio_recorder.startMicrophonesRecording(internal_path, 'wav', 16000, channels)
         print('Audio recording started.')
         
         time.sleep(float(duration))
 
-        self.nao.audio_recorder.stopMicrophonesRecording()
+        self.robot.audio_recorder.stopMicrophonesRecording()
         print('Audio recording stopped.')
 
         if playback == True:
-            self.nao.audio_player.playFile(internal_path)
+            self.robot.audio_player.playFile(internal_path)
             
-        self.nao.download_file_from_nao(remote_file_path=internal_path, local_file_path=output_path)
+        self.robot.download_file_from_robot(remote_file_path=internal_path, local_file_path=output_path)
 
 # todo: make this part of the Class (self as first parameter and check how it's called --  will need self.clean_string() -- )
 def clean_string(text):
@@ -174,14 +174,14 @@ def clean_string(text):
     return ''.join([c for c in text.lower() if c == ' ' or (c not in string.punctuation and c not in string.whitespace.replace(' ', ''))])
 
 sound_library = {
-    "start_listening": "/home/nao/AUDIO/listen_start.mp3",
-    "stop_listening": "/home/nao/AUDIO/listen_stop2.mp3",
-    "thinking_human": "/home/nao/AUDIO/thinking_human2.mp3",
-    "victory_path": "/home/nao/AUDIO/we_won_1.mp3",
-    "correct_sound_a": "/home/nao/AUDIO/correct_4-10.mp3", #3.5s
-    "incorrect_sound_a": "/home/nao/AUDIO/incorrect_2-3.mp3", #2.3s
-    "correct_sound_b": "/home/nao/AUDIO/correct_1-5.mp3", #1.5s
-    "incorrect_sound_b": "/home/nao/AUDIO/incorrect_1-05.mp3", #1.05s
-    "thinking": "/home/nao/AUDIO/thinking_3.mp3",
-    "scanning": "/home/nao/AUDIO/scanning_3.mp3",
+    "start_listening": "/home/robot/AUDIO/listen_start.mp3",
+    "stop_listening": "/home/robot/AUDIO/listen_stop2.mp3",
+    "thinking_human": "/home/robot/AUDIO/thinking_human2.mp3",
+    "victory_path": "/home/robot/AUDIO/we_won_1.mp3",
+    "correct_sound_a": "/home/robot/AUDIO/correct_4-10.mp3", #3.5s
+    "incorrect_sound_a": "/home/robot/AUDIO/incorrect_2-3.mp3", #2.3s
+    "correct_sound_b": "/home/robot/AUDIO/correct_1-5.mp3", #1.5s
+    "incorrect_sound_b": "/home/robot/AUDIO/incorrect_1-05.mp3", #1.05s
+    "thinking": "/home/robot/AUDIO/thinking_3.mp3",
+    "scanning": "/home/robot/AUDIO/scanning_3.mp3",
 }

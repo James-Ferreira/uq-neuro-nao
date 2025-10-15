@@ -15,11 +15,10 @@ import time
 ### ALSO OPTIONALLY CREATE DICTIONARIES FOR DIALOGUE ACTIONS
 ###########################################
 
-class AnimationManager:    
+class AnimationManager(object):    
 
-    def __init__(self, name, robot):
+    def __init__(self, robot):
         self.nao = robot
-        self.name = name
         self.set_variables()
 
     def set_variables(self):

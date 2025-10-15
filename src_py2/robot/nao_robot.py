@@ -1,61 +1,187 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, print_function
+
 from naoqi import ALProxy, ALProxy, ALBroker
 import paramiko
 import random
-from src_py2.robot.touch_manager import TouchModule
-from src_py2.robot.motion_manager import MotionManager
-from src_py2.robot.audio_manager import AudioManager, sound_library
-#from src_py2.robot.animation_manager import AnimationManager
-#from src_py2.robot.animation_manager import ConversationManager
-# from audio_manager_duo import AudioManagerDuo
+import re
 
-class NAORobot:
-    def __init__(self, name, ip, reversed=False, usrnme="nao", pword="nao123", port=9559):
+class NAORobot(object):
+    def __init__(self, name, ip=None, port=9559, connect_on_init=True,
+                 usrnme=None, pword=None, reversed=False):
         self.name = name
-        self.ip = ip
-        self.reversed = reversed
+        self.port = port     
         self.usrnme = usrnme
         self.pword = pword
-        self.port = port
-        self.initialize_proxies()
+        self.reversed = reversed
 
-        # if name == "192.168.0.183": #classact
-        #     self.dialog_off()
-        # elif name == "192.168.0.78" or name == "192.168.0.79": #metalhead
-        #     self.aware_off()
+        # Build an IP pool. If a preferred ip is provided, try it first.
+        pool = self._ips_for(name)
+        if ip:
+            pool = [ip] + [x for x in pool if x != ip]
+        self._ip_pool = pool
 
-        self.audio_device.setOutputVolume(65)
-        self.audio_player.setMasterVolume(0.5) 
-        self.tts.setParameter('speed', 88)
+        # Connection state
+        self.ip = None
+        self.ip_used = None
+        self._proxies_initialized = False
 
-        #self.convo = ConversationManager(self)
-        #self.animate = AnimationManager(self)
-        self.mm = MotionManager(self)
-        self.am = AudioManager(self)
-        self.broker = ALBroker("broker-{}".format(name), "0.0.0.0", 0, self.ip, self.port)
-        self.tm = TouchModule(self, "touch_{}".format(name))
- 
-        # self.amd = AudioManagerDuo(self, None, None)
+        # Proxies you will initialize on connect
+        self.animation = None
+        self.animated_speech = None
+        self.audio_device = None
+        self.audio_player = None
+        self.audio_recorder = None
+        self.basic_awareness = None
+        self.battery = None
+        self.broker = None
+        self.dialog = None
+        self.leds = None
+        self.life = None
+        self.memory = None
+        self.motion = None
+        self.posture = None
+        self.speaking_movement = None
+        self.tts = None
 
-    def initialize_proxies(self): 
-        self.animation = ALProxy("ALAnimationPlayer", self.ip, self.port)
-        self.animated_speech = ALProxy('ALAnimatedSpeech', self.ip, self.port)
-        self.audio_device = ALProxy("ALAudioDevice", self.ip, self.port)
-        self.audio_player = ALProxy('ALAudioPlayer', self.ip, self.port)
-        self.audio_recorder = ALProxy('ALAudioRecorder', self.ip, self.port)
-        self.basic_awareness = ALProxy("ALBasicAwareness", self.ip, self.port)
-        self.battery = ALProxy("ALBattery", self.ip, self.port)
-        self.dialog = ALProxy("ALDialog", self.ip, self.port)
-        self.leds = ALProxy('ALLeds', self.ip, self.port)
-        self.life = ALProxy('ALAutonomousLife', self.ip, self.port)
-        self.memory = ALProxy("ALMemory", self.ip, self.port)
-        self.motion = ALProxy('ALMotion', self.ip, self.port)
-        self.posture = ALProxy('ALRobotPosture', self.ip, self.port)
-        self.speaking_movement = ALProxy('ALSpeakingMovement', self.ip, self.port)
-        self.tts = ALProxy('ALTextToSpeech', self.ip, self.port)
-        # ALTouch proxy prevented the robots from being recognized by go
-        # self.touch = ALProxy("ALTouch", self.ip, self.port)
+        # Managers/modules that depend on proxies
+        self.mm = None
+        self.am = None
+        self.tm = None
+
+        if connect_on_init:
+            self.connect()
+
+    # -------------------- IP handling --------------------
+
+    def _ips_for(self, name):
+        """Return list of known IPs for a robot name; allow raw IP as name."""
+        if name == "meta":
+            return ["192.168.0.78", "192.168.0.79"]
+        elif name == "clas":
+            return ["192.168.0.183"]
+        # If the "name" looks like an IP, treat it as the only candidate.
+        if re.match(r"^\d{1,3}(\.\d{1,3}){3}$", name):
+            return [name]
+        return []
+
+    # -------------------- Connect / Reconnect --------------------
+
+    def connect(self):
+        """
+        Try each known IP until connecting proxies succeeds.
+        Sets self.ip / self.ip_used on success.
+        """
+        if not self._ip_pool:
+            raise ValueError("Unknown robot name '{}' (no IPs configured).".format(self.name))
+
+        last_err = None
+        for ip in self._ip_pool:
+            try:
+                self._try_connect(ip)               # <— no re-instantiation here
+                self.ip = ip
+                self.ip_used = ip
+                self._post_connect_init()
+                return True
+            except Exception as e:
+                last_err = e
+                print("WARN: Failed to connect to {} @ {}: {}".format(self.name, ip, e))
+
+        # If we got here, all IPs failed
+        self.ip = None
+        self.ip_used = None
+        raise RuntimeError(
+            "Could not connect to {} using any known IPs: {}. Last error: {}".format(
+                self.name, ", ".join(self._ip_pool), last_err
+            )
+        )
+
+    def reconnect(self, prefer_ip=None):
+        """
+        Force a reconnect. Optionally try a specific IP first.
+        """
+        if prefer_ip is not None:
+            self._ip_pool = [prefer_ip] + [x for x in self._ip_pool if x != prefer_ip]
+        # Tear down lightweight state if you need to; then connect again
+        self._proxies_initialized = False
+        return self.connect()
+
+    @property
+    def is_connected(self):
+        return bool(self._proxies_initialized and self.ip is not None)
+
+    # -------------------- Low-level wiring --------------------
+
+    def _try_connect(self, ip):
+        """
+        Attempt to create the core NAOqi proxies against a specific IP.
+        Raise if anything fails so the caller can try the next IP.
+        """
+        # Core proxies
+        self.animation = ALProxy("ALAnimationPlayer", ip, self.port)
+        self.animated_speech = ALProxy('ALAnimatedSpeech', ip, self.port)
+        self.audio_device = ALProxy("ALAudioDevice", ip, self.port)
+        self.audio_player = ALProxy('ALAudioPlayer', ip, self.port)
+        self.audio_recorder = ALProxy('ALAudioRecorder', ip, self.port)
+        self.basic_awareness = ALProxy("ALBasicAwareness", ip, self.port)
+        self.battery = ALProxy("ALBattery", ip, self.port)
+        self.dialog = ALProxy("ALDialog", ip, self.port)
+        self.leds = ALProxy('ALLeds', ip, self.port)
+        self.life = ALProxy('ALAutonomousLife', ip, self.port)
+        self.memory = ALProxy("ALMemory", ip, self.port)
+        self.motion = ALProxy('ALMotion', ip, self.port)
+        self.posture = ALProxy('ALRobotPosture', ip, self.port)
+        self.speaking_movement = ALProxy('ALSpeakingMovement', ip, self.port)
+        self.tts = ALProxy('ALTextToSpeech', ip, self.port)
+
+        # If we got here, proxies are alive for this IP
+        self._proxies_initialized = True
+
+    def _post_connect_init(self):
+        """
+        One-time post-connect configuration that depends on proxies being valid.
+        Safe to call multiple times; should be idempotent.
+        """
+        if not self._proxies_initialized:
+            return
+
+        # Example audio defaults
+        try:
+            self.audio_device.setOutputVolume(65)
+        except Exception:
+            pass
+        try:
+            self.audio_player.setMasterVolume(0.5)
+        except Exception:
+            pass
+        try:
+            self.tts.setParameter('speed', 88)
+        except Exception:
+            pass
+
+        # Broker and modules that require an active session
+        try:
+            if not self.broker:
+                self.broker = ALBroker("broker-{}".format(self.name), "0.0.0.0", 0, self.ip, self.port)
+        except Exception as e:
+            print("WARN: Failed to create ALBroker: {}".format(e))
+
+        # Your managers that depend on proxies
+        try:
+            from src_py2.robot.animation_manager import AnimationManager
+            from src_py2.robot.audio_manager import AudioManager, sound_library
+            from src_py2.robot.conversation_manager import ConversationManager           
+            from src_py2.robot.motion_manager import MotionManager            
+            from src_py2.robot.touch_manager import TouchModule    
+            # from audio_manager_duo import AudioManagerDuo     
+
+            self.anm = AnimationManager(self)
+            self.am = AudioManager(self)            
+            self.cm = ConversationManager(self)
+            self.mm = MotionManager(self)            
+            self.tm = TouchModule(self, "touch_{}".format(self.name))
+        except Exception as e:
+            print("WARN: Failed to init managers/modules: {}".format(e))
 
     def __getstate__(self):
         # print("Calling __getstate__")
