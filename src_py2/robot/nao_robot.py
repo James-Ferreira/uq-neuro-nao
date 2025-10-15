@@ -6,6 +6,8 @@ import random
 from src_py2.robot.touch_manager import TouchModule
 from src_py2.robot.motion_manager import MotionManager
 from src_py2.robot.audio_manager import AudioManager, sound_library
+#from src_py2.robot.animation_manager import AnimationManager
+#from src_py2.robot.animation_manager import ConversationManager
 # from audio_manager_duo import AudioManagerDuo
 
 class NAORobot:
@@ -27,10 +29,13 @@ class NAORobot:
         self.audio_player.setMasterVolume(0.5) 
         self.tts.setParameter('speed', 88)
 
+        #self.convo = ConversationManager(self)
+        #self.animate = AnimationManager(self)
         self.mm = MotionManager(self)
         self.am = AudioManager(self)
         self.broker = ALBroker("broker-{}".format(name), "0.0.0.0", 0, self.ip, self.port)
         self.tm = TouchModule(self, "touch_{}".format(name))
+ 
         # self.amd = AudioManagerDuo(self, None, None)
 
     def initialize_proxies(self): 

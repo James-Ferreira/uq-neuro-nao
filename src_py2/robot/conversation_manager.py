@@ -7,11 +7,6 @@ import re
 import time
 import unittest
 
-#td timing not good for head shakes and in general could be refined using syllable instead of letter breakdown
-#td tagged motions should start when the tags are called and should involve arms so arms are not frozen in end position of previous gesture
-#td some tagged motions should loop, some should happen once as long as there is sufficient time
-#td animate more tagged motions
-
 class Converse(object):
     """
     Usage:
@@ -450,6 +445,7 @@ class Converse(object):
     def set_tagged_gest_cyclical(self, tag, posttag_seg_duration):
 
         # this is for cyclical gestures!!!
+        # probably cycles should go to 3 no matter what and this function should be removed.
 
         joints = self.joints_dict[tag]
         
