@@ -172,13 +172,12 @@ class NAORobot(object):
             from src_py2.robot.audio_manager import AudioManager, sound_library
             from src_py2.robot.conversation_manager import ConversationManager           
             from src_py2.robot.motion_manager import MotionManager            
-            from src_py2.robot.touch_manager import TouchModule    
-            # from audio_manager_duo import AudioManagerDuo     
+            from src_py2.robot.touch_manager import TouchModule      
 
             self.anm = AnimationManager(self)
             self.am = AudioManager(self)            
             self.cm = ConversationManager(self)
-            self.mm = MotionManager(self)            
+            self.mm = MotionManager(self)          
             self.tm = TouchModule(self, "touch_{}".format(self.name))
         except Exception as e:
             print("WARN: Failed to init managers/modules: {}".format(e))
