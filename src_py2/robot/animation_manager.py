@@ -18,16 +18,27 @@ import time
 class AnimationManager(object):    
 
     def __init__(self, robot):
-        self.nao = robot
-        self.set_variables()
 
-    def set_variables(self):
+        self.robot = robot
+        self.set_weights()
+        self.set_empty_vars()
+
+    def set_weights(self):
         
         self.pitch = 1 # or 0.85        
         self.angle_modulator = 1.0 # For multiplying with angles.
         self.duration_modulator = 1.0 # For multiplying with durations.
         self.talk_speed = 79
         self.volume = 70
+
+    def set_empty_vars(self):
+        self.animation_name = ""
+        self.joint_names_list = []
+        self.joint_angles = []
+        self.joint_angles_dict = {}
+        self.time_points = []
+        self.script_contents_uncompressed = """"""
+        self.script_contents_compressed = """"""
 
     def select_list(self):  
 
@@ -118,107 +129,88 @@ class AnimationManager(object):
         print(message_prefix + " selected.")
         return selected_joints
 
-    def loosen_list(self, joints_list):
+    def loosen_list(self):
         
         """Loosen the joint in the joints_list argument"""
 
-        for joint in joints_list:
-            self.nao.motion.setStiffnesses(joint, 0.0)
+        for joint in self.joint_names_list:
+            self.robot.motion.setStiffnesses(joint, 0.0)
 
-    def stiffen_list(self, joints_list):
+    def stiffen_list(self):
         
         """Stiffen the joint in the joints_list argument"""
 
-        for joint in joints_list:
-            self.nao.motion.setStiffnesses(joint, 1.0)    
+        for joint in self.joint_names_list:
+            self.robot.motion.setStiffnesses(joint, 1.0)    
 
-    def after_angles_recorded(self, action_duration, time_points, joint_names_list, joint_angles, joint_angles_dict):
+    def after_angles_recorded(self, action_duration):
 
         """
         Create time and angle lists for compressed and uncompressed actions.
         """
 
         # Assign the action_duration just specified to all the self.
-        action_durations = [action_duration] * len(joint_names_list)
+        action_durations = [action_duration] * len(self.joint_names_list)
         # Create a list comprehension that outputs a basic action duration list from a labeled action duration list that makes the final script readable and fine-tunable.
-        action_durations_labeled = [[name, duration] for name, duration in zip(joint_names_list, action_durations)]       
+        action_durations_labeled = [[name, duration] for name, duration in zip(self.joint_names_list, action_durations)]       
         # Add the action duration just specified to the list of cumulative action durations.
         # Note that this list will be identical for every action, so it needs to be created only once and then repeated for every joint in the compressed animation.
-        if time_points == []:
+        if self.time_points == []:
             # Make the initial time point that initial action duration.
-            time_points += [action_duration]
+            self.time_points += [action_duration]
         else:
             # Make susequent time points cumulative.
-            time_points += [time_points[-1] + action_duration]
+            self.time_points += [self.time_points[-1] + action_duration]
     
         # Create a list comprehension that outputs a basic joint angle list from a labeled joint angle list that makes the final script readable and fine-tunable.
-        joint_angles_labeled = [[joint, angle] for joint, angle in zip(joint_names_list, joint_angles)] 
+        joint_angles_labeled = [[joint, angle] for joint, angle in zip(self.joint_names_list, self.joint_angles)] 
         # Assign the lists of joint angles to the appropriate keys in a joints dictionary
-        for joint, angle in zip(joint_names_list, joint_angles):
-            joint_angles_dict[joint] += [angle]
+        for joint, angle in zip(self.joint_names_list, self.joint_angles):
+            self.joint_angles_dict[joint] += [angle]
         
-        return action_durations_labeled, time_points, joint_angles_labeled, joint_angles_dict
+        return action_durations_labeled, joint_angles_labeled
     
     # Create a snippet of compressed actions.
-    def compress(self, joint_names_list, joint_angles_dict, time_points, dialogue=0):
+    def compress(self, dialogue=0):
             
         # Create the list of joint angle lists.
         joint_angles_compressed = []
-        for joint_name in joint_names_list:
-            joint_angles_compressed += [joint_angles_dict[joint_name]]
-        joint_angles_compressed_labeled = [[joint, angles] for joint, angles in zip(joint_names_list, joint_angles_compressed)] 
+        for joint_name in self.joint_names_list:
+            joint_angles_compressed += [self.joint_angles_dict[joint_name]]
+        joint_angles_compressed_labeled = [[joint, angles] for joint, angles in zip(self.joint_names_list, joint_angles_compressed)] 
 
         # Create the redundant list of time point lists
-        time_points_compressed = []
-        for _ in joint_names_list:
-            time_points_compressed += [time_points]
-        time_points_compressed_labeled = [[joint, time_points] for joint, time_points in zip(joint_names_list, time_points_compressed)] 
+        self.time_points_compressed = []
+        for _ in self.joint_names_list:
+            self.time_points_compressed += [self.time_points]
+        self.time_points_compressed_labeled = [[joint, self.time_points] for joint, self.time_points in zip(self.joint_names_list, self.time_points_compressed)] 
 
         ### COMPRESSED SCRIPT CONTENTS ###    
 
         compressed_snippet = ""
         compressed_snippet += """   
-    joint_angles = [angles_compressed for _, angles_compressed in {}]
-    time_points = [time_points_compressed for _, time_points_compressed in {}]
-    {}.motion.angleInterpolation(joint_names_list, joint_angles, time_points, True)
-        """.format(joint_angles_compressed_labeled, time_points_compressed_labeled, self.name[0:4])
+joint_angles = [angles_compressed for _, angles_compressed in {}]
+time_points = [time_points_compressed for _, time_points_compressed in {}]
+{}.motion.angleInterpolation(joint_names_list, joint_angles, time_points, True)
+        """.format(joint_angles_compressed_labeled, self.time_points_compressed_labeled, self.robot.name[0:4])
 
         # The additional compressed lists are used for the self.dictionarize() function, which only applies to dialogue at present.
         if dialogue == 0:
             return compressed_snippet
         else:
-            return compressed_snippet, joint_angles_compressed, time_points_compressed        
+            return compressed_snippet, joint_angles_compressed, self.time_points_compressed        
 
-    def dictionarize(self, animation_name, key, dialogue_line, joint_names_list, joint_angles_compressed, time_points_compressed):
-        value = [dialogue_line, {}]
-        #value[1]["joints"] = joint_names_list
-        value[1]["angles"] = joint_angles_compressed
-        value[1]["time_points"] = time_points_compressed
+    
+    def clean_joint_angles_dict(self):
 
-        # Get the start of the key and dialogue line for the title of the diciontary item .json.
-        if len(key) > 15:
-            key_start = key[0:15]
-        else:
-            key_start = key
-
-        if len(dialogue_line) > 15:
-            line_start = dialogue_line[0:15].strip('"')
-        else:
-            line_start = dialogue_line.strip('"')
-
-        # Serialize value as a JSON string.
-        with open('MOTION/DIALOGUE_ACTION_DICTIONARIES/VALUES/{}_KEY_{}_{}.json'.format(animation_name, key_start, line_start), 'w') as f:
-            json.dump(value, f, indent=4)  # `indent=4` adds readability (optional)
-
-        print("Data successfully saved under the key: {}".format(key))
-
-    # Create empty joint angles dictionary.
-    def clean_joint_angles_dict(self, joint_names_list):
+        """
+        Create empty joint angles dictionary.
+        """
         
         # Create a dictionary in which the keys are the joint names and the values are empty lists.
         # This will be used for compression in ANIMATE JUST ACTIONS
         joint_angles_dict = {}
-        for joint in joint_names_list:
+        for joint in self.joint_names_list:
             joint_angles_dict[joint] = []
         
         return joint_angles_dict
@@ -246,15 +238,15 @@ class AnimationManager(object):
         These are the basic variables.  Some are empty and will be filled later.
         """
         # Decide on animation name.
-        animation_name = raw_input('Animation name: ')
+        self.animation_name = raw_input('Animation name: ')
     
         # Get the joints names only for the joints to be loosened and animated.
-        joint_names_list = self.select_list()
+        self.joint_names_list = self.select_list()
 
         # Create empty cumulative action durations list of lists for compression.
-        time_points = []
+        self.time_points = []
         # Joint angles dictionary with joint names as keys and empty lists as values.
-        joint_angles_dict = self.clean_joint_angles_dict(joint_names_list)
+        self.joint_angles_dict = self.clean_joint_angles_dict()
 
         # Insert constants into all scripts to be generated.
         script_preface ="""      
@@ -262,21 +254,19 @@ angle_modulator = {}
 duration_modulator = {}
         
 joint_names_list = {}
-                """.format(self.angle_modulator, self.duration_modulator, joint_names_list)
+                """.format(self.angle_modulator, self.duration_modulator, self.joint_names_list)
         
         # Set up for uncompressed and compressed scripts.
-        script_contents_compressed, script_contents_uncompressed = script_preface, script_preface
-
-        return animation_name, joint_names_list, joint_angles_dict, time_points, script_contents_uncompressed, script_contents_compressed 
-
-    def silent_animation(self, action_count, joint_names_list, joint_angles_dict, time_points):     
+        self.script_contents_compressed, self.script_contents_uncompressed = script_preface, script_preface
+        
+    def silent_animation(self, action_count):     
 
                 # Default movement count is 100.
                 for stage in range(action_count):
 
                     # Specify the label for the action to be recorded.
                     # Note that raw_input() is a custom module method.
-                    action_label = raw_input("Type ACTION LABEL")
+                    action_label = raw_input("Type ACTION LABEL: ")
 
                     # Check if action_label is 'quit' and break out of the loop if true to save the animation.
                     if action_label.lower() == 'quit':
@@ -284,36 +274,34 @@ joint_names_list = {}
                         break             
 
                     # Record the final joint angles of the action just labeled.
-                    joint_angles = self.nao.motion.getAngles(joint_names_list, True)     
+                    self.joint_angles = self.robot.motion.getAngles(self.joint_names_list, True)     
 
                     # Assign a duration to the action just recorded.
                     # Note that raw_input is a custom module method.
-                    action_duration = raw_input("TYPE ACTION DURATION:")      
+                    action_duration = float(raw_input("TYPE ACTION DURATION: "))      
 
                     # Custom method at top of this script for creating time and angle lists for compressed and uncompressed actions.
-                    action_durations_labeled, time_points, joint_angles_labeled, joint_angles_dict = self.after_angles_recorded(action_duration, time_points, joint_names_list, joint_angles, joint_angles_dict)
+                    action_durations_labeled, joint_angles_labeled = self.after_angles_recorded(action_duration)
 
                     ### UNCOMPRESSED SCRIPT CONTENTS ###    
                     
-                    script_contents_uncompressed += """   
-        # Movement: {} : {}
-        print("Stage: " + str({}) + ": " + "{}")
-        joint_angles = [angle_modulator * angle for  _, angle in {}]
-        action_durations = [duration_modulator * duration for _, duration in {}]
-        {}.motion.angleInterpolation(joint_names_list, joint_angles, action_durations, True)
-            """.format(stage+1, action_label, stage+1, action_label, joint_angles_labeled, action_durations_labeled, self.name[0:4])
+                    self.script_contents_uncompressed += """   
+# Movement: {} : {}
+print("Stage: " + str({}) + ": " + "{}")
+joint_angles = [angle_modulator * angle for  _, angle in {}]
+action_durations = [duration_modulator * duration for _, duration in {}]
+{}.motion.angleInterpolation(joint_names_list, joint_angles, action_durations, True)
+            """.format(stage+1, action_label, stage+1, action_label, joint_angles_labeled, action_durations_labeled, self.robot.name[0:4])
                                 
                     print("Movement " + str(stage+1) + ": " + action_label)
 
                 # Using the custom self.compress() method at the top of this script with default dialogue=0.
-                script_contents_compressed += self.compress(joint_names_list, joint_angles_dict, time_points) 
-
-                return script_contents_uncompressed, script_contents_compressed   
+                self.script_contents_compressed += self.compress() 
     
-    def save_animation(self, animation_name, script_contents_uncompressed, script_contents_compressed):
+    def save_animation(self):
 
-            uncompressed_name = animation_name + "_uncompressed.py"
-            compressed_name = animation_name + "_compressed.py"
+            uncompressed_name = self.animation_name + "_uncompressed.py"
+            compressed_name = self.animation_name + "_compressed.py"
 
             # Calculate the path relative to THIS script's location
             script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -328,27 +316,27 @@ joint_names_list = {}
                 os.makedirs(recorded_dir)
 
             with open(output_path_uc, 'w') as f:
-                f.write(script_contents_uncompressed)
+                f.write(self.script_contents_uncompressed)
             print('Uncompressed animation created.')
 
             with open(output_path_c, 'w') as f:
-                f.write(script_contents_compressed)
+                f.write(self.script_contents_compressed)
             print('Compressed animation created.') 
 
-    def animate(self, dialogue_script=0, do_dictionarize=0, action_count=100):  
+    def animate(self, dialogue_script=0, action_count=100):  
 
         # Setup variables needed to get started.
-        animation_name, joint_names_list, joint_angles_dict, time_points, script_contents_uncompressed, script_contents_compressed = self.setup_vars()
+        self.setup_vars()
         
         # Loosen the selected joints.
-        self.loosen_list(joint_names_list)
+        self.loosen_list()
 
         if dialogue_script == 0: 
-            script_contents_uncompressed, script_contents_compressed = self.silent_animation(action_count, joint_names_list, joint_angles_dict, time_points)
+            self.silent_animation(action_count)
         elif dialogue_script == 1:
             
 
-            #         def dialogue_animations(joint_names_list, joint_angles_dict, time_points):
+            #         def dialogue_animations(self.joint_names_list, joint_angles_dict, self.time_points):
 
             #             self.tts.setParameter("pitchShift", self.pitch)
 
@@ -608,7 +596,7 @@ joint_names_list = {}
             #                 joint_angles = self.motion.getAngles(joint_names_list, True)
 
             #                 # Custom method at top of this script for creating time and angle lists for compressed and uncompressed actions.
-            #                 action_durations_labeled, time_points, joint_angles_labeled, joint_angles_dict = self.after_angles_recorded(action_duration, time_points, joint_names_list, joint_angles, joint_angles_dict)
+            #                 action_durations_labeled, self.time_points, joint_angles_labeled, joint_angles_dict = self.after_angles_recorded(action_duration, self.time_points, joint_names_list, joint_angles, joint_angles_dict)
 
             #                 # This conditional inserts the dialogue line into the script        
             #                 if dialogue_in == 0:
@@ -652,15 +640,15 @@ joint_names_list = {}
             #                     # Input the line of dialogue before the compressed action.
             #                     script_contents_compressed += """\n{}.tts.post.say('{}')\n""".format(self.name[0:4], line[2])  
             #                     # Using the custom self.compress() method at the top of this script compress the action and output compressed lists for diciontarize().
-            #                     compressed_snippet, joint_angles_compressed, time_points_compressed = self.compress(joint_names_list, joint_angles_dict, time_points, dialogue=1)
+            #                     compressed_snippet, joint_angles_compressed, self.time_points_compressed = self.compress(joint_names_list, joint_angles_dict, self.time_points, dialogue=1)
             #                     script_contents_compressed += compressed_snippet
                                 
             #                     if do_dictionarize == 1:
                                         
             #                             # Put the compressed action into dialogue action dictionary format.
-            #                             self.dictionarize(animation_name, key, line[2], joint_names_list, joint_angles_compressed, time_points_compressed)
+            #                             self.dictionarize(animation_name, key, line[2], joint_names_list, joint_angles_compressed, self.time_points_compressed)
 
-            #                 time_points = []
+            #                 self.time_points = []
             #                 joint_angles_dict = self.clean_joint_angles_dict(joint_names_list)              
 
             #             print("\n")        
@@ -668,11 +656,11 @@ joint_names_list = {}
             pass
 
         ### SAVE THE THE GENERATED SCRIPT, REGARDLESS OF WHETHER IT IS A PLAIN ACTION SCRIPT OR A DIALOGUE ACTION SCRIPT ###
-        self.save_animation(animation_name, script_contents_uncompressed, script_contents_compressed)
+        self.save_animation()
 
         # Restore default volume and stiffness
-        self.nao.audio_device.setOutputVolume(self.volume)
-        self.mm.stiff()
+        self.robot.audio_device.setOutputVolume(self.volume)
+        self.robot.mm.stiff()
 
 
 

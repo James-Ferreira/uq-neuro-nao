@@ -3,10 +3,10 @@ from __future__ import absolute_import
 
 import time
 
-from src_py2.robot.animation_manager import AnimationManager
+from src_py2.robot.nao_robot import NAORobot
 
-meta = AnimationManager("meta")
+clas = NAORobot("clas")
 #clas = Converse("clas")
 
 if __name__ == "__main__":
-    meta.animate()
+    clas.anm.animate()
