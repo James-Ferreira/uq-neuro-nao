@@ -1,0 +1,10 @@
+      
+angle_modulator = 1.0
+duration_modulator = 1.0
+        
+joint_names_list = ['HeadYaw', 'HeadPitch', 'LShoulderPitch', 'LShoulderRoll', 'LElbowYaw', 'LElbowRoll', 'LWristYaw', 'LHand', 'RShoulderPitch', 'RShoulderRoll', 'RElbowYaw', 'RElbowRoll', 'RWristYaw', 'RHand']
+                   
+joint_angles = [angles_compressed for _, angles_compressed in [['HeadYaw', [-0.015382051467895508, -0.4648439884185791, -0.06907200813293457]], ['HeadPitch', [-0.06293606758117676, 0.027570009231567383, 0.590548038482666]], ['LShoulderPitch', [0.16716408729553223, 0.20858192443847656, 0.9080860614776611]], ['LShoulderRoll', [0.004559993743896484, 0.03984212875366211, 0.1840381622314453]], ['LElbowYaw', [-0.9741320610046387, -2.0924181938171387, -0.5108640193939209]], ['LElbowRoll', [-1.1274480819702148, -1.1872740983963013, -1.0093300342559814]], ['LWristYaw', [-0.02611994743347168, -0.1764519214630127, 0.09199810028076172]], ['LHand', [0.29399996995925903, 0.29399996995925903, 0.29399996995925903]], ['RShoulderPitch', [0.9357819557189941, 0.9403839111328125, 0.938849925994873]], ['RShoulderRoll', [-0.3068418502807617, -0.31297802925109863, -0.3068418502807617]], ['RElbowYaw', [0.4724299907684326, 0.47089600563049316, 0.4754979610443115]], ['RElbowRoll', [1.199629783630371, 1.20269775390625, 1.1965618133544922]], ['RWristYaw', [-0.007711887359619141, -0.009245872497558594, -0.0061779022216796875]], ['RHand', [0.2979999780654907, 0.2979999780654907, 0.2979999780654907]]]]
+time_points = [time_points_compressed for _, time_points_compressed in [['HeadYaw', [1.25, 2.25, 3.5]], ['HeadPitch', [1.25, 2.25, 3.5]], ['LShoulderPitch', [1.25, 2.25, 3.5]], ['LShoulderRoll', [1.25, 2.25, 3.5]], ['LElbowYaw', [1.25, 2.25, 3.5]], ['LElbowRoll', [1.25, 2.25, 3.5]], ['LWristYaw', [1.25, 2.25, 3.5]], ['LHand', [1.25, 2.25, 3.5]], ['RShoulderPitch', [1.25, 2.25, 3.5]], ['RShoulderRoll', [1.25, 2.25, 3.5]], ['RElbowYaw', [1.25, 2.25, 3.5]], ['RElbowRoll', [1.25, 2.25, 3.5]], ['RWristYaw', [1.25, 2.25, 3.5]], ['RHand', [1.25, 2.25, 3.5]]]]
+meta.motion.angleInterpolation(joint_names_list, joint_angles, time_points, True)
+        

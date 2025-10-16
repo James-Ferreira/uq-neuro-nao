@@ -1,0 +1,10 @@
+      
+angle_modulator = 1.0
+duration_modulator = 1.0
+        
+joint_names_list = ['HeadYaw', 'HeadPitch', 'LShoulderPitch', 'LShoulderRoll', 'LElbowYaw', 'LElbowRoll', 'LWristYaw', 'LHand', 'RShoulderPitch', 'RShoulderRoll', 'RElbowYaw', 'RElbowRoll', 'RWristYaw', 'RHand']
+                   
+joint_angles = [angles_compressed for _, angles_compressed in [['HeadYaw', [0.0060939788818359375, 0.007627964019775391, 0.007627964019775391]], ['HeadPitch', [0.3711860179901123, 0.3711860179901123, 0.3711860179901123]], ['LShoulderPitch', [0.8206479549407959, 0.9172899723052979, 0.9157559871673584]], ['LShoulderRoll', [-0.042994022369384766, 0.25, 0.25]], ['LElbowYaw', [-0.6688659191131592, -0.46331000328063965, -0.46331000328063965]], ['LElbowRoll', [-0.5460619926452637, -1.1688660383224487, -1.1688660383224487]], ['LWristYaw', [-1.0646381378173828, -1.1474738121032715, -1.1474738121032715]], ['LHand', [0.7103999853134155, 0.7103999853134155, 0.7103999853134155]], ['RShoulderPitch', [0.9204421043395996, 0.9219760894775391, 0.9219760894775391]], ['RShoulderRoll', [-0.2884340286254883, -0.2884340286254883, -0.2884340286254883]], ['RElbowYaw', [0.4693620204925537, 0.47089600563049316, 0.47089600563049316]], ['RElbowRoll', [1.129065990447998, 1.1275320053100586, 1.1259980201721191]], ['RWristYaw', [1.6658821105957031, 1.6658821105957031, 1.6658821105957031]], ['RHand', [0.29680001735687256, 0.29680001735687256, 0.29680001735687256]]]]
+time_points = [time_points_compressed for _, time_points_compressed in [['HeadYaw', [1.2, 2.2, 3.2]], ['HeadPitch', [1.2, 2.2, 3.2]], ['LShoulderPitch', [1.2, 2.2, 3.2]], ['LShoulderRoll', [1.2, 2.2, 3.2]], ['LElbowYaw', [1.2, 2.2, 3.2]], ['LElbowRoll', [1.2, 2.2, 3.2]], ['LWristYaw', [1.2, 2.2, 3.2]], ['LHand', [1.2, 2.2, 3.2]], ['RShoulderPitch', [1.2, 2.2, 3.2]], ['RShoulderRoll', [1.2, 2.2, 3.2]], ['RElbowYaw', [1.2, 2.2, 3.2]], ['RElbowRoll', [1.2, 2.2, 3.2]], ['RWristYaw', [1.2, 2.2, 3.2]], ['RHand', [1.2, 2.2, 3.2]]]]
+meta.motion.angleInterpolation(joint_names_list, joint_angles, time_points, True)
+        
