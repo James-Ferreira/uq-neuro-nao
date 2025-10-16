@@ -258,27 +258,83 @@ joint_names_list = {}
         
         # Set up for uncompressed and compressed scripts.
         self.script_contents_compressed, self.script_contents_uncompressed = script_preface, script_preface
+
+    ### RAW INPUT HANDLING ###
+
+    def float_check(self, string):
+
+        """Ensure that raw string input is floatable"""
+        try:
+            float(string)
+            return True
+        except (TypeError, ValueError):
+            return False
         
+    def get_action_label(self):
+
+        """
+        In case of inadvertent entry of a number for action label, repeat instead of breaking script
+        """
+
+        repeat = True
+        while repeat:
+
+            # Specify the label for the action to be recorded.
+            # Note that raw_input() is a custom module method.
+            action_label = raw_input("Type ACTION LABEL: ")
+
+            is_float = self.float_check(action_label)  
+
+            if is_float:
+                print("       !!!input a STRING, dammit!")
+                repeat = True                    
+            else:
+                repeat = False                           
+
+        return action_label    
+
+    def get_action_duration(self):
+
+        """
+        In case of inadvertent entry of a string for action duration, repeat instead of breaking script
+        """
+
+        repeat = True
+        while repeat:
+            # Assign a duration to the action just recorded.
+            # Note that raw_input is a custom module method.
+            action_duration_raw = raw_input("TYPE ACTION DURATION: ") 
+
+            is_float = self.float_check(action_duration_raw)  
+
+            if is_float:
+                action_duration = float(action_duration_raw)
+                repeat = False   
+            else:
+                print("         !!!input a FLOAT or INTEGER, dammit!!!")
+
+        return action_duration 
+
+
+    ### ANIMATION VARIANTS    
     def silent_animation(self, action_count):     
 
                 # Default movement count is 100.
                 for stage in range(action_count):
-
-                    # Specify the label for the action to be recorded.
-                    # Note that raw_input() is a custom module method.
-                    action_label = raw_input("Type ACTION LABEL: ")
+                    
+                    # raw input for action label
+                    action_label = self.get_action_label()
 
                     # Check if action_label is 'quit' and break out of the loop if true to save the animation.
                     if action_label.lower() == 'quit':
                         print("Exiting early because 'quit' was entered.")
-                        break             
+                        break                             
 
-                    # Record the final joint angles of the action just labeled.
-                    self.joint_angles = self.robot.motion.getAngles(self.joint_names_list, True)     
+                    # Record the final joint angles of the action just labeled. ACTION RECORDED AFTER ACTION LABEL, NOT AFTER TIME
+                    self.joint_angles = self.robot.motion.getAngles(self.joint_names_list, True)    
 
-                    # Assign a duration to the action just recorded.
-                    # Note that raw_input is a custom module method.
-                    action_duration = float(raw_input("TYPE ACTION DURATION: "))      
+                    # Input the action duration
+                    action_duration = self.get_action_duration()  
 
                     # Custom method at top of this script for creating time and angle lists for compressed and uncompressed actions.
                     action_durations_labeled, joint_angles_labeled = self.after_angles_recorded(action_duration)
