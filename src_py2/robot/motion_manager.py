@@ -131,7 +131,7 @@ class MotionManager:
         
     def loose(self):
         # Body parts to loosen
-        lower_body_parts = [
+        body_parts = [
             "Head", "LArm", "RArm",
             "LHipYawPitch", "LHipRoll", "LHipPitch", "LKneePitch", 
             "LAnklePitch", "LAnkleRoll", 
@@ -140,12 +140,22 @@ class MotionManager:
             ]
     
         # Set looseness to full body
-        for part in lower_body_parts:
+        for part in body_parts:
+            self.motion.setStiffnesses(part, 0.0)
+
+    def loose_t(self):
+        # Body parts to loosen
+        body_parts = [
+            "Head", "LArm", "RArm",
+            ]
+    
+        # Set looseness to full body
+        for part in body_parts:
             self.motion.setStiffnesses(part, 0.0)
            
     def stiff(self):
         # Body parts to keep stiff (hips and legs)
-        lower_body_parts = [
+        body_parts = [
             "Head", "LArm", "RArm",
             "LHipYawPitch", "LHipRoll", "LHipPitch", "LKneePitch", 
             "LAnklePitch", "LAnkleRoll", 
@@ -154,7 +164,7 @@ class MotionManager:
             ]
     
         # Set stiffness for the lower body to 1.0 (stiff)
-        for part in lower_body_parts:
+        for part in body_parts:
             self.motion.setStiffnesses(part, 1.0)
 
     def catch_fly(self):

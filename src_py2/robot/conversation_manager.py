@@ -1,34 +1,41 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, print_function
 from src_py2.robot.nao_robot import NAORobot
+from src_py2.robot.motion_library import motions
+
 
 import random
 import re
 import time
 import unittest
 
+#td strip quotation marks
+
 class ConversationManager(object):
 
     def __init__(self, robot):
         self.robot = robot
-        self.set_duration_variables()
-        self.set_joint_variables()
+        self.set_syll_duration_vars()
+        self.set_rand_duration_vars()
+        self.set_rand_joint_vars()
         self.set_gesture_tags()
 
-    def set_duration_variables(self):        
-        # durations
+    def set_syll_duration_vars(self):        
+        # Pause and syllable durations
         #self.character_duration = 0.075
         self.short_pause_duration = 0.05
         self.long_pause_duration = 0.1
         self.short_weight = 0.15
         self.long_weight = 0.2
+    
+    def set_rand_duration_vars(self):
 
         self.gest_duration_arm = 1.2
         self.gest_duration_hand = 0.8
         self.gest_duration_head = 0.5
         self.sleep_duration = 0.2 
 
-    def set_joint_variables(self):
+    def set_rand_joint_vars(self):
 
         # sets of joints
         self.joints_arms =[
@@ -39,90 +46,41 @@ class ConversationManager(object):
         self.joints_lhand = ['LWristYaw', 'LHand']
         self.joints_head = ['HeadYaw', 'HeadPitch']
         self.joints_headarms = [
-                                    'LShoulderPitch', 'LShoulderRoll', 'LElbowYaw', 'LElbowRoll', 
-                                    'RShoulderPitch', 'RShoulderRoll', 'RElbowYaw', 'RElbowRoll', 
-                                    'HeadYaw', 'HeadPitch', 
+                                        'HeadYaw', 'HeadPitch', 
+                                        'LShoulderPitch', 'LShoulderRoll', 'LElbowYaw', 'LElbowRoll', 
+                                        'RShoulderPitch', 'RShoulderRoll', 'RElbowYaw', 'RElbowRoll'                                                                      
                                       ]
-        self.joints_headarmshands = [
-                                    'LShoulderPitch', 'LShoulderRoll', 'LElbowYaw', 'LElbowRoll', 
-                                    'RShoulderPitch', 'RShoulderRoll', 'RElbowYaw', 'RElbowRoll', 
-                                    'HeadYaw', 'HeadPitch', 
-                                    'RWristYaw', 'RHand',
-                                    'LWristYaw', 'LHand']
-                                
-        self.joints_dict = {
-                'shake head no': ['HeadYaw'],
-                'nod yes': ['HeadPitch']
-                # 'point forward': self.joints_headarmshands,
-                # 'point to self': self.joints_headarmshands,
-                # 'lower head': self.joints_headarmshands,
-                # 'shake lowered head': self.joints_headarmshands,
-                # 'pump fist': self.joints_headarmshands,
-                # 'wave fist': self.joints_headarmshands,
-                # 'wave hand': self.joints_headarmshands,
-                # 'spread arms': self.joints_headarmshands,
-                # 'raise arm': self.joints_headarmshands,
-                # 'shrug': self.joints_headarmshands
-            }
-        
+
         # sets of angles
-        self.angles_other_hand = [[0], [0.4]]         
-        self.angles_dict = {
+        self.rand_angles_other_hand = [[0], [0.4]]         
+        self.rand_angles_dict = {
                         'left_out': [[angle] for  _, angle in [['LShoulderPitch', 0.9556400775909424], ['LShoulderRoll', 0.45095396041870117], ['LElbowYaw', -2.074009895324707], ['LElbowRoll', -1.178070068359375], ['RShoulderPitch', 0.9357819557189941], ['RShoulderRoll', -0.2945699691772461], ['RElbowYaw', 0.4524879455566406], ['RElbowRoll', 1.1674160957336426]]],
                         'left_up': [[angle] for  _, angle in [['LShoulderPitch', 0.8129780292510986], ['LShoulderRoll', 0.14108610153198242], ['LElbowYaw', -1.4420018196105957], ['LElbowRoll', -1.3222661018371582], ['RShoulderPitch', 0.9342479705810547], ['RShoulderRoll', -0.29610395431518555], ['RElbowYaw', 0.4524879455566406], ['RElbowRoll', 1.1612801551818848]]],
                         'left_over': [[angle] for  _, angle in [['LShoulderPitch', 0.760822057723999], ['LShoulderRoll', -0.0061779022216796875], ['LElbowYaw', -0.6121079921722412], ['LElbowRoll', -1.2056820392608643], ['RShoulderPitch', 0.9357819557189941], ['RShoulderRoll', -0.29917192459106445], ['RElbowYaw', 0.4540219306945801], ['RElbowRoll', 1.1873579025268555]]],
                         'right_out': [[angle] for  _, angle in [['LShoulderPitch', 0.9080860614776611], ['LShoulderRoll', 0.2438640594482422], ['LElbowYaw', -0.4556400775909424], ['LElbowRoll', -1.0752921104431152], ['RShoulderPitch', 0.6243798732757568], ['RShoulderRoll', -0.09208202362060547], ['RElbowYaw', 2.0248379707336426], ['RElbowRoll', 1.1704840660095215]]],
                         'right_over': [[angle] for  _, angle in [['LShoulderPitch', 0.9080860614776611], ['LShoulderRoll', 0.24539804458618164], ['LElbowYaw', -0.4556400775909424], ['LElbowRoll', -1.0768260955810547], ['RShoulderPitch', 0.5737578868865967], ['RShoulderRoll', -0.033789873123168945], ['RElbowYaw', 0.3282339572906494], ['RElbowRoll', 1.415924072265625]]],
-                        'right_up':  [[angle] for  _, angle in [['LShoulderPitch', 0.9080860614776611], ['LShoulderRoll', 0.23926210403442383], ['LElbowYaw', -0.45717406272888184], ['LElbowRoll', -1.0722241401672363], ['RShoulderPitch', 0.8007900714874268], ['RShoulderRoll', 0.06592011451721191], ['RElbowYaw', 1.366752028465271], ['RElbowRoll', 1.4803519248962402]]],
-                        'shake head no': [[0.6, -0.6]],
-                        'nod yes': [[0.7, -0.1]],
-                        'point forward': [],
-                        'point to self': [],
-                        'lower head': [],
-                        'shake lowered head': [],
-                        'pump fist': [],
-                        'wave fist': [],
-                        'wave hand': [],
-                        'spread arms': [],
-                        'raise arm': [],
-                        'shrug': []                
+                        'right_up':  [[angle] for  _, angle in [['LShoulderPitch', 0.9080860614776611], ['LShoulderRoll', 0.23926210403442383], ['LElbowYaw', -0.45717406272888184], ['LElbowRoll', -1.0722241401672363], ['RShoulderPitch', 0.8007900714874268], ['RShoulderRoll', 0.06592011451721191], ['RElbowYaw', 1.366752028465271], ['RElbowRoll', 1.4803519248962402]]]
                         }
         
         # sets of time points
-        self.timepoints_other_hand = [[0.75], [1.5]]
-        self.timepoints_dict = {
-                                'shake head no': [[0.3, 0.7]],
-                                'nod yes': [[0.67, 1.3]],
-                                'point forward': [],
-                                'point to self': [],
-                                'lower head': [],
-                                'shake lowered head': [],
-                                'pump fist': [],
-                                'wave fist': [],
-                                'wave hand': [],
-                                'spread arms': [],
-                                'raise arm': [],
-                                'shrug': []  
-                                }
-
+        self.rand_timepoints_other_hand = [[0.75], [1.5]]
 
     def set_gesture_tags(self):
         # set special gesture tags
         # 1 = single, 2 = cyclical
         self.gesture_tags = {
-                        "[point forward]": 1, 
-                        "[point to self]": 1,
-                        "[point up]": 1,
-                        "[point down]": 1, 
-                        "[shake head no]": 2, 
-                        "[nod yes]": 2, 
-                        "[lower head]": 1, 
-                        "[shake lowered head]": 2, 
-                        "[pump fist]": 2, 
-                        "[wave fist]": 2, 
-                        "[wave hand]": 2,
-                        "[spread arms]": 1, 
-                        "[shrug]": 1,
+                            "facepalm": 1,
+                            "look upward": 1,
+                            "point down": 1,
+                            "point forward": 1,
+                            "point to self": 1,
+                            "point up": 1,
+                            "pump fist": 1,
+                            "scratch head": 1,
+                            "shake fist": 1,
+                            "shrug": 1,
+                            "spread arms": 1,
+                            "wave hand": 1
                         }
     
     ###  TEXT HANDLING
@@ -223,17 +181,21 @@ class ConversationManager(object):
         """
 
         # Estimate total pause duration
-        short_pauses = segment.count(" ")
-        long_pauses = len(re.findall(r"[,:]", segment)) 
-        total_pause_duration = self.short_pause_duration * short_pauses + self.long_pause_duration * long_pauses
+        if segment == "":
+            total_duration = 0
+            return total_duration
+        else:
+            short_pauses = segment.count(" ")
+            long_pauses = len(re.findall(r"[,:]", segment)) 
+            total_pause_duration = self.short_pause_duration * short_pauses + self.long_pause_duration * long_pauses
 
-        # Estimate total word duration
-        analysis = self.analyze_segment(segment)
-        total_word_duration = 0.0
-        for _, typ in analysis:
-            total_word_duration += self.short_weight if typ == 'short' else self.long_weight
-        total_duration = total_pause_duration + total_word_duration
-        return total_duration
+            # Estimate total word duration
+            analysis = self.analyze_segment(segment)
+            total_word_duration = 0.0
+            for _, typ in analysis:
+                total_word_duration += self.short_weight if typ == 'short' else self.long_weight
+            total_duration = total_pause_duration + total_word_duration
+            return total_duration
     
     def estimate_durations(self, segments):
 
@@ -248,7 +210,17 @@ class ConversationManager(object):
 
         return durations_est, durations_total_est
 
-    ### INTEGRATED SEGMENT HANDLING
+    ### INTEGRATED SEGMENT HANDLING        
+
+    def lstrip_punct_keep_bracket(self, s):
+        """Remove leading punctuation/specials but preserve a leading '[' if present."""
+
+        # Strip leading chars that are NOT letters, digits, or '['
+        _LEADING_JUNK_EXCEPT_LBRACKET = re.compile(r'^[^A-Za-z0-9\[]+')
+
+        if s is None:
+            return ""
+        return _LEADING_JUNK_EXCEPT_LBRACKET.sub('', s)
 
     def preprocess_segments(self, text):
 
@@ -259,18 +231,22 @@ class ConversationManager(object):
         """
 
         # Divide text into segments.
-        segments = self.split_text(text)
-        print("segments: {}".format(segments))
+        segments_raw = self.split_text(text)
+        print("segments: {}".format(segments_raw))
 
         segments_list = []
-        for segment in segments:            
+        for segment_raw in segments_raw:            
+
+            # NAO will pronounce many segment-initial punctuation marks. This leaves only the tag marker [ at the start.
+            segment = self.lstrip_punct_keep_bracket(segment_raw)
 
             # Simply turn segments with multiple tags into untagged segments, for now.
             if len(re.findall(r"\[.*?\]", segment)) > 1:
-                segment = self.remove_tags(text)
+                segment = self.remove_tags(segment)
 
             # Identify tag, if present
             tag, gest_type = self.check_for_tags(segment)
+            print("TAG: {}, gest_type: {}".format(tag, gest_type)) #666
 
             if tag == None:
                 #Estimate segment durations
@@ -310,8 +286,10 @@ class ConversationManager(object):
             if tag in self.gesture_tags:
                 gesture_type = self.gesture_tags[tag]
                 return tag, gesture_type
-
-        return None, "random"
+            else:
+                return None, "random"
+        else:
+            return None, "random"
     
     def remove_tags(self, segment):
 
@@ -360,34 +338,34 @@ class ConversationManager(object):
 
         return cumulative_long_list
     
-    def set_tagged_gest_cyclical(self, tag, posttag_seg_duration):
+    # def set_tagged_gest_cyclical(self, tag, posttag_seg_duration):
 
-        # this is for cyclical gestures!!!
-        # probably cycles should go to 3 no matter what and this function should be removed.
+    #     # this is for cyclical gestures!!!
+    #     # probably cycles should go to 3 no matter what and this function should be removed.
 
-        joints = self.joints_dict[tag]
+    #     joints = self.joints_dict[tag]
         
-        timepoints_min = self.timepoints_dict[tag]
-        timepoints_max = []
-        print("timepoints_min: {}".format(timepoints_min))
-        final_timepoint_min = timepoints_min[-1][-1]
-        reps = int(posttag_seg_duration / final_timepoint_min)
+    #     timepoints_min = self.timepoints_dict[tag]
+    #     timepoints_max = []
+    #     print("timepoints_min: {}".format(timepoints_min))
+    #     final_timepoint_min = timepoints_min[-1][-1]
+    #     reps = int(posttag_seg_duration / final_timepoint_min)
 
-        for i in timepoints_min:
-            maxed = self.get_cumulative_multiple(i, reps)
-            timepoints_max += [maxed]
+    #     for i in timepoints_min:
+    #         maxed = self.get_cumulative_multiple(i, reps)
+    #         timepoints_max += [maxed]
 
-        print('reps: {}'.format(reps))
-        print("timepoints: {}".format(timepoints_max))
+    #     print('reps: {}'.format(reps))
+    #     print("timepoints: {}".format(timepoints_max))
 
-        angles_min = self.angles_dict[tag]
-        angles_max = []
-        for i in angles_min:
-            maxed = i * reps
-            angles_max += [maxed]
-        print("angles: {}".format(angles_max))
+    #     angles_min = self.rand_angles_dict[tag]
+    #     angles_max = []
+    #     for i in angles_min:
+    #         maxed = i * reps
+    #         angles_max += [maxed]
+    #     print("angles: {}".format(angles_max))
 
-        return joints, angles_max, timepoints_max
+    #     return joints, angles_max, timepoints_max
 
     def set_tagged_gest_single(self, tag, duration):
 
@@ -396,22 +374,21 @@ class ConversationManager(object):
         """      
 
         # Only load the gesture, if its duration does not exceed the duration of the speech segment estimate by more than 0.5s
-        timepoints_check = self.timepoints_dict[tag]
-        timepoint_max = max(max(sublist) for sublist in timepoints)
+        timepoints = motions.get(tag, {}).get("time_points_list", []) # with a default if missing
+        timepoint_max = max(max(sublist) for sublist in timepoints) 
         if duration + 0.5 < timepoint_max:
             joints = []
             angles = []
             timepoints = []
         else:
             joints = self.joints_dict[tag] 
-            angles = self.angles_dict[tag]
-            timepoints = timepoints_check
+            angles = self.rand_angles_dict[tag]
 
         return joints, angles, timepoints
     
-    def execute_pretag_gest(segment, duration_est):
+    def execute_pretag_gest(self, segment, duration_est):
         # Sit if there is time, otherwise hold last posture.
-        if duration_est > 1.25:
+        if duration_est > 1.5:
             self.robot.mm.sit_gently(post=True)
         self.robot.tts.say(segment)
 
@@ -425,19 +402,28 @@ class ConversationManager(object):
 
             posttag_joints, posttag_angles, posttag_timepoints = [], [], []
             if gesture_type == 1:
-                posttag_joints, posttag_angles, posttag_timepoints = self.set_tagged_gest_single(tag, duration_est)
+
+                self.robot.tts.post.say(posttag_segment)
+                self.robot.mm.use_motion_library(tag)
+                # # Only load the gesture, if its duration does not exceed the duration of the speech segment estimate by more than 0.5s
+                # timepoints = motions.get(tag, {}).get("time_points_list", []) # with a default if missing
+                # timepoint_max = max(max(sublist) for sublist in timepoints) 
+                # if duration_est + 0.5 > timepoint_max:
+                #     # Execute posttag segment with speech
+                #     self.robot.mm.use_motion_library(tag, post=True)
+                # else:
+                #     pass
             elif gesture_type == 2:
-                posttag_joints, posttag_angles, posttag_timepoints = self.set_tagged_gest_cyclical(tag, duration_est)
+                pass
+            #     posttag_joints, posttag_angles, posttag_timepoints = self.set_tagged_gest_cyclical(tag, duration_est)
             else:
                 print('CUSTOM ERROR: key in gesture dictionary is neither 1 nor 2')
             
-            # Execute posttag segment with speech
-            self.robot.motion.post.angleInterpolation(posttag_joints, posttag_angles, posttag_timepoints, True)
-            self.robot.tts.say(posttag_segment)     
+            #self.robot.tts.say(posttag_segment)     
 
     ### RANDOM GESTURE HANDLING
     
-    def set_angles_hand(self, reps_hand):
+    def set_random_hand(self, reps_hand):
         yaws, hands = [], []
         yaw = hand = 0  # initialize to arbitrary values
 
@@ -451,7 +437,7 @@ class ConversationManager(object):
 
         return [yaws, hands]
 
-    def set_angles_head(self, reps_head):
+    def set_random_head(self, reps_head):
         yaws, pitches = [], []
         yaw = pitch = 0  # initialize to arbitrary values
 
@@ -476,55 +462,55 @@ class ConversationManager(object):
         reps_head = (duration_est - self.gest_duration_arm - 1)*2
         return int(reps_head)
     
-    def set_gest_arm(self, side):
+    def set_random_arm(self, side):
 
         gesture_arm = side + random.choice(['up', 'out', 'over'])
 
         return gesture_arm
     
-    def set_gest_standard(self, duration):
+    def set_random_gest(self, duration):
 
         # Side
         side = self.set_side()            
 
         # Arms            
-        gesture_arm = self.set_gest_arm(side)
-        angles_arm = self.angles_dict[gesture_arm]
+        gesture_arm = self.set_random_arm(side)
+        angles_arm = self.rand_angles_dict[gesture_arm]
         timepoints_arm = [[self.gest_duration_arm]] * len(angles_arm)
 
         # Head
         reps_head = self.set_reps_head(duration)
-        angles_head = self.set_angles_head(reps_head)
+        angles_head = self.set_random_head(reps_head)
         timepoints_head = [[self.gest_duration_head * (i + 1) for i in range(reps_head)] for _ in range(2)]
 
         # Hands
         joints_hand, joints_other_hand = self.set_hand_joints(side)
         reps_hand = self.set_reps_hand(duration)
-        angles_hand = self.set_angles_hand(reps_hand)
+        angles_hand = self.set_random_hand(reps_hand)
         timepoints_hand = [[round(self.gest_duration_hand * (i + 1), 2) for i in range(reps_hand)] for _ in range(2)]
 
         # Integrate joints, angles and time points into Torso lists
 
         joints_torso = self.joints_headarms + joints_hand + joints_other_hand
         print("joints_torso: {}".format(joints_torso))
-        angles_torso = angles_arm + angles_head + angles_hand + self.angles_other_hand
+        angles_torso = angles_head + angles_arm + angles_hand + self.rand_angles_other_hand
         print(("angles_torso: {}".format(angles_torso)))           
 
         print("timepoints arm: {}".format(timepoints_arm))
         print("timepoints head: {}".format(timepoints_head))
         print("timepoints hand: {}".format(timepoints_hand))
         print("timepoints hand: {}".format(timepoints_hand))
-        print("timepoints other hand: {}".format(self.timepoints_other_hand))
-        print("timepoints other hand: {}".format(self.timepoints_other_hand))
+        print("timepoints other hand: {}".format(self.rand_timepoints_other_hand))
+        print("timepoints other hand: {}".format(self.rand_timepoints_other_hand))
 
-        timepoints_torso = timepoints_arm + timepoints_head + timepoints_hand + self.timepoints_other_hand
+        timepoints_torso = timepoints_head + timepoints_arm + timepoints_hand + self.rand_timepoints_other_hand
         print('timepoints_torso', timepoints_torso)
 
         return joints_torso, angles_torso, timepoints_torso
     
     def execute_random_gests(self, segment, duration):
 
-            joints, angles, timepoints = self.set_gest_standard(duration)
+            joints, angles, timepoints = self.set_random_gest(duration)
 
             # Execute posttag segment with speech
             self.robot.motion.post.angleInterpolation(joints, angles, timepoints, True)
@@ -586,7 +572,7 @@ class ConversationManager(object):
         mean_percentage = summed / len(percentages)
         print("MEAN ACCURACY PERCENTAGE: {}".format(mean_percentage))
 
-    def gns(self, text):
+    def speak_n_gest(self, text):
 
         """
         Speak via NAORobot TTS and simultaneously gesture.
@@ -610,6 +596,7 @@ class ConversationManager(object):
 
             # Execute gentle sit on prettag segment, if there is time
             if tag == "pretag":
+                pass
                 self.execute_pretag_gest(segment, duration_est)
             # Execute tagged gesture on posttag segment
             elif tag is not None:

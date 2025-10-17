@@ -1,25 +1,43 @@
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import
+import re
 
-import time
+gesture_tags = {
+                    "[point forward]": 1, 
+                    "point to self": 1,
+                    "[point up]": 1,
+                    "[point down]": 1, 
+                    "[shake head no]": 1, 
+                    "[nod yes]": 1, 
+                    "[lower head]": 1, 
+                    "[shake lowered head]": 1, 
+                    "[pump fist]": 1, 
+                    "[wave fist]": 1, 
+                    "[wave hand]": 1,
+                    "[spread arms]": 1, 
+                    "[shrug]": 1,
+                    }
 
-from src_py2.robot.conversation_manager import Converse
 
-meta = Converse("meta")
+# Python 2
+import re
 
 
+
+def lstrip_punct_keep_bracket(s):
+    """Remove leading punctuation/specials but preserve a leading '[' if present."""
+
+    # Strip leading chars that are NOT letters, digits, or '['
+    _LEADING_JUNK_EXCEPT_LBRACKET = re.compile(r'^[^A-Za-z0-9\[]+')
+
+    if s is None:
+        return ""
+    return _LEADING_JUNK_EXCEPT_LBRACKET.sub('', s)
+
+    
 if __name__ == "__main__":
     
-    # meta.say("coconut sucker")
-    # time.sleep(0.1)
-    # clas.say("condermilions")
-
-    meta.mm.sit()
-
-
-    text = "One of the common motivations behind why a necrophiliac is sexually attracted to a corpse is the notion that they own an object or sexual partner that does not resist or reject them. " \
-    "Havelock Ellis claimed that necrophilia and algolagnia (sexual pleasure derived from pain, especially around erogenous areas) were interrelated. " \
-    "Both acts refer to how negative effects like fear and disgust are transformed into feelings of arousal and desire."
+    segment = "[!point to self] if you ask me, the mafia are a big part of the deep state."
+    print(segment) 
+    segment = lstrip_punct_keep_bracket(segment)
+    print(segment)
 
 
-    meta.gns(text)
