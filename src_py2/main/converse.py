@@ -14,8 +14,17 @@ if __name__ == "__main__":
     # text = "take a hot towel bath now."
     # clas.cm.speak(text)
     text2 = """
-    "[point to self] if you ask me, the mafia are a big part of the deep state. 
-
+    # And this one is just regular old random, but you feel it, don't you?
+    # [look upward] Just look at the stars, will you? They are so beautiful.
+    # You know what?  You can [point down] go to hell and stay there!
+    # Lots of people like green tea, but [point forward] what about you?
+    # [point up] God is looking down at us and sees everything we do.
+    # Yes! [pump fist] Hell yeah, hell yeah, we won!
+    # Geez, [scratch head] I don't know what to think about that.
+    # [shake fist] You bastards, you damn bastards.
+    # [shrug] You got me, I don't have a clue.
+    # [spread arms] Come one, come all.  We shall have feasting this night.
+    # [wave hand] Bye bye folks.
     """
 
     # meta.speak_n_time(text2)
@@ -23,14 +32,14 @@ if __name__ == "__main__":
 
     #MEAN ACCURACY PERCENTAGE: 0.824859115911
 
-    #     [pump fist] I'm rooting for jfk the sequel.
-    # Right, I should also do some of my random untagged gestures for you.
-    # [point forward] So what is your opinion on this important matter?
-    # I used to think that washing in the sink was a good idea, but now I believe [point up] it's all up to God.
-    # [look upward] Hey, I could use some help down here, big guy.
-    # Another sequence of random gestures.
-    # Well: [shrug] you got me. I have no idea.
-    # Bad people, you know, they go [point down] down to hell and suffer forever.
-    # [shake fist] You damn bastards, you damn pieces of shit.
-    # Oh God. [facepalm] I can't believe how dumb that guy is.
-    # He's got [spread arms] the whole world in his hands. 
+    # And this one is just regular old random, but you feel it, don't you?
+    # [look upward] Just look at the stars, will you? They are so beautiful.
+    # You know what?  You can [point down] go to hell and stay there!
+    # Lots of people like green tea, but [point forward] what about you?
+    # [point up] God is looking down at us and sees everything we do.
+    # Yes! [pump fist] Hell yeah, hell yeah, we won!
+    # Geez, [scratch head] I don't know what to think about that.
+    # [shake fist] You bastards, you damn bastards.
+    # [shrug] You got me, I don't have a clue.
+    # [spread arms] Come one, come all.  We shall have feasting this night.
+    # [wave hand] Bye bye folks.

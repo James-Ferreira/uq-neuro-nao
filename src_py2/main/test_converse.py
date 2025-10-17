@@ -20,11 +20,14 @@ gesture_tags = {
 # Python 2
 import re
 
-# Strip leading chars that are NOT letters, digits, or '['
-_LEADING_JUNK_EXCEPT_LBRACKET = re.compile(r'^[^A-Za-z0-9\[]+')
+
 
 def lstrip_punct_keep_bracket(s):
     """Remove leading punctuation/specials but preserve a leading '[' if present."""
+
+    # Strip leading chars that are NOT letters, digits, or '['
+    _LEADING_JUNK_EXCEPT_LBRACKET = re.compile(r'^[^A-Za-z0-9\[]+')
+
     if s is None:
         return ""
     return _LEADING_JUNK_EXCEPT_LBRACKET.sub('', s)
