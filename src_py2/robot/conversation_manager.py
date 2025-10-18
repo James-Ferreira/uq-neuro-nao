@@ -1,15 +1,14 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, print_function
-from src_py2.robot.nao_robot import NAORobot
 from src_py2.robot.motion_library import motions
+import src_py2.api.transcribe as transcribe
 
-
+import os
 import random
 import re
+import string
 import time
 import unittest
-
-#td strip quotation marks
 
 class ConversationManager(object):
 
@@ -19,6 +18,24 @@ class ConversationManager(object):
         self.set_rand_duration_vars()
         self.set_rand_joint_vars()
         self.set_gesture_tags()
+        self.set_sound_library()
+
+    ### INIT FUNCTIONS
+
+    def set_sound_library(self):
+
+        self.sound_library = {
+            "start_listening": "/home/nao/AUDIO/listen_start.mp3",
+            "stop_listening": "/home/nao/AUDIO/listen_stop2.mp3",
+            "thinking_human": "/home/nao/AUDIO/thinking_human2.mp3",
+            "victory_path": "/home/nao/AUDIO/we_won_1.mp3",
+            "correct_sound_a": "/home/nao/AUDIO/correct_4-10.mp3", #3.5s
+            "incorrect_sound_a": "/home/nao/AUDIO/incorrect_2-3.mp3", #2.3s
+            "correct_sound_b": "/home/nao/AUDIO/correct_1-5.mp3", #1.5s
+            "incorrect_sound_b": "/home/nao/AUDIO/incorrect_1-05.mp3", #1.05s
+            "thinking": "/home/nao/AUDIO/thinking_3.mp3",
+            "scanning": "/home/nao/AUDIO/scanning_3.mp3"
+        }
 
     def set_syll_duration_vars(self):        
         # Pause and syllable durations
@@ -83,7 +100,7 @@ class ConversationManager(object):
                             "wave hand": 1
                         }
     
-    ###  TEXT HANDLING
+    ### GENERAL TEXT HANDLING
 
     def merge_short_segments(self, segments, max_words=5):
         merged = []
@@ -113,9 +130,22 @@ class ConversationManager(object):
         segments = self.merge_short_segments(segments)
 
         return segments 
+    
+    def lstrip_punct_keep_bracket(self, s):
+        """Remove leading punctuation/specials but preserve a leading '[' if present."""
 
+        # Strip leading chars that are NOT letters, digits, or '['
+        _LEADING_JUNK_EXCEPT_LBRACKET = re.compile(r'^[^A-Za-z0-9\[]+')
 
-    ### DURATION HANDLING   
+        if s is None:
+            return ""
+        return _LEADING_JUNK_EXCEPT_LBRACKET.sub('', s)
+    
+    def clean_string(self, text):
+        text = text.strip()
+        return ''.join([c for c in text.lower() if c == ' ' or (c not in string.punctuation and c not in string.whitespace.replace(' ', ''))])
+    
+    ### TEXT DURATION HANDLING   
 
     def estimate_duration_old(self, text):
         length = len(text)
@@ -212,16 +242,6 @@ class ConversationManager(object):
 
     ### INTEGRATED SEGMENT HANDLING        
 
-    def lstrip_punct_keep_bracket(self, s):
-        """Remove leading punctuation/specials but preserve a leading '[' if present."""
-
-        # Strip leading chars that are NOT letters, digits, or '['
-        _LEADING_JUNK_EXCEPT_LBRACKET = re.compile(r'^[^A-Za-z0-9\[]+')
-
-        if s is None:
-            return ""
-        return _LEADING_JUNK_EXCEPT_LBRACKET.sub('', s)
-
     def preprocess_segments(self, text):
 
         """
@@ -266,10 +286,8 @@ class ConversationManager(object):
                 segments_list += [[posttag_segment, tag, gest_type, posttag_seg_duration_est]]
 
         return segments_list
-
   
     ### TAGGED GESTURE HANDLING
-
 
     def check_for_tags(self, segment):
         """
@@ -532,8 +550,88 @@ class ConversationManager(object):
         side = random.choice(['left_', 'right_'])
 
         return side    
+    
+    ### VOICE HANDLING
+
+    def pitch_change(self):
+        current_pitch = self.robot.tts.getParameter('pitchShift')
+        print("Current pitch: {}".format(current_pitch))
+        print("Pitch range: 0.5 - 4")
+        user_input = raw_input("Please enter a value for pitch: ")  # type: ignore (suppressess superfluous warning)
+        self.robot.tts.setParameter("pitchShift", float(user_input))
+
+    def set_pitch(self, value):
+        self.robot.tts.setParameter("pitchShift", float(value))
+
+    def set_volume(self, value):
+        self.robot.audio_player.setMasterVolume(float(value))
+
+    ### RECORDING
+
+    def stop_rec(self):
+        # Needed because any break in a recording script will cause the recording not to stop, even when command window closed??
+        self.robot.audio_recorder.stopMicrophonesRecording()
+
+    def record_audio(self, duration, output_path, playback=False):
+        self.stop_rec()
+
+        internal_path = '/home/nao/recordings/audio/audio_recording.wav'
+        
+        # channels can be =
+        # [1, 0, 0, 0] for left microphone only
+        # [0, 1, 0, 0] for right microphone only
+        # [0, 0, 1, 0] for front microhpone only
+        # [0, 0, 0, 1] for rear microhpone only
+        # [1, 1, 1, 1] for all microphnes
+        channels = [0, 0, 1, 0]
+        print("recording starts next")
+        self.robot.audio_recorder.startMicrophonesRecording(internal_path, 'wav', 16000, channels)
+        print('Audio recording started.')
+        
+        time.sleep(float(duration))
+
+        self.robot.audio_recorder.stopMicrophonesRecording()
+        print('Audio recording stopped.')
+
+        if playback == True:
+            self.robot.audio_player.playFile(internal_path)
+            
+        self.robot.download_file_from_nao(remote_file_path=internal_path, local_file_path=output_path)
 
     ### MAIN FUNCTIONS ###
+
+    def listen(self, duration, speech=False, start_sound=False, end_sound=False):
+            try:
+                if speech:
+                    self.robot.tts.say("I'm listening.")
+
+                if start_sound:
+                    self.robot.audio_player.post.playFile(self.sound_library["start_listening"])
+                
+                self.robot.leds.post.fadeRGB("AllLeds", 0x00FF00, 0.1)
+                audio_path = "src_py2/recorded_audio.wav"
+                self.record_audio(duration, audio_path)
+                self.robot.leds.post.fadeRGB("AllLeds", 0xFFFFFF, 0.1)
+
+                if not os.path.exists(audio_path) or os.path.getsize(audio_path) == 0:
+                    raise ValueError("Zero-length audio can cause recognition failure or hang")
+
+                if end_sound:
+                    self.robot.audio_player.post.playFile(self.sound_library["stop_listening"])
+
+                transcription = transcribe.transcribe_filepath(audio_path)
+                if transcription:
+                    # self.robot.tts.say("I think you said: " + str(transcription))
+
+                    return self.clean_string(transcription)
+                else:
+                    raise ValueError("Transcription was empty or failed.")
+                
+            except Exception as e:
+                print("Listening error: %s " % (e))
+                self.robot.tts.say("I'm sorry, I didn't catch that. Please say it again.")
+            
+            self.robot.tts.say("Sorry, I couldn't understand. Let's try again later.")
 
     def speak(self, text):
         """
@@ -607,9 +705,43 @@ class ConversationManager(object):
 
         self.robot.mm.sit_gently()
 
+    def converse(self, rounds=3, model="gesturizer2:latest", confirm=False):
+            transcription = ""
 
+            for i in range(rounds):
+                try:
+                    print("Listening...")
+                    input = self.listen(5, start_sound=True)
+                    if not input:
+                        print("No input received.")
+                        continue
 
+                    if confirm:
+                        self.robot.tts.post.say("I heard {}. Is that correct? Press my hand for yes, or my foot for no.".format(input))
 
+                        confirmed = self.robot.tm.wait_for_touch_confirm()
+
+                        if not confirmed:
+                            self.robot.tts.say("REJECTED")
+                            continue
+                        else:
+                            self.robot.tts.say("CONFIRMED")
+
+                    transcription += "Speaker: {}\n".format(input)
+
+                    ai_reply = transcribe.reply(transcription, model)
+                    if ai_reply:
+                        self.speak_n_gest(str(ai_reply))
+                        transcription += "Robot: {}\n".format(ai_reply)
+                    else:
+                        print("AI did not return a reply.\n")
+
+                except Exception as e:
+                    print("Error during conversation round {}: {}".format(i + 1, e))
+                    continue
+            return transcription
+
+    
 
 
 

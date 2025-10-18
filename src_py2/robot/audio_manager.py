@@ -7,6 +7,8 @@ class AudioManager:
     def __init__(self, robot):
         self.robot = robot
 
+    ## VOICE HANDLING
+
     def pitch_change(self):
         current_pitch = self.robot.tts.getParameter('pitchShift')
         print("Current pitch: {}".format(current_pitch))
@@ -33,7 +35,7 @@ class AudioManager:
                 self.robot.audio_player.post.playFile(sound_library["start_listening"])
             
             self.robot.leds.post.fadeRGB("AllLeds", 0x00FF00, 0.1)
-            audio_path = "/tmp/recorded_speech.wav"
+            audio_path = "src_py2/recorded_audio.wav"
             self.record_audio(duration, audio_path)
             self.robot.leds.post.fadeRGB("AllLeds", 0xFFFFFF, 0.1)
 
@@ -107,30 +109,31 @@ class AudioManager:
                 self.robot.tts.say("I'm sorry, I didn't catch that.")
                 self.robot.tts.say("Let's try again.")    
 
-    def converse(self, rounds=3):
+    def converse(self, rounds=3, model="llama3.1:8b", confirm=False):
         transcription = ""
 
         for i in range(rounds):
             try:
                 print("Listening...")
-                input = self.listen(5)
+                input = self.listen(5, start_sound=True)
                 if not input:
                     print("No input received.")
                     continue
 
-                self.robot.tts.post.say("I heard {}. Is that correct? Press my hand for yes, or my foot for no.".format(input))
+                if confirm:
+                    self.robot.tts.post.say("I heard {}. Is that correct? Press my hand for yes, or my foot for no.".format(input))
 
-                confirmed = self.robot.tm.wait_for_touch_confirm()
+                    confirmed = self.robot.tm.wait_for_touch_confirm()
 
-                if not confirmed:
-                    self.robot.tts.say("REJECTED")
-                    continue
-
-                self.robot.tts.say("CONFIRMED")
+                    if not confirmed:
+                        self.robot.tts.say("REJECTED")
+                        continue
+                    else:
+                        self.robot.tts.say("CONFIRMED")
 
                 transcription += "Speaker: {}\n".format(input)
 
-                ai_reply = transcribe.reply(transcription)
+                ai_reply = transcribe.reply(transcription, model)
                 if ai_reply:
                     self.robot.tts.say(str(ai_reply))
                     transcription += "Robot: {}\n".format(ai_reply)
@@ -145,7 +148,7 @@ class AudioManager:
     def record_audio(self, duration, output_path, playback=False):
         self.stop_rec()
 
-        internal_path = '/home/robot/recordings/audio/audio_recording.wav'
+        internal_path = '/home/nao/recordings/audio/audio_recording.wav'
         
         # channels can be =
         # [1, 0, 0, 0] for left microphone only
@@ -154,7 +157,7 @@ class AudioManager:
         # [0, 0, 0, 1] for rear microhpone only
         # [1, 1, 1, 1] for all microphnes
         channels = [0, 0, 1, 0]
-        
+        print("recording starts next")
         self.robot.audio_recorder.startMicrophonesRecording(internal_path, 'wav', 16000, channels)
         print('Audio recording started.')
         
@@ -166,7 +169,7 @@ class AudioManager:
         if playback == True:
             self.robot.audio_player.playFile(internal_path)
             
-        self.robot.download_file_from_robot(remote_file_path=internal_path, local_file_path=output_path)
+        self.robot.download_file_from_nao(remote_file_path=internal_path, local_file_path=output_path)
 
 # todo: make this part of the Class (self as first parameter and check how it's called --  will need self.clean_string() -- )
 def clean_string(text):
@@ -174,14 +177,14 @@ def clean_string(text):
     return ''.join([c for c in text.lower() if c == ' ' or (c not in string.punctuation and c not in string.whitespace.replace(' ', ''))])
 
 sound_library = {
-    "start_listening": "/home/robot/AUDIO/listen_start.mp3",
-    "stop_listening": "/home/robot/AUDIO/listen_stop2.mp3",
-    "thinking_human": "/home/robot/AUDIO/thinking_human2.mp3",
-    "victory_path": "/home/robot/AUDIO/we_won_1.mp3",
-    "correct_sound_a": "/home/robot/AUDIO/correct_4-10.mp3", #3.5s
-    "incorrect_sound_a": "/home/robot/AUDIO/incorrect_2-3.mp3", #2.3s
-    "correct_sound_b": "/home/robot/AUDIO/correct_1-5.mp3", #1.5s
-    "incorrect_sound_b": "/home/robot/AUDIO/incorrect_1-05.mp3", #1.05s
-    "thinking": "/home/robot/AUDIO/thinking_3.mp3",
-    "scanning": "/home/robot/AUDIO/scanning_3.mp3",
+    "start_listening": "/home/nao/AUDIO/listen_start.mp3",
+    "stop_listening": "/home/nao/AUDIO/listen_stop2.mp3",
+    "thinking_human": "/home/nao/AUDIO/thinking_human2.mp3",
+    "victory_path": "/home/nao/AUDIO/we_won_1.mp3",
+    "correct_sound_a": "/home/nao/AUDIO/correct_4-10.mp3", #3.5s
+    "incorrect_sound_a": "/home/nao/AUDIO/incorrect_2-3.mp3", #2.3s
+    "correct_sound_b": "/home/nao/AUDIO/correct_1-5.mp3", #1.5s
+    "incorrect_sound_b": "/home/nao/AUDIO/incorrect_1-05.mp3", #1.05s
+    "thinking": "/home/nao/AUDIO/thinking_3.mp3",
+    "scanning": "/home/nao/AUDIO/scanning_3.mp3",
 }
