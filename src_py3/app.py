@@ -78,13 +78,14 @@ def converse():
         return jsonify({'error': 'No transcription provided'}), 400
 
     transcript = data['transcription']
+    model = data['model']
 
     prompt=f"You are a conversation partner, named 'Robot', who responds succintly to 'Speaker'. The conversation transcript is as follows:\n " + transcript
     print(f"Prompt: {prompt}")
 
     start = time.time()         
     ai_response = client.generate(
-        model="llama3.1:8b",
+        model=model,
         prompt=prompt,
         context=[],
         stream=False
