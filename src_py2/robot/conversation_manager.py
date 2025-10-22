@@ -121,25 +121,50 @@ class ConversationManager(object):
 
     def split_text(self, text):        
 
-        # Split on periods or commas while preserving punctuation
-        segments = re.findall(r'[^.;!?]+[.;!?]', text)
+        text_claused = self.mark_complete_clauses(text)
+
+        # Split on given punctuation while preserving punctuation
+        segments = re.findall(r'[^.;!?]+[.;!?]', text_claused)
 
         # remove any leading/trailing whitespace
         segments = [segment.strip() for segment in segments]
 
         segments = self.merge_short_segments(segments)
 
-        return segments 
+        return segments
     
-    def lstrip_punct_keep_bracket(self, s):
-        """Remove leading punctuation/specials but preserve a leading '[' if present."""
+    # SPECIFIC TEXT HANDLING
+
+
+    def has_alphanumeric(self, text):
+        """
+        Returns True if the string contains at least one alphanumeric character (A–Z, a–z, 0–9).
+        Returns False if it contains only punctuation, whitespace, or symbols.
+        """
+        return bool(re.search(r'[A-Za-z0-9]', text))
+
+    def mark_complete_clauses(self, text):
+        """
+        Replace ', and', ', or', ', but' with '; and', '; or', '; but'
+        (Python 2.7 compatible)
+        """
+        # pattern uses a capturing group for the conjunction
+        pattern = r",\s+(and|or|but)\b"
+        # replace the comma-space with semicolon-space
+        replaced = re.sub(pattern, r"; \1", text)
+        return replaced
+
+    def strip_junk(self, s):
+        """Remove "Robot:" and leading punctuation/specials but preserve a leading '[' if present."""
+
+        s2 = re.sub(r'^\s*Robot:\s*', '', s)
 
         # Strip leading chars that are NOT letters, digits, or '['
         _LEADING_JUNK_EXCEPT_LBRACKET = re.compile(r'^[^A-Za-z0-9\[]+')
 
-        if s is None:
+        if s2 is None:
             return ""
-        return _LEADING_JUNK_EXCEPT_LBRACKET.sub('', s)
+        return _LEADING_JUNK_EXCEPT_LBRACKET.sub('', s2)
     
     def clean_string(self, text):
         text = text.strip()
@@ -258,7 +283,7 @@ class ConversationManager(object):
         for segment_raw in segments_raw:            
 
             # NAO will pronounce many segment-initial punctuation marks. This leaves only the tag marker [ at the start.
-            segment = self.lstrip_punct_keep_bracket(segment_raw)
+            segment = self.strip_junk(segment_raw)
 
             # Simply turn segments with multiple tags into untagged segments, for now.
             if len(re.findall(r"\[.*?\]", segment)) > 1:
@@ -273,17 +298,28 @@ class ConversationManager(object):
                 duration_est = self.estimate_duration(segment)
                 # Build list   
                 segments_list += [[segment, tag, gest_type, duration_est]]
+
+            # in case AI generates an invalid tag
+            elif tag == "invalid":
+                    segment = self.remove_tags(segment)
+                    #Estimate segment durations
+                    duration_est = self.estimate_duration(segment)
+                    # Build list   
+                    segments_list += [[segment, tag, gest_type, duration_est]]
             else:
                 # Isolate pre-/post- segments and tag
                 subsegments = self.split_on_tags(segment)
-                pretag_segment = subsegments[0]
-                posttag_segment = subsegments[1]
+                pretag_segment = self.strip_junk(subsegments[0])
+                posttag_segment = self.strip_junk(subsegments[1])
                 # Estimate segment durations
                 pretag_seg_duration_est = self.estimate_duration(pretag_segment)
                 posttag_seg_duration_est = self.estimate_duration(posttag_segment)
-                # Build list
-                segments_list += [[pretag_segment, "pretag", None, pretag_seg_duration_est]]
-                segments_list += [[posttag_segment, tag, gest_type, posttag_seg_duration_est]]
+
+                # Build list.  It may be imposible that the pretag_segment has no alphanumerics, but the posttag string definitely can
+                if self.has_alphanumeric(pretag_segment):
+                    segments_list += [[pretag_segment, "pretag", None, pretag_seg_duration_est]]
+                if self.has_alphanumeric(posttag_segment):    
+                    segments_list += [[posttag_segment, tag, gest_type, posttag_seg_duration_est]]
 
         return segments_list
   
@@ -305,7 +341,7 @@ class ConversationManager(object):
                 gesture_type = self.gesture_tags[tag]
                 return tag, gesture_type
             else:
-                return None, "random"
+                return "invalid", "random"
         else:
             return None, "random"
     
@@ -705,7 +741,7 @@ class ConversationManager(object):
 
         self.robot.mm.sit_gently()
 
-    def converse(self, rounds=3, model="gesturizer2:latest", confirm=False):
+    def converse(self, rounds=3, interlocutor="Dude", model="gesturizer2:latest", confirm=False):
             transcription = ""
 
             for i in range(rounds):
@@ -729,7 +765,7 @@ class ConversationManager(object):
 
                     transcription += "Speaker: {}\n".format(input)
 
-                    ai_reply = transcribe.reply(transcription, model)
+                    ai_reply = transcribe.reply(transcription, model, interlocutor)
                     if ai_reply:
                         self.speak_n_gest(str(ai_reply))
                         transcription += "Robot: {}\n".format(ai_reply)

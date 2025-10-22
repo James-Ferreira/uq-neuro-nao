@@ -61,13 +61,14 @@ def transcribe_file(filepath):
         return None
     
 
-def reply(transcript, model):
+def reply(transcript, model, interlocutor):
     api_url = "http://localhost:5000/converse"
 
     try:
-        response = requests.post(api_url, json={'transcription': transcript, 'model': model})
+        response = requests.post(api_url, json={'transcription': transcript, 'model': model, 'interlocutor': interlocutor})
         response.raise_for_status()
         data = response.json()
+        print("JSON DATA: {}".format(data))
         reply = data.get('response')
 
         if reply:

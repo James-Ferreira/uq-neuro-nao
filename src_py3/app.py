@@ -74,13 +74,15 @@ def transcribe_whisper(audio_file_path, model):
 @app.route('/converse', methods=['POST'])
 def converse():
     data = request.get_json()
+    print("JSON DATA: {data}")
     if not data or 'transcription' not in data:
         return jsonify({'error': 'No transcription provided'}), 400
 
     transcript = data['transcription']
     model = data['model']
+    interlocutor = data['interlocutor']
 
-    prompt=f"You are a conversation partner, named 'Robot', who responds succintly to 'Speaker'. The conversation transcript is as follows:\n " + transcript
+    prompt=f"You are a conversation partner, named 'Robot', who responds succintly to {interlocutor}. The conversation transcript is as follows:\n " + transcript
     print(f"Prompt: {prompt}")
 
     start = time.time()         
