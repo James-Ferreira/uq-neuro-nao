@@ -1,0 +1,10 @@
+      
+angle_modulator = 0.75
+duration_modulator = 0.75
+        
+joint_names_list = ['HeadYaw', 'HeadPitch', 'LShoulderPitch', 'LShoulderRoll', 'LElbowYaw', 'LElbowRoll', 'LWristYaw', 'LHand', 'RShoulderPitch', 'RShoulderRoll', 'RElbowYaw', 'RElbowRoll', 'RWristYaw', 'RHand']
+                   
+[angles_compressed for _, angles_compressed in [['HeadYaw', [0.31442809104919434, 0.31442809104919434, 0.11194014549255371]], ['HeadPitch', [0.477031946182251, 0.477031946182251, 0.2469320297241211]], ['LShoulderPitch', [0.3420400619506836, 0.3420400619506836, 0.9172899723052979]], ['LShoulderRoll', [-0.14117002487182617, -0.1503739356994629, 0.23926210403442383]], ['LElbowYaw', [-0.8667521476745605, -0.8667521476745605, -0.44950389862060547]], ['LElbowRoll', [-1.556968092918396, -1.556968092918396, -1.1458560228347778]], ['LWristYaw', [-0.7701098918914795, -0.7655079364776611, -0.3099100589752197]], ['LHand', [0.7580000162124634, 0.7580000162124634, 0.7580000162124634]], ['RShoulderPitch', [0.9173741340637207, 0.9158401489257812, 0.9127721786499023]], ['RShoulderRoll', [-0.27002596855163574, -0.27002596855163574, -0.25315189361572266]], ['RElbowYaw', [0.4724299907684326, 0.4724299907684326, 0.46169209480285645]], ['RElbowRoll', [1.1213960647583008, 1.1213960647583008, 1.115260124206543]], ['RWristYaw', [1.3360720872879028, 1.3360720872879028, 0.6503739356994629]], ['RHand', [0.7195999622344971, 0.7195999622344971, 0.7195999622344971]]]]
+[time_points_compressed for _, time_points_compressed in [['HeadYaw', [0.75, 2.5, 3.25]], ['HeadPitch', [0.75, 2.5, 3.25]], ['LShoulderPitch', [0.75, 2.5, 3.25]], ['LShoulderRoll', [0.75, 2.5, 3.25]], ['LElbowYaw', [0.75, 2.5, 3.25]], ['LElbowRoll', [0.75, 2.5, 3.25]], ['LWristYaw', [0.75, 2.5, 3.25]], ['LHand', [0.75, 2.5, 3.25]], ['RShoulderPitch', [0.75, 2.5, 3.25]], ['RShoulderRoll', [0.75, 2.5, 3.25]], ['RElbowYaw', [0.75, 2.5, 3.25]], ['RElbowRoll', [0.75, 2.5, 3.25]], ['RWristYaw', [0.75, 2.5, 3.25]], ['RHand', [0.75, 2.5, 3.25]]]]
+clas.motion.angleInterpolation(joint_names_list, joint_angles, time_points, True)
+        
