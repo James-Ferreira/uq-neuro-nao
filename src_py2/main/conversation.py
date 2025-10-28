@@ -1,19 +1,25 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 
-import time
+# import time
 
 from src_py2.robot.nao_robot import NAORobot
+from datetime import datetime
+
+clas = NAORobot("clas")
 
 #meta = ConversationManager("meta")
-clas = NAORobot("clas")
 
 if __name__ == "__main__":
 
+    sid = "clas_" + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
     clas.mm.sit()
 
-    transcription = clas.cm.converse(rounds=6)
-    print(transcription)
+    clas.cm.converse_one_to_one(rounds=3, session_id=sid)
+
+    #transcription = clas.cm.converse(rounds=6)
+    #print(transcription)
 
     #MEAN ACCURACY PERCENTAGE: 0.824859115911
 

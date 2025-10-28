@@ -9,6 +9,8 @@ import re
 import string
 import time
 import unittest
+import json
+import requests
 
 class ConversationManager(object):
 
@@ -775,14 +777,70 @@ class ConversationManager(object):
                 except Exception as e:
                     print("Error during conversation round {}: {}".format(i + 1, e))
                     continue
+
             return transcription
 
-    
+    def _u8(self, x):
+        # ensure unicode
+        if isinstance(x, unicode):  # type: ignore (supresses superfluous warning)
+            u = x
+        else:
+            try:
+                u = unicode(x, 'utf-8', 'ignore')  # type: ignore (supresses superfluous warning)
+            except Exception:
+                u = unicode(x, 'latin-1', 'ignore')  # type: ignore (supresses superfluous warning)
+        # return UTF-8 bytes, replacing any odd glyphs instead of crashing
+        return u.encode('utf-8', 'replace')
 
+    def converse_one_to_one(self, rounds=3, duration=5, session_id="default",
+                            interlocutor="Speaker", model="gemma3:4b",
+                            api_url="http://localhost:5000/converse/turn"):
+        # keep files tidy: one folder per session (optional but nice)
+        sess_dir = os.path.abspath(os.path.join("src_py2", "sessions", session_id))
+        if not os.path.isdir(sess_dir):
+            os.makedirs(sess_dir)
 
+        for turn in range(1, rounds + 1):
+            try:
+                # unique per-turn file, downloaded by your record_audio()
+                audio_path = os.path.join(sess_dir, "turn_{:04d}.wav".format(turn))
 
+                # 1) record on NAO, stop, then download to audio_path
+                self.robot.leds.post.fadeRGB("AllLeds", 0x00FF00, 0.1)
+                self.record_audio(duration, audio_path)  # your function does the NAO->local download
+                self.robot.leds.post.fadeRGB("AllLeds", 0xFFFFFF, 0.1)
 
+                # small sanity check
+                if not (os.path.exists(audio_path) and os.path.getsize(audio_path) > 0):
+                    raise ValueError("Missing/empty WAV: {}".format(audio_path))
 
+                # 2) one HTTP request: Py3 will transcribe + LLM + log
+                payload = {
+                    "session_id": session_id,
+                    "turn": turn,
+                    "model": model,
+                    "interlocutor": interlocutor,
+                    "audio_filepath": audio_path  # shared filesystem path
+                }
+                r = requests.post(
+                    api_url,
+                    data=json.dumps(payload),
+                    headers={"Content-Type": "application/json"},
+                    timeout=90
+                )
+                r.raise_for_status()
+                reply = r.json().get('response', u'')  # unicode by default in Py2
 
+                # Think this might be causing double-speak. Yet to run/test after commenting out.
+                # if reply:
+                #    self.robot.tts.say(self._u8(reply))  
 
+                # 3) speak/gesture the reply
+                if reply:
+                    self.speak_n_gest(str(reply))
+                else:
+                    print("WARN: empty reply on turn {}".format(turn))
 
+            except Exception as e:
+                print("Error on turn {}: {}".format(turn, e))
+                continue

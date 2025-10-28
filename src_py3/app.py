@@ -4,6 +4,8 @@ import whisper
 import time
 import ollama
 import string
+import json
+import threading
 
 app = Flask(__name__)
 
@@ -16,6 +18,8 @@ client = ollama.Client(
     host="http://localhost:11434"
 )
 print("Ollama model loaded.")
+
+print("ROUTES:", app.url_map)
 
 @app.route('/transcribe/filepath', methods=['POST'])
 def transcribe_audio_from_filepath():
@@ -298,6 +302,80 @@ def hobby():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+LOG_DIR = "convo_logs"
+os.makedirs(LOG_DIR, exist_ok=True)
+_write_lock = threading.Lock()
+
+def _session_path(session_id):
+    return os.path.join(LOG_DIR, "{}.jsonl".format(session_id))
+
+def _append_jsonl(path, rec):
+    with _write_lock, open(path, "a", encoding="utf-8") as f:
+        f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+
+def _transcribe_file(filepath):
+    res = model.transcribe(filepath)  # uses your already-loaded Whisper 'model'
+    return (res.get("text") or "").strip()
+
+@app.route("/converse/turn", methods=["POST"])
+def converse_turn():
+    data = request.get_json(silent=True) or {}
+    session_id   = data.get("session_id", "default")
+    interlocutor = data.get("interlocutor", "Speaker")
+    model_name   = data.get("model", "llama3.1:8b")
+    audio_fp     = (data.get("audio_filepath") or "").strip()
+
+    try:
+        turn = int(data.get("turn", 0))
+    except Exception:
+        turn = 0
+
+    if turn <= 0:
+        return jsonify({"error": "Positive integer 'turn' required"}), 400
+    if not audio_fp or not os.path.exists(audio_fp):
+        return jsonify({"error": "Valid audio_filepath required"}), 400
+
+    # 1) Transcribe latest human input
+    t0 = time.time()
+    current_input = _transcribe_file(audio_fp)
+    transcription_latency = time.time() - t0
+    print("\n> Human (turn {}): {}".format(turn, current_input))
+    print("   [Transcription time: {:.2f}s]".format(transcription_latency))
+
+    # 2) Get LLM reply
+    prompt = (
+        "You are a robot assistant named 'Gemma', who responds using only words (no stage direcitons or emojis) to the following dialogue from a human interlocutor: {}. "
+        "The latest user message is:\n{}".format(interlocutor, current_input)
+    )
+    t1 = time.time()
+    ai = client.generate(
+        model=model_name,
+        prompt=prompt,
+        context=[],
+        stream=False
+    )
+    reply = str(ai.response).strip()
+    reply_latency = time.time() - t1
+    print("< Robot (turn {}): {}".format(turn, reply))
+    print("   [Reply time: {:.2f}s]".format(reply_latency))
+
+    # 3) Log turn record including timing
+    _append_jsonl(_session_path(session_id), {
+        "turn": turn,
+        "input": current_input,
+        "output": reply,
+        "transcription_latency_s": round(transcription_latency, 3),
+        "reply_latency_s": round(reply_latency, 3)
+    })
+
+    # 4) Return only the reply (Py2 doesn’t need content of transcription)
+    return jsonify({
+        "response": reply,
+        "turn": turn,
+        "session_id": session_id,
+        "transcription_latency_s": round(transcription_latency, 3),
+        "reply_latency_s": round(reply_latency, 3)
+    }), 200
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
