@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 
-import time
-
 from src_py2.robot.nao_robot import NAORobot
 
 #meta = ConversationManager("meta")
@@ -12,7 +10,7 @@ if __name__ == "__main__":
 
     clas.mm.sit()
 
-    transcription = clas.cm.converse(rounds=6)
+    transcription = clas.cm.converse(rounds=1)
     print(transcription)
 
     #MEAN ACCURACY PERCENTAGE: 0.824859115911

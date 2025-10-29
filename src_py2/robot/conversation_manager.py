@@ -2,13 +2,13 @@
 from __future__ import absolute_import, print_function
 from src_py2.robot.motion_library import motions
 import src_py2.api.transcribe as transcribe
-
+import numpy as np
 import os
 import random
 import re
 import string
 import time
-import unittest
+
 
 class ConversationManager(object):
 
@@ -291,7 +291,6 @@ class ConversationManager(object):
 
             # Identify tag, if present
             tag, gest_type = self.check_for_tags(segment)
-            print("TAG: {}, gest_type: {}".format(tag, gest_type)) #666
 
             if tag == None:
                 #Estimate segment durations
@@ -632,7 +631,7 @@ class ConversationManager(object):
         if playback == True:
             self.robot.audio_player.playFile(internal_path)
             
-        self.robot.download_file_from_nao(remote_file_path=internal_path, local_file_path=output_path)
+        self.robot.download_file_from_nao(remote_file_path=internal_path, local_file_path=output_path)  
 
     ### MAIN FUNCTIONS ###
 
@@ -675,36 +674,59 @@ class ConversationManager(object):
         """
         self.robot.tts.say(text)
 
-    def speak_n_time(self, text):
+    def speak_n_time(self, text, quiet=True, segmentate=False):
         """
         Speak via NAORobot TTS, time duration, compare to estimated duration
         """
-        # Divide text into sentence segments
-        segments = self.split_text(text)
- 
-        #Estimate segment durations
-        durations_est, duration_total_est = self.estimate_durations(segments) 
-        print(segments)
-        print(durations_est)  
+        if quiet:
+            self.robot.audio_device.setOutputVolume(15)
 
-        percentages = []
-        for index, segment in enumerate(segments):
-            print("index: {}".format(index))
+        # Divide text into sentence segments
+        if segmentate:
+            segments = self.split_text(text)
+
+            #Estimate segment durations
+            durations_est, duration_total_est = self.estimate_durations(segments) 
+            print(segments)
+            print(durations_est)  
+
+            percentages = []
+            durations_real = []
+            for index, segment in enumerate(segments):
+                print("index: {}".format(index))
+                start = time.time()
+                self.robot.tts.say(segment)
+                end = time.time()
+                duration = end - start
+                durations_real += [duration]
+                duration_est = durations_est[index]
+                difference = duration - duration_est
+                print("Segment: {}".format(segment))
+                print("Real Duration: {}".format(duration))
+                print("Estimated Duration: {}".format(duration_est))
+                print("Difference: {}".format(difference))
+                print("Accuracy Percentage: {}".format(duration_est/duration))
+                percentages += [duration_est/duration]
+
+            summed = sum(percentages)
+            mean_percentage = summed / len(percentages)
+            print("MEAN ACCURACY PERCENTAGE: {}".format(mean_percentage))
+            if quiet:
+                self.robot.audio_device.setOutputVolume(65)  
+            return segments, durations_real
+
+        else:
             start = time.time()
-            self.robot.tts.say(segment)
+            self.robot.tts.say(text)
             end = time.time()
             duration = end - start
-            duration_est = durations_est[index]
-            difference = duration - duration_est
-            print("Segment: {}".format(segment))
-            print("Real Duration: {}".format(duration))
-            print("Estimated Duration: {}".format(duration_est))
-            print("Difference: {}".format(difference))
-            print("Accuracy Percentage: {}".format(duration_est/duration))
-            percentages += [duration_est/duration]
-        summed = sum(percentages)
-        mean_percentage = summed / len(percentages)
-        print("MEAN ACCURACY PERCENTAGE: {}".format(mean_percentage))
+            print("duration: {}".format(duration)) #666
+            if quiet:
+                self.robot.audio_device.setOutputVolume(65) 
+
+            return duration
+
+
 
     def speak_n_gest(self, text):
 
