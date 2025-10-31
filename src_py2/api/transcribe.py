@@ -11,8 +11,8 @@ def transcribe_filepath(filepath):
 
     try:
         response = requests.post(api_url, json={
-            'filepath': filepath,
-        })
+            'filepath': filepath
+        })  
         response.raise_for_status()
         transcription_data = response.json()
         transcription = transcription_data.get('transcription')
@@ -24,7 +24,7 @@ def transcribe_filepath(filepath):
             print("Error: API returned empty transcription.")
             return None
     except requests.exceptions.RequestException as e:
-        print("Error calling transcription API: {}".format(e))
+        print("Error calling transcription API. Did you TURN ON python3!?!: {}".format(e))
         return None
     except IOError as e:
         print("Error opening audio file: {}".format(e))
@@ -61,7 +61,7 @@ def transcribe_file(filepath):
         return None
     
 
-def reply(transcript, model, interlocutor):
+def reply(transcript, model, interlocutor, type):
     api_url = "http://localhost:5000/converse"
 
     try:
@@ -70,10 +70,15 @@ def reply(transcript, model, interlocutor):
         data = response.json()
         print("JSON DATA: {}".format(data))
         reply = data.get('response')
+        reply_segments_list = data.get('segments_list')
 
         if reply:
-            print("Reply '{}'".format(reply))
-            return reply
+            if type == str:
+                print("Reply '{}'".format(reply))
+                return reply
+            elif type == list:
+                print("Reply '{}'".format(reply))
+                return reply_segments_list
         else:
             print("Error: API returned empty reply.")
             return None

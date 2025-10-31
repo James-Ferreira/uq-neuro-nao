@@ -5,6 +5,9 @@ import time
 import ollama
 import string
 
+from duration_prediction.segmentize import Segmentize
+
+
 app = Flask(__name__)
 
 print("Loading Whisper model...")
@@ -16,6 +19,7 @@ client = ollama.Client(
     host="http://localhost:11434"
 )
 print("Ollama model loaded.")
+
 
 @app.route('/transcribe/filepath', methods=['POST'])
 def transcribe_audio_from_filepath():
@@ -94,11 +98,15 @@ def converse():
     )
     end = time.time()         
     print(f"Elapsed time: {end - start:.2f} seconds.")
-    response_str = str(ai_response.response)
+    #print(f"AI RESPONSE: {ai_response}")
+    response_str = ai_response.response
+    # returns a list of lists with the structure [[segment_str, tag_str/None, gest_type/None, duration_estimate_float], ...]
+    print(f"RESPONSE STRING: {response_str}")
+    segments_list = Segmentize(response_str).process_segments()
+    print(f"SEGMENTS LIST: {segments_list}")
 
-    print("Response: ", response_str)
     try:
-        return jsonify({'response': response_str}), 200
+        return jsonify({'response': response_str, 'segments_list': segments_list}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -297,6 +305,7 @@ def hobby():
         return jsonify({'response': response_str}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 
 if __name__ == '__main__':

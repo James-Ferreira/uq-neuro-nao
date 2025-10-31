@@ -86,7 +86,7 @@ class DurationPredictor:
 # -------------------------------------------------
 # 2. Training Script (run once)
 # -------------------------------------------------
-def train_and_save_model(texts: List[str], durations: List[float], model_path: str = "src_py3/duration_prediction/models/duration_predictor.pkl"):
+def train_and_save_model(texts: List[str], durations: List[float], model_path: str = "duration_prediction/models/duration_predictor.pkl"):
     predictor = DurationPredictor(alpha=1.0)
     print(f"Training on {len(texts)} samples...")
     predictor.fit(texts, durations)
@@ -95,6 +95,6 @@ def train_and_save_model(texts: List[str], durations: List[float], model_path: s
 # -------------------------------------------------
 # 3. Prediction Helper (for other scripts)
 # -------------------------------------------------
-def predict_duration(text: str, model_path: str = "src_py3/duration_prediction/models/duration_predictor.pkl") -> float:
+def predict_duration(text: str, model_path: str = "duration_prediction/models/duration_predictor.pkl") -> float:
     predictor = DurationPredictor.load(model_path)
     return predictor.predict(text)

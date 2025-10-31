@@ -119,14 +119,18 @@ def numbers_to_words(
     replacer = _make_num2words_replacer(lang=lang, to=to, **num2words_kwargs)
     return number_pattern.sub(replacer, text)
 
+def asciiize(text):
+    partially_clean = text.encode("ascii", "ignore").decode("ascii")
+
+    return numbers_to_words(partially_clean)
+
+
 if __name__ == "__main__":
 
     with open("/Users/neurorobots/Desktop/repos/uq-neuro-nao/src_py3/duration_prediction/texts/raw_verification_text_block.txt", 'r') as file:
         text = file.read()
 
-    partially_clean = text.encode("ascii", "ignore").decode("ascii")
-
-    fully_clean = numbers_to_words(partially_clean)
+    fully_clean = asciiize(text)
 
     try:
         with open("/Users/neurorobots/Desktop/repos/uq-neuro-nao/src_py3/duration_prediction/texts/verification_text_block.txt", "w", encoding="ascii") as f:

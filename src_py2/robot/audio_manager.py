@@ -35,7 +35,7 @@ class AudioManager:
                 self.robot.audio_player.post.playFile(sound_library["start_listening"])
             
             self.robot.leds.post.fadeRGB("AllLeds", 0x00FF00, 0.1)
-            audio_path = "src_py2/recorded_audio.wav"
+            audio_path = "src_py2/recorded_audio/recorded_audio.wav"
             self.record_audio(duration, audio_path)
             self.robot.leds.post.fadeRGB("AllLeds", 0xFFFFFF, 0.1)
 

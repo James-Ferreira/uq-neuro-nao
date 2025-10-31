@@ -37,6 +37,7 @@ class ConversationManager(object):
             "scanning": "/home/nao/AUDIO/scanning_3.mp3"
         }
 
+    # REMOVE
     def set_syll_duration_vars(self):        
         # Pause and syllable durations
         #self.character_duration = 0.075
@@ -100,8 +101,15 @@ class ConversationManager(object):
                             "wave hand": 1
                         }
     
+    
+    
+    
+    
+    
+    
+    #------------------------------
     ### GENERAL TEXT HANDLING
-
+    
     def merge_short_segments(self, segments, max_words=5):
         merged = []
         i = 0
@@ -375,21 +383,23 @@ class ConversationManager(object):
             subsegments = [tagged_segment]
 
         return subsegments
+    
+    #----------------------------------------
 
-    def get_cumulative_multiple(self, list, multiple):
+    # def get_cumulative_multiple(self, list, multiple):
 
-        """Multiply a list ensuring continuity of cumulative values."""
+    #     """Multiply a list ensuring continuity of cumulative values."""
         
-        cumulative_long_list = []
+    #     cumulative_long_list = []
 
-        for i in range(multiple):
-            for j in range(len(list)):
-                if i == 0:
-                    cumulative_long_list.append(list[j])
-                else:
-                    cumulative_long_list.append(cumulative_long_list[-1] + list[j])
+    #     for i in range(multiple):
+    #         for j in range(len(list)):
+    #             if i == 0:
+    #                 cumulative_long_list.append(list[j])
+    #             else:
+    #                 cumulative_long_list.append(cumulative_long_list[-1] + list[j])
 
-        return cumulative_long_list
+    #     return cumulative_long_list
     
     # def set_tagged_gest_cyclical(self, tag, posttag_seg_duration):
 
@@ -420,6 +430,12 @@ class ConversationManager(object):
 
     #     return joints, angles_max, timepoints_max
 
+
+
+
+
+
+
     def set_tagged_gest_single(self, tag, duration):
 
         """
@@ -429,7 +445,7 @@ class ConversationManager(object):
         # Only load the gesture, if its duration does not exceed the duration of the speech segment estimate by more than 0.5s
         timepoints = motions.get(tag, {}).get("time_points_list", []) # with a default if missing
         timepoint_max = max(max(sublist) for sublist in timepoints) 
-        if duration + 0.5 < timepoint_max:
+        if durations < timepoint_max:
             joints = []
             angles = []
             timepoints = []
@@ -644,8 +660,9 @@ class ConversationManager(object):
                     self.robot.audio_player.post.playFile(self.sound_library["start_listening"])
                 
                 self.robot.leds.post.fadeRGB("AllLeds", 0x00FF00, 0.1)
-                audio_path = "src_py2/recorded_audio.wav"
+                audio_path = "src_py2/recorded_audio/recorded_audio.wav"
                 self.record_audio(duration, audio_path)
+                print("AUDIO RECORDED")
                 self.robot.leds.post.fadeRGB("AllLeds", 0xFFFFFF, 0.1)
 
                 if not os.path.exists(audio_path) or os.path.getsize(audio_path) == 0:
@@ -763,6 +780,41 @@ class ConversationManager(object):
 
         self.robot.mm.sit_gently()
 
+    
+    def speak_n_gest_next_level(self, segments_list):
+
+        """
+        Speak via NAORobot TTS and simultaneously gesture.
+        """       
+
+        for segment_list in segments_list:
+
+            # segments list structure: [[segment, tag, gest_type, duration_est], [segment, tag, gest_type, duration_est], ...]
+            # Speak and execute the appropriate gestures
+            segment = segment_list[0]
+            tag = segment_list[1]
+            gesture_type = segment_list[2]
+            duration_est = segment_list[3]
+
+            print("SEGMENTS LIST: {}".format(segment_list))
+            print("SEGMENT: {}".format(segment))
+            print("TAG: {}".format(tag))
+            print("GESTURE TYPE: {}".format(gesture_type))
+            print("DURATION_EST: {}".format(duration_est))
+
+            # Execute gentle sit on prettag segment, if there is time
+            if tag == "pretag":
+                pass
+                self.execute_random_gests(segment, duration_est)
+            # Execute tagged gesture on posttag segment
+            elif tag is not None:
+                self.execute_tagged_gest(segment, tag, gesture_type, duration_est)
+            # Execute random gestures on full segment
+            else:
+                self.execute_random_gests(segment, duration_est)
+
+        self.robot.mm.sit_gently()
+
     def converse(self, rounds=3, interlocutor="Dude", model="gesturizer2:latest", confirm=False):
             transcription = ""
 
@@ -787,10 +839,48 @@ class ConversationManager(object):
 
                     transcription += "Speaker: {}\n".format(input)
 
-                    ai_reply = transcribe.reply(transcription, model, interlocutor)
+                    ai_reply = transcribe.reply(transcription, model, interlocutor, str)
+
                     if ai_reply:
                         self.speak_n_gest(str(ai_reply))
                         transcription += "Robot: {}\n".format(ai_reply)
+                    else:
+                        print("AI did not return a reply.\n")
+
+                except Exception as e:
+                    print("Error during conversation round {}: {}".format(i + 1, e))
+                    continue
+            return transcription
+    
+    def converse_next_level(self, rounds=3, interlocutor="Dude", model="gesturizer2:latest", confirm=False):
+            transcription = ""
+
+            for i in range(rounds):
+                try:
+                    print("Listening...")
+                    input = self.listen(5, start_sound=True)
+                    if not input:
+                        print("No input received.")
+                        continue
+
+                    if confirm:
+                        self.robot.tts.post.say("I heard {}. Is that correct? Press my hand for yes, or my foot for no.".format(input))
+
+                        confirmed = self.robot.tm.wait_for_touch_confirm()
+
+                        if not confirmed:
+                            self.robot.tts.say("REJECTED")
+                            continue
+                        else:
+                            self.robot.tts.say("CONFIRMED")
+
+                    transcription += "Speaker: {}\n".format(input)
+
+                    ai_reply = transcribe.reply(transcription, model, interlocutor, list)
+                    
+                    if ai_reply:
+                        self.speak_n_gest(ai_reply)
+                        transcription += "Robot: {}\n".format(ai_reply[0])
                     else:
                         print("AI did not return a reply.\n")
 
