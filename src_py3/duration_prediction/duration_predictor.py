@@ -4,6 +4,7 @@ import numpy as np
 import re
 import syllapy
 import os
+from pathlib import Path
 
 from sklearn.linear_model import Ridge
 from sklearn.preprocessing import StandardScaler
@@ -14,7 +15,7 @@ WORD_RE = re.compile(r"[A-Za-z0-9']+")
 
 def make_features(text: str) -> dict:
     words = WORD_RE.findall(text)
-
+    print(f"make_features: {words}")
     sylls = syllapy.count(text)
     puncts = {',': text.count(','), '.': text.count('.'),
               ':': text.count(':'), ';': text.count(';'),
@@ -45,11 +46,16 @@ def vectorize(texts: List[str]) -> Tuple[np.ndarray, List[str]]:
 # 1. Predictor Class (train once, save, reuse)
 # -------------------------------------------------
 class DurationPredictor:
+
     def __init__(self, alpha: float = 1.0):
         self.model = Ridge(alpha=alpha, fit_intercept=True)
         self.scaler = StandardScaler()
         self.keys_ = None
         self.keep_cols_ = None
+
+    @classmethod
+    def load(cls, path):
+        return joblib.load(path)
 
     def fit(self, texts: List[str], durations: List[float]):
         X, self.keys_ = vectorize(texts)
@@ -95,6 +101,9 @@ def train_and_save_model(texts: List[str], durations: List[float], model_path: s
 # -------------------------------------------------
 # 3. Prediction Helper (for other scripts)
 # -------------------------------------------------
-def predict_duration(text: str, model_path: str = "duration_prediction/models/duration_predictor.pkl") -> float:
+def predict_duration(text: str, model_path: str = "/Users/neurorobots/Desktop/repos/uq-neuro-nao/src_py3/duration_prediction/duration_predictor.pkl") -> float:
+
     predictor = DurationPredictor.load(model_path)
-    return predictor.predict(text)
+    prediction = predictor.predict(text)
+    print(f"predict_duration: /ntext: {text}, predictor: {prediction}")
+    return prediction

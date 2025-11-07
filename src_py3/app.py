@@ -5,7 +5,7 @@ import time
 import ollama
 import string
 
-from duration_prediction.segmentize import Segmentize
+from src_py3.duration_prediction.segmentize import Segmentize
 
 
 app = Flask(__name__)
@@ -98,7 +98,6 @@ def converse():
     )
     end = time.time()         
     print(f"Elapsed time: {end - start:.2f} seconds.")
-    #print(f"AI RESPONSE: {ai_response}")
     response_str = ai_response.response
     # returns a list of lists with the structure [[segment_str, tag_str/None, gest_type/None, duration_estimate_float], ...]
     print(f"RESPONSE STRING: {response_str}")

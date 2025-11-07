@@ -71,6 +71,7 @@ def reply(transcript, model, interlocutor, type):
         print("JSON DATA: {}".format(data))
         reply = data.get('response')
         reply_segments_list = data.get('segments_list')
+        print("REPLY_SEGMENTS_LIST: {}".format(reply_segments_list))
 
         if reply:
             if type == str:

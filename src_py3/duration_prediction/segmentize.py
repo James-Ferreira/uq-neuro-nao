@@ -2,7 +2,8 @@ from num2words import num2words
 import re
 from typing import Callable
 
-from .duration_predictor import predict_duration
+from src_py3.duration_prediction.duration_predictor import predict_duration
+
  
 class Segmentize():
 
@@ -64,12 +65,12 @@ class Segmentize():
 
     # SPECIFIC TEXT HANDLING
 
-    def has_alphanumeric(self):
+    def has_alphanumeric(self, string):
         """
         Returns True if the string contains at least one alphanumeric character (A–Z, a–z, 0–9).
         Returns False if it contains only punctuation, whitespace, or symbols.
         """
-        return bool(re.search(r'[A-Za-z0-9]', self.text))
+        return bool(re.search(r'[A-Za-z0-9]', string))
 
     def mark_complete_clauses(self):
         """
@@ -93,10 +94,6 @@ class Segmentize():
         if s2 is None:
             return ""
         return _LEADING_JUNK_EXCEPT_LBRACKET.sub('', s2)
-
-    def clean_string(self):
-        self.text = self.text.strip()
-        return ''.join([c for c in self.text.lower() if c == ' ' or (c not in string.punctuation and c not in string.whitespace.replace(' ', ''))])
 
     ### TAGGED GESTURE HANDLING
 
@@ -140,17 +137,31 @@ class Segmentize():
         pattern = r"\[(.*?)\]"  # match text inside [brackets]
         match = re.search(pattern, tagged_segment)
 
+        subsegments = []
+        tag_combo = ""
         if match:
-            tag = match.group(1).strip()
+            print("match for tag regex")
             start, end = match.span()
+            
             before = tagged_segment[:start]
             after = tagged_segment[end:]
-            subsegments = [before, after]
+            print("before, after: {}, {}".format(before, after))
+            if self.has_alphanumeric(before):
+                print("added before")
+                subsegments += [before]
+                tag_combo += "pretag"
+            if self.has_alphanumeric(after):
+                print("added after")
+                subsegments += [after]  
+                tag_combo += "posttag"
         else:
-            tag = None
-            subsegments = [tagged_segment]
+            subsegments = [tagged_segment] #that is, the segment is not tagged
 
-        return subsegments
+        if subsegments == []:
+            print("subsegments empty for some reason")
+            
+
+        return subsegments, tag_combo
 
 ### INTEGRATED SEGMENT HANDLING        
 
@@ -164,10 +175,10 @@ class Segmentize():
 
         # Divide text into segments.
         segments_raw = self.split_text()
-        print("SEGMENTS: {}".format(segments_raw))
+        print("SEGMENTS_raw: {}".format(segments_raw))
 
         segments_list = []
-        for segment_raw in segments_raw:            
+        for segment_raw in segments_raw:         
 
             # NAO will pronounce many segment-initial punctuation marks. This leaves only the tag marker [ at the start.
             segment = self.strip_junk(segment_raw)
@@ -178,6 +189,8 @@ class Segmentize():
 
             # Identify tag, if present
             tag, gest_type = self.check_for_tags(segment)
+            print(f"TAG: {tag}")
+            print(f"GEST_TYPE: {gest_type}")
 
             # in case AI generates an invalid tag
             if tag == "invalid":
@@ -192,18 +205,34 @@ class Segmentize():
 
             else:
                 # Isolate pre-/post- segments and tag
-                subsegments = self.split_on_tags(segment)
-                pretag_segment = self.strip_junk(subsegments[0])
-                posttag_segment = self.strip_junk(subsegments[1])
-                # Estimate segment durations
-                pretag_seg_duration_est = predict_duration(pretag_segment)
-                posttag_seg_duration_est = predict_duration(posttag_segment)
+                subsegments, tag_combo = self.split_on_tags(segment)
+                print(f"SUBSEGMENTS: {subsegments}")
 
-                # Build list.  It may be imposible that the pretag_segment has no alphanumerics, but the posttag string definitely can
-                if self.has_alphanumeric(pretag_segment):
+                if tag_combo == "pretag":
+
+                    pretag_segment = self.strip_junk(subsegments[0])
+                    pretag_seg_duration_est = predict_duration(pretag_segment)
                     segments_list += [[pretag_segment, "pretag", None, pretag_seg_duration_est]]
-                if self.has_alphanumeric(posttag_segment):    
+
+                elif tag_combo == "posttag":
+
+                    posttag_segment = self.strip_junk(subsegments[0])
+                    posttag_seg_duration_est = predict_duration(posttag_segment) 
                     segments_list += [[posttag_segment, tag, gest_type, posttag_seg_duration_est]]
+                
+                elif tag_combo == "pretagposttag":
+
+                    pretag_segment = self.strip_junk(subsegments[0])
+                    pretag_seg_duration_est = predict_duration(pretag_segment)
+                    segments_list += [[pretag_segment, "pretag", None, pretag_seg_duration_est]]
+
+                    posttag_segment = self.strip_junk(subsegments[1])
+                    posttag_seg_duration_est = predict_duration(posttag_segment)
+                    segments_list += [[posttag_segment, tag, gest_type, posttag_seg_duration_est]]
+
+  
+                    
+
             print("SEGMENTS LIST COMPILED IN SEGMENTIZE")
 
         return segments_list # [segment, tag, gest_type, duration_estimate]

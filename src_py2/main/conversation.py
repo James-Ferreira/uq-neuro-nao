@@ -3,14 +3,14 @@ from __future__ import absolute_import
 
 from src_py2.robot.nao_robot import NAORobot
 
-#meta = ConversationManager("meta")
-clas = NAORobot("clas")
+meta = NAORobot("meta")
+# clas = NAORobot("clas")
 
 if __name__ == "__main__":
 
-    clas.mm.sit()
+    meta.mm.sit()
 
-    transcription = clas.cm.converse(rounds=1)
+    transcription = meta.cm.converse_next_level(rounds=5, model="frommagy_8:latest")
     print(transcription)
 
     #MEAN ACCURACY PERCENTAGE: 0.824859115911

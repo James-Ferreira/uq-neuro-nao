@@ -8,6 +8,8 @@ import random
 import re
 import string
 import time
+import types
+import math
 
 
 class ConversationManager(object):
@@ -83,6 +85,7 @@ class ConversationManager(object):
         # sets of time points
         self.rand_timepoints_other_hand = [[0.75], [1.5]]
 
+    # DELETE - MOVED TO PY3
     def set_gesture_tags(self):
         # set special gesture tags
         # 1 = single, 2 = cyclical
@@ -273,8 +276,51 @@ class ConversationManager(object):
 
         return durations_est, durations_total_est
 
-    ### INTEGRATED SEGMENT HANDLING        
+    ### INTEGRATED SEGMENT HANDLING       
 
+    def to_ascii(self, obj, errors='replace'):
+        """
+        Convert string-like objects to ASCII bytes.
+        Non-string scalars (int, float, None) are returned unchanged.
+
+        Parameters
+        ----------
+        obj : any
+            Input object.
+        errors : str
+            How to handle non-ASCII chars: 'replace', 'ignore', 'strict'
+
+        Returns
+        -------
+        str (byte string) or original scalar
+        """
+        # 1. Pass through safe non-string types
+        if isinstance(obj, (int, long, float, bool)):
+            return obj
+        if obj is None:
+            return None
+
+        # 2. Handle string types
+        if isinstance(obj, types.UnicodeType):
+            # Unicode → encode to ASCII bytes
+            return obj.encode('ascii', errors=errors)
+
+        elif isinstance(obj, str):
+            # Already bytes — try to ensure it's ASCII-compatible
+            try:
+                # Fast path: if it's pure ASCII, return as-is
+                obj.decode('ascii')
+                return obj
+            except UnicodeDecodeError:
+                # Contains non-ASCII bytes → treat as latin-1 and re-encode
+                return obj.decode('latin-1').encode('ascii', errors=errors)
+
+        else:
+            raise TypeError(
+                "to_ascii expected string, int, float or None, got %s" %
+                type(obj).__name__
+            )
+    
     def preprocess_segments(self, text):
 
         """
@@ -292,6 +338,7 @@ class ConversationManager(object):
 
             # NAO will pronounce many segment-initial punctuation marks. This leaves only the tag marker [ at the start.
             segment = self.strip_junk(segment_raw)
+
 
             # Simply turn segments with multiple tags into untagged segments, for now.
             if len(re.findall(r"\[.*?\]", segment)) > 1:
@@ -373,13 +420,11 @@ class ConversationManager(object):
         match = re.search(pattern, tagged_segment)
 
         if match:
-            tag = match.group(1).strip()
             start, end = match.span()
             before = tagged_segment[:start]
             after = tagged_segment[end:]
             subsegments = [before, after]
         else:
-            tag = None
             subsegments = [tagged_segment]
 
         return subsegments
@@ -457,6 +502,7 @@ class ConversationManager(object):
     
     def execute_pretag_gest(self, segment, duration_est):
         # Sit if there is time, otherwise hold last posture.
+        print("SEGMENT INSIDE execute_pretag_gests {}".format(segment))
         if duration_est > 1.5:
             self.robot.mm.sit_gently(post=True)
         self.robot.tts.say(segment)
@@ -468,12 +514,15 @@ class ConversationManager(object):
             Identify its type and run.
             Consider moving the text processing to another function.
             """ 
+            print("SEGMENT INSIDE execute_tagged_gests {}".format(posttag_segment))
 
             posttag_joints, posttag_angles, posttag_timepoints = [], [], []
             if gesture_type == 1:
 
-                self.robot.tts.post.say(posttag_segment)
+                wait_to_finish = self.robot.tts.post.say(posttag_segment)
                 self.robot.mm.use_motion_library(tag)
+                self.robot.tts.wait(wait_to_finish, 0)
+
                 # # Only load the gesture, if its duration does not exceed the duration of the speech segment estimate by more than 0.5s
                 # timepoints = motions.get(tag, {}).get("time_points_list", []) # with a default if missing
                 # timepoint_max = max(max(sublist) for sublist in timepoints) 
@@ -523,12 +572,12 @@ class ConversationManager(object):
         return [yaws, pitches]    
 
     def set_reps_hand(self, duration_est):
-        reps_hand = round((duration_est - self.gest_duration_arm - 1)*1.25)
+        reps_hand = math.floor(duration_est / (self.gest_duration_hand + self.sleep_duration))
         return int(reps_hand)
     
     def set_reps_head(self, duration_est):
         print("delete: duration_est: {}".format(duration_est))
-        reps_head = (duration_est - self.gest_duration_arm - 1)*2
+        reps_head = math.floor(duration_est / (self.gest_duration_head + self.sleep_duration))
         return int(reps_head)
     
     def set_random_arm(self, side):
@@ -580,7 +629,8 @@ class ConversationManager(object):
     def execute_random_gests(self, segment, duration):
 
             joints, angles, timepoints = self.set_random_gest(duration)
-
+            print("SEGMENT INSIDE execute_random_gests {}".format(segment))
+            print(type(segment))
             # Execute posttag segment with speech
             self.robot.motion.post.angleInterpolation(joints, angles, timepoints, True)
             self.robot.tts.say(segment)   
@@ -745,6 +795,7 @@ class ConversationManager(object):
 
 
 
+
     def speak_n_gest(self, text):
 
         """
@@ -785,23 +836,38 @@ class ConversationManager(object):
 
         """
         Speak via NAORobot TTS and simultaneously gesture.
-        """       
+        """      
+        print("started speak_n_gest_next_level")
+        print("SEGMENTS LIST: {}".format(segments_list))
 
         for segment_list in segments_list:
 
             # segments list structure: [[segment, tag, gest_type, duration_est], [segment, tag, gest_type, duration_est], ...]
             # Speak and execute the appropriate gestures
-            segment = segment_list[0]
+            print("SEGMENT SINGULAR LIST: {}".format(segment_list))
+
+            segment = self.to_ascii(segment_list[0])
+            print("SEGMENT: {}".format(segment))
+
             tag = segment_list[1]
-            gesture_type = segment_list[2]
+            if tag:
+                tag = self.to_ascii(tag)
+            print("TAG: {}".format(tag))
+
+            gesture_type = segment_list[2]       
+            if gesture_type:
+                gesture_type = self.to_ascii(gesture_type)
+            print("GESTURE TYPE: {}".format(gesture_type))
+            
             duration_est = segment_list[3]
 
-            print("SEGMENTS LIST: {}".format(segment_list))
-            print("SEGMENT: {}".format(segment))
-            print("TAG: {}".format(tag))
-            print("GESTURE TYPE: {}".format(gesture_type))
+            
+            
+            
+            
             print("DURATION_EST: {}".format(duration_est))
 
+            print("that ascii stuff should have printed")
             # Execute gentle sit on prettag segment, if there is time
             if tag == "pretag":
                 pass
@@ -879,7 +945,8 @@ class ConversationManager(object):
                     ai_reply = transcribe.reply(transcription, model, interlocutor, list)
                     
                     if ai_reply:
-                        self.speak_n_gest(ai_reply)
+                        print("AI reply detected")
+                        self.speak_n_gest_next_level(ai_reply)
                         transcription += "Robot: {}\n".format(ai_reply[0])
                     else:
                         print("AI did not return a reply.\n")

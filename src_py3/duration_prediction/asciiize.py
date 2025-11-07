@@ -121,8 +121,10 @@ def numbers_to_words(
 
 def asciiize(text):
     partially_clean = text.encode("ascii", "ignore").decode("ascii")
-
-    return numbers_to_words(partially_clean)
+    print(f"Check is asciiized: {partially_clean.isascii()}")
+    fully_clean = numbers_to_words(partially_clean)
+    print(f"type asciiized and numbers to words: {fully_clean.isascii()}")
+    return fully_clean
 
 
 if __name__ == "__main__":
@@ -131,6 +133,7 @@ if __name__ == "__main__":
         text = file.read()
 
     fully_clean = asciiize(text)
+    
 
     try:
         with open("/Users/neurorobots/Desktop/repos/uq-neuro-nao/src_py3/duration_prediction/texts/verification_text_block.txt", "w", encoding="ascii") as f:
