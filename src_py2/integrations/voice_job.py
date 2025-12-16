@@ -27,6 +27,7 @@ class NaoJobConsumer(object):
         self.model = model
         self.interlocutor = interlocutor
         self.transcript = ""  # persistent session transcript
+        self.turn_count = None
 
     def handle_input_job(self, job):
         """
@@ -35,6 +36,8 @@ class NaoJobConsumer(object):
         """
         turn_id = job.get("turn_id")
         user_text = job.get("user") or ""
+
+        self.turn_count = turn_id
 
         # Always produce an ack, even on empty speech
         result = {
@@ -62,7 +65,8 @@ class NaoJobConsumer(object):
                 self.transcript,
                 self.model,
                 self.interlocutor,
-                list
+                list,
+                self.turn_count
             )
         except Exception as e:
             result["error"] = "transcribe.reply raised: {}".format(e)

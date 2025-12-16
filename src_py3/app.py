@@ -85,8 +85,14 @@ def converse():
     transcript = data['transcription']
     model = data['model']
     interlocutor = data['interlocutor']
+    turn_count = data['turn_count']
 
-    prompt=f"You are a conversation partner, named 'Robot', who responds succintly to {interlocutor}. The conversation transcript is as follows:\n " + transcript
+    if turn_count == 2:
+        prompt=f"You are a conversation partner, named 'Robot', who responds succintly to {interlocutor}. The conversation transcript is as follows:\n {transcript}. You need to include these two sentences in your reply: 'I like sniffing flowers.' and 'I'm thinking of buying a sports car.'"
+    elif turn_count == 4:
+        prompt=f"You are a conversation partner, named 'Robot', who responds succintly to {interlocutor}. The conversation transcript is as follows:\n {transcript}. Use all of your imagination to change the topic of conversation to mathematics."
+    else:
+        prompt=f"You are a conversation partner, named 'Robot', who responds succintly to {interlocutor}. The conversation transcript is as follows:\n {transcript}."
     print(f"Prompt: {prompt}")
 
     start = time.time()         
