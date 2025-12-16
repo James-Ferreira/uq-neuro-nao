@@ -146,7 +146,6 @@ class ConversationManager(object):
     
     # SPECIFIC TEXT HANDLING
 
-
     def has_alphanumeric(self, text):
         """
         Returns True if the string contains at least one alphanumeric character (A–Z, a–z, 0–9).
@@ -241,7 +240,6 @@ class ConversationManager(object):
 
     # To estimate duration for a segment (example weights; refine via testing)
     def estimate_duration(self, segment):
-
         """
         Use variable weights for puases 1
         """
@@ -264,7 +262,6 @@ class ConversationManager(object):
             return total_duration
     
     def estimate_durations(self, segments):
-
         """
         Apply the duration estimate to each text segment in a list.
         """
@@ -322,7 +319,6 @@ class ConversationManager(object):
             )
     
     def preprocess_segments(self, text):
-
         """
         Split text, calculate segment durations, assign gestures.
         Outputs list of lists, each of which contains 
@@ -482,7 +478,6 @@ class ConversationManager(object):
 
 
     def set_tagged_gest_single(self, tag, duration):
-
         """
         Set a single tagged gesture
         """      
@@ -508,7 +503,6 @@ class ConversationManager(object):
         self.robot.tts.say(segment)
 
     def execute_tagged_gest(self, posttag_segment, tag, gesture_type, duration_est):   
-
             """
             Split a tagged gesture into before and after.
             Identify its type and run.
@@ -587,7 +581,6 @@ class ConversationManager(object):
         return gesture_arm
     
     def set_random_gest(self, duration):
-
         # Side
         side = self.set_side()            
 
@@ -793,9 +786,6 @@ class ConversationManager(object):
 
             return duration
 
-
-
-
     def speak_n_gest(self, text):
 
         """
@@ -861,10 +851,6 @@ class ConversationManager(object):
             
             duration_est = segment_list[3]
 
-            
-            
-            
-            
             print("DURATION_EST: {}".format(duration_est))
 
             print("that ascii stuff should have printed")
@@ -955,13 +941,3 @@ class ConversationManager(object):
                     print("Error during conversation round {}: {}".format(i + 1, e))
                     continue
             return transcription
-
-    
-
-
-
-
-
-
-
-

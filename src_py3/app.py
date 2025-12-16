@@ -78,7 +78,7 @@ def transcribe_whisper(audio_file_path, model):
 @app.route('/converse', methods=['POST'])
 def converse():
     data = request.get_json()
-    print("JSON DATA: {data}")
+    print(f"JSON DATA: {data}")
     if not data or 'transcription' not in data:
         return jsonify({'error': 'No transcription provided'}), 400
 
