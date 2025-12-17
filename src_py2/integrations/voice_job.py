@@ -111,9 +111,9 @@ class NaoJobConsumer(object):
         processed = set()
 
         print("NAO job worker started")
-        print("  session_dir: {}".format(session_dir))
-        print("  outbox_dir:  {}".format(outbox_dir))
-        print("  inbox_dir:   {}".format(inbox_dir))
+        print("session_dir: {}".format(session_dir))
+        print("outbox_dir: {}".format(outbox_dir))
+        print("inbox_dir: {}".format(inbox_dir))
 
         while True:
             try:

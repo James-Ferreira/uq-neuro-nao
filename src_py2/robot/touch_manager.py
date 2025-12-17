@@ -111,10 +111,6 @@ class TouchModule(ALModule):
             return self._confirm_result if signalled else None
     
     def onLeftBumperPressed(self, strVarName, value):
-        """ALMemory event callback: LeftBumperPressed."""
-        # TEMP DEBUG: prove we are being called
-        print("[LeftBumperPressed]", strVarName, value)
-
         isPressed = bool(value)
         with self._lock_hold:
             if not self._awaiting_hold:
@@ -127,22 +123,15 @@ class TouchModule(ALModule):
                 self._hold_release_event.set()
 
     def wait_for_left_bumper_press(self):
-        """docustring!"""
         with self._lock_hold:
             self._awaiting_hold = True
             self._hold_pressed = False
             self._hold_press_event.clear()
-        return True if self._hold_press_event.wait() else None
+            self._hold_release_event.clear()
+        return self._hold_press_event.wait()
 
-    def wait_for_left_bumper_release(self, poll_hz=50):
-        """Wait until the left bumper is no longer pressed (poll ALMemory key)."""
-        import time
-        dt = 1.0 / float(poll_hz)
-        while True:
-            v = self.nao.memory.getData("LeftBumperPressed")
-            if v < 0.5:
-                with self._lock_hold:
-                    self._awaiting_hold = False
-                    self._hold_pressed = False
-                return True
-            time.sleep(dt)
+    def wait_for_left_bumper_release(self):
+        ok = self._hold_release_event.wait()
+        with self._lock_hold:
+            self._awaiting_hold = False
+        return ok
