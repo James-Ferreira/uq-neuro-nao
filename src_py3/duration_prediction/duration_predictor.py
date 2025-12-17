@@ -102,8 +102,7 @@ def train_and_save_model(texts: List[str], durations: List[float], model_path: s
 # 3. Prediction Helper (for other scripts)
 # -------------------------------------------------
 def predict_duration(text: str, model_path: str = "/Users/neurorobots/Desktop/repos/uq-neuro-nao/src_py3/duration_prediction/duration_predictor.pkl") -> float:
-
     predictor = DurationPredictor.load(model_path)
     prediction = predictor.predict(text)
-    print(f"predict_duration: /ntext: {text}, predictor: {prediction}")
+    print(f"predict_duration: \n text: {text}, predictor: {prediction}")
     return prediction

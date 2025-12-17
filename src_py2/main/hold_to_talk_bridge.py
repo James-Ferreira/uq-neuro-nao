@@ -3,7 +3,7 @@ import urllib2
 import json
 import time
 
-BRIDGE = "http://127.0.0.1:5055"   # if running on same Mac; otherwise put the Mac mini LAN IP
+BRIDGE = "http://127.0.0.1:5055"
 
 def post_json(url, payload=None, timeout=10):
     data = json.dumps(payload or {}).encode("utf-8")
@@ -20,13 +20,6 @@ def main():
 
         clas.tm.wait_for_left_bumper_release()
         result = post_json(BRIDGE + "/stop")
-
-        # Optional: speak the transcript back for debugging only
-        # (You don't need this for production)
-        txt = result.get("transcript","")
-        if txt:
-            clas.tts.post.say("You said: {}".format(txt))
-
         time.sleep(0.05)
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@ import whisper
 import time
 import ollama
 import string
+import requests
 
 from src_py3.duration_prediction.segmentize import Segmentize
 
@@ -75,7 +76,7 @@ def transcribe_whisper(audio_file_path, model):
         print(f"Error: {e}")
     return text
 
-@app.route('/converse', methods=['POST'])
+"""@app.route('/converse', methods=['POST'])
 def converse():
     data = request.get_json()
     print(f"JSON DATA: {data}")
@@ -109,11 +110,168 @@ def converse():
     print(f"RESPONSE STRING: {response_str}")
     segments_list = Segmentize(response_str).process_segments()
     print(f"SEGMENTS LIST: {segments_list}")
+    print("LEN:", len(response_str))
+    print("REPR:", repr(response_str[:500]))
 
     try:
         return jsonify({'response': response_str, 'segments_list': segments_list}), 200
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': str(e)}), 500"""
+
+
+
+@app.route('/converse', methods=['POST'])
+def converse():
+    data = request.get_json()
+    print("JSON DATA:", data)
+
+    if not data or 'transcription' not in data:
+        return jsonify({'error': 'No transcription provided'}), 400
+
+    transcript   = data.get('transcription', '') or ''
+    model        = data.get('model')
+    print(f"MODEL: {model}")
+    interlocutor = data.get('interlocutor', 'User')
+    turn_count   = int(data.get('turn_count', 0))
+
+    # ---- Build system prompt (strict output contract for Segmentize) ----
+    system_prompt = (
+        "You are Robot, a conversation partner.\n"
+        "Reply succinctly to the user.\n"
+        "IMPORTANT:\n"
+        "- Wrap your entire reply in <ROBOT>...</ROBOT>.\n"
+        """You are an emotional robot.  There are several social gestures that you can make to enhance your speech.
+
+        Below, the names for the gestures are in square brackets and are followed by descriptions.
+
+
+        [facepalm]: cover face in disgust or frustration over something.
+        [look upward]: look up to the sky or ceiling.
+        [point down]: point down.
+        [point forward]: point straight ahead, for example, to the person you are speaking with.
+        [point to self]: point to your chest, for example, when speaking about yourself.
+        [point up]: point up.
+        [pump fist]: pump fist in celebration or to motivate someone.
+        [scratch head]: scratch head to express puzzlement .
+        [shake fist]: shake fist in anger or out of frustration.
+        [shrug]: raise shoulders and open hands to express ignorance.
+        [spread arms]: spread arms to include or welcome everyone or everything. 
+        [wave hand]: wave hand to greet or take leave of someone.
+
+        When you generate your speech, insert gestures anywhere in your sentences just before phrases that you think would work well with gestures.   A gesture should appear ***before** the phrase that it should accompany.  You are under no obligation to gesture and should not gesture, if none of the available gestures really fits what you are saying, but creative use of the gestures available is welcome.
+
+        Here are some examples of sentences that include gesture tags:
+
+        "So that's my opinion, [point forward] but what do you think?"
+        "As a robot, [point to self] I have trouble really understanding human emotions."
+        "Gee, [scratch head] I'm not really sure that's a good idea."
+        "That's the end of the game and, guess what, [pump fist] we won!  We did it!"
+        "[shake fist] Hey, that's not fair.  Robots are people, too!"
+        "[wave hand] Well, have a good evening then.  See you later."""
+    )
+
+    # ---- Handle your special-turn instructions without reprinting transcript ----
+    extra_instruction = ""
+    if turn_count == 2:
+        extra_instruction = (
+            "You must include these two sentences in your reply:\n"
+            "1) I like sniffing flowers.\n"
+            "2) I'm thinking of buying a sports car.\n"
+        )
+    elif turn_count == 4:
+        extra_instruction = (
+            "Use your imagination to change the topic of conversation to mathematics.\n"
+        )
+
+    # ---- Parse transcript into messages ----
+    # Expected format you were building: "Speaker: ...\nRobot: ...\nSpeaker: ...\n"
+    def transcript_to_messages(t):
+        msgs = []
+        lines = [ln.strip() for ln in t.splitlines() if ln.strip()]
+        for ln in lines:
+            if ln.startswith("Speaker:"):
+                msgs.append({"role": "user", "content": ln[len("Speaker:"):].strip()})
+            elif ln.startswith("Robot:"):
+                msgs.append({"role": "assistant", "content": ln[len("Robot:"):].strip()})
+        return msgs
+
+    history = transcript_to_messages(transcript)
+
+    # The "current user message" to respond to:
+    # Use the most recent user message from history if available, else fall back to full transcript.
+    last_user = ""
+    for m in reversed(history):
+        if m.get("role") == "user":
+            last_user = m.get("content", "")
+            break
+    if not last_user:
+        last_user = transcript.strip()
+
+    user_prompt = (
+        "The user you're replying to is named: {}\n".format(interlocutor) +
+        (extra_instruction + "\n" if extra_instruction else "") +
+        "User message:\n{}\n".format(last_user)
+    )
+
+    # ---- Call Ollama chat API (same pattern as voice-llm-chat) ----
+    payload = {
+        "model": model,
+        "messages": [{"role": "system", "content": system_prompt}] + history + [
+            {"role": "user", "content": user_prompt}
+        ],
+        "stream": False
+    }
+
+    url = "http://localhost:11434/api/chat"
+    start = time.time()
+    try:
+        r = requests.post(url, json=payload, timeout=(3, 60))
+        r.raise_for_status()
+        data_out = r.json()
+    except Exception as e:
+        return jsonify({'error': 'Ollama request failed: {}'.format(e)}), 500
+    end = time.time()
+    print("Elapsed time: {:.2f} seconds.".format(end - start))
+
+    response_str = ""
+    try:
+        response_str = (data_out.get("message") or {}).get("content", "") or ""
+    except Exception:
+        response_str = ""
+
+    print("RAW RESPONSE STRING:", response_str)
+    print("LEN:", len(response_str))
+    print("REPR:", repr(response_str[:500]))
+
+    # ---- Extract strict <ROBOT>...</ROBOT> to keep Segmentize clean ----
+    extracted = response_str
+    if "<ROBOT>" in extracted:
+        extracted = extracted.split("<ROBOT>", 1)[-1]
+    if "</ROBOT>" in extracted:
+        extracted = extracted.split("</ROBOT>", 1)[0]
+    extracted = extracted.strip()
+
+    # Fallback if model ignored wrapper
+    if not extracted:
+        extracted = response_str.strip()
+
+    print("EXTRACTED ROBOT TEXT:", extracted)
+
+    # ---- Segmentize only the extracted robot reply ----
+    try:
+        segments_list = Segmentize(extracted).process_segments()
+    except Exception as e:
+        return jsonify({
+            'error': 'Segmentize failed: {}'.format(e),
+            'raw_response': response_str,
+            'extracted': extracted
+        }), 500
+
+    print("SEGMENTS LIST:", segments_list)
+
+    return jsonify({'response': extracted, 'segments_list': segments_list}), 200
+
+
 
 @app.route('/guess', methods=['POST'])
 def guess():
