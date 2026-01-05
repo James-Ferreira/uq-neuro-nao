@@ -12,7 +12,7 @@ def transcribe_filepath(filepath):
     try:
         response = requests.post(api_url, json={
             'filepath': filepath
-        })  
+        })
         response.raise_for_status()
         transcription_data = response.json()
         transcription = transcription_data.get('transcription')
@@ -20,7 +20,7 @@ def transcribe_filepath(filepath):
         if transcription:
             print("Transcribed '{}'".format(transcription))
             return transcription
-        else: 
+        else:
             print("Error: API returned empty transcription.")
             return None
     except requests.exceptions.RequestException as e:
@@ -29,7 +29,7 @@ def transcribe_filepath(filepath):
     except IOError as e:
         print("Error opening audio file: {}".format(e))
         return None
-    
+
 
 def transcribe_file(filepath):
     api_url = "http://localhost:5000/transcribe/file"
@@ -49,7 +49,7 @@ def transcribe_file(filepath):
             if transcription:
                 print("Transcribed '{}'".format(transcription))
                 return transcription
-            else: 
+            else:
                 print("Error: API returned empty transcription.")
                 return None
 
@@ -59,13 +59,27 @@ def transcribe_file(filepath):
     except IOError as e:
         print("Error opening audio file: {}".format(e))
         return None
-    
 
-def reply(transcript, model, interlocutor, type, turn_count):
+
+def reply(transcript, model, interlocutor, type, turn_count, prompt=None, history=None):
     api_url = "http://localhost:5000/converse"
 
+    payload = {
+        'model': model,
+        'interlocutor': interlocutor,
+        'turn_count': turn_count
+    }
+
+    # Preferred new path: structured history + current prompt
+    if prompt is not None or history is not None:
+        payload['prompt'] = prompt or ""
+        payload['history'] = history or []
+    else:
+        # Backward-compatible legacy path: labeled transcript string
+        payload['transcription'] = transcript
+
     try:
-        response = requests.post(api_url, json={'transcription': transcript, 'model': model, 'interlocutor': interlocutor, 'turn_count': turn_count})
+        response = requests.post(api_url, json=payload)
         response.raise_for_status()
         data = response.json()
         print("JSON DATA: {}".format(data))

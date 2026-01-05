@@ -26,7 +26,7 @@ class NaoJobConsumer(object):
         self.robot = getattr(convo, "robot", None)  # optional, handy for debugging
         self.model = model
         self.interlocutor = interlocutor
-        self.transcript = ""  # persistent session transcript
+        self.history = []  # [{"role":"user"/"assistant", "content": "..."}]
         self.turn_count = None
 
     def handle_input_job(self, job):
@@ -56,17 +56,19 @@ class NaoJobConsumer(object):
             result["ok"] = True
             return result
 
-        # Update running transcript for context
-        self.transcript += "Speaker: {}\n".format(user_text)
+        # Add this user turn to structured history (no "Speaker:" labels)
+        self.history.append({"role": "user", "content": user_text})
 
         # Get gesturized segments list from your local Py3 API via transcribe.reply
         try:
             segments_list = transcribe.reply(
-                self.transcript,
+                "",
                 self.model,
                 self.interlocutor,
                 list,
-                self.turn_count
+                self.turn_count,
+                prompt=user_text,
+                history=self.history
             )
         except Exception as e:
             result["error"] = "transcribe.reply raised: {}".format(e)
@@ -83,12 +85,13 @@ class NaoJobConsumer(object):
             result["error"] = "speak_n_gest_next_level raised: {}".format(e)
             return result
 
-        # Append robot text to transcript (your segments_list carries segment strings)
+        # Add robot reply to structured history (no "Robot:" labels)
         try:
             robot_text = " ".join([seg[0] for seg in segments_list if seg and seg[0]])
-            self.transcript += "Robot: {}\n".format(robot_text)
+            if robot_text.strip():
+                self.history.append({"role": "assistant", "content": robot_text})
         except Exception:
-            # Not fatal; transcript is just context
+            # Not fatal; history is just context
             pass
 
         result["ai_segments_list"] = segments_list

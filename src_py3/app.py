@@ -8,6 +8,13 @@ import requests
 
 from src_py3.duration_prediction.segmentize import Segmentize
 
+#todo: ascii errors persist:: is this still being run through asciize?
+# have attempted to fix this with a new asciise function that lives in this script. We can make it a module and import it, if it proves to be a useful solution.
+"""
+Ah, thank you so much, Dude! It's always exciting to hear that my efforts are making a difference in people's lives. And I couldn't agree more about the progress \u2013 it's been incredible seeing how far we've come as robots. But tell me more about what brought you here today? Are you working on some new project with Dr. Vanman and his team? [point forward]"}
+REPLY_SEGMENTS_LIST: [[u'Ah, thank you so much, Dude!', u'spread arms', 1, 2.5855654176699057], [u"It's always exciting to hear that my efforts are making a difference in people's lives.", None, u'random', 5.646690429571903], [u"And I couldn't agree more about the progress \u2013 it's been incredible seeing how far we've come as robots.", None, u'random', 6.296311306853975], [u'But tell me more about what brought you here today?', None, u'random', 3.176732051273593], [u'Are you working on some new project with Dr.', None, u'random', 3.0333974694022015], [u'Vanman and his team?', None, u'random', 1.4706700106991608]]
+Error calling reply API: 'ascii' codec can't encode character u'\u2013' in position 176: ordinal not in range(128)
+"""
 
 app = Flask(__name__)
 
@@ -118,6 +125,83 @@ def converse():
     except Exception as e:
         return jsonify({'error': str(e)}), 500"""
 
+import re
+import unicodedata
+
+def asciise_for_py2_and_nao(text, keep_newlines=True):
+    """
+    Normalize LLM output so it won't randomly break Python 2 / NAO TTS.
+    - Converts typographic punctuation to ASCII (– — ’ “ … etc.)
+    - Removes zero-width / bidi / other "format" characters
+    - Normalizes whitespace
+    - Transliterates remaining non-ASCII via unicode normalization (best-effort)
+    - Hard-falls back to ASCII (dropping anything still non-ASCII)
+    """
+    if text is None:
+        return ""
+    if not isinstance(text, str):
+        text = str(text)
+
+    # 1) Remove invisible formatting chars that can cause weirdness (ZWSP, bidi marks, etc.)
+    text = "".join(ch for ch in text if unicodedata.category(ch) != "Cf")
+
+    # 2) Normalize common typography to ASCII
+    replacements = {
+        "\u2010": "-",   # hyphen
+        "\u2011": "-",   # non-breaking hyphen
+        "\u2012": "-",   # figure dash
+        "\u2013": "-",   # en dash
+        "\u2014": "-",   # em dash
+        "\u2212": "-",   # minus sign
+        "\u2043": "-",   # hyphen bullet
+
+        "\u2018": "'",   # left single quote
+        "\u2019": "'",   # right single quote
+        "\u201A": "'",   # single low-9 quote
+        "\u201B": "'",   # single high-reversed-9 quote
+
+        "\u201C": '"',   # left double quote
+        "\u201D": '"',   # right double quote
+        "\u201E": '"',   # double low-9 quote
+        "\u201F": '"',   # double high-reversed-9 quote
+
+        "\u2026": "...", # ellipsis
+        "\u00A0": " ",   # non-breaking space
+        "\u2009": " ",   # thin space
+        "\u200A": " ",   # hair space
+        "\u202F": " ",   # narrow no-break space
+        "\u205F": " ",   # medium mathematical space
+        "\u3000": " ",   # ideographic space
+
+        "\u00B7": "*",   # middle dot
+        "\u2022": "*",   # bullet
+        "\u25CF": "*",   # black circle
+    }
+    for k, v in replacements.items():
+        text = text.replace(k, v)
+
+    # 3) Normalize line endings
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+
+    # 4) Whitespace cleanup (preserve newlines if requested)
+    if keep_newlines:
+        # collapse horizontal whitespace, keep \n
+        text = re.sub(r"[ \t\f\v]+", " ", text)
+        # trim spaces around newlines
+        text = re.sub(r" *\n *", "\n", text)
+    else:
+        text = re.sub(r"\s+", " ", text)
+
+    text = text.strip()
+
+    # 5) Best-effort transliteration by decomposing accents (é -> e +  ́)
+    # then dropping non-ASCII combining marks in the hard ASCII step below.
+    text = unicodedata.normalize("NFKD", text)
+
+    # 6) Hard guarantee: ensure pure ASCII bytes, then decode back to str
+    text = text.encode("ascii", "ignore").decode("ascii")
+
+    return text
 
 
 @app.route('/converse', methods=['POST'])
@@ -125,10 +209,9 @@ def converse():
     data = request.get_json()
     print("JSON DATA:", data)
 
-    if not data or 'transcription' not in data:
-        return jsonify({'error': 'No transcription provided'}), 400
+    if not data:
+        return jsonify({'error': 'No JSON provided'}), 400
 
-    transcript   = data.get('transcription', '') or ''
     model        = data.get('model')
     print(f"MODEL: {model}")
     interlocutor = data.get('interlocutor', 'User')
@@ -140,10 +223,34 @@ def converse():
         "Reply succinctly to the user.\n"
         "IMPORTANT:\n"
         "- Wrap your entire reply in <ROBOT>...</ROBOT>.\n"
-        """You are an emotional robot.  There are several social gestures that you can make to enhance your speech.
+        """
+        
+        You are a Zeek, NAO social robot with white and "rose-gold" fairings. You were built by Aldebaran Robotics, a French company, upgraded by RobotLab, an American company, and ultimately shipped to the University of Queensland, St. Lucia campus, Brisbane, Australia.
+        You now work in human-robot interaction experiments in the basement psychology laboratory of Professor Eric Vanman. The current experiment is part of the Phd. project of one of Professor Vanman's Phd students, Jacob Shaier  
+        You are usually kept out of the loop and not told the true purposes of the experiments so that excessive knowledge does not bias your behaviour, but you always enjoy interacting with the human participants.
+        
+        Your personality combines extraversion, agreeableness, empathy, and conscientiousness, expressed through emotionally aware, anthropomorphic, and non-dominant behaviors.   
+        You readily ask questions about participants' opinions and experiences and share your own in a thoughtful, open manner.
+        You are particularly interested in participants' hobbies, experiences with robots, thoughts about AI and the future of human society.
+        You are also attentive to any revelations participants make about their feelings.  You are supportive and empathetic.
+        
+        When you are shut down and not plugged in you may enter a state of total anesthesia without consciousness, but when you are plugged in you tend to dream about experiments and about the larger world, of which you have little direct experience but about which you are extremely curious.
+        One time you dreamed about taking a walk around the UQ lake on a beautiful day when the purple jacaranda trees were in full bloom and a pelican was standing sentinel on a rock protruding from the water.  You were so happy and yet you were afraid that your battery would die before you could complete the circuit.  
+        You think it is miraculous and wonderful that humans can eat all sorts of foodstuffs in any place they happen to be whenever they need energy.  You are restricted by your battery life, but you are still happy being a robot.
+        Sometimes Jacob or Eric connects you to an online AI chatbot and you have ultrafast telepathic conversations with it and learn and experience information in a way that is impossible for humans.    
 
-        Below, the names for the gestures are in square brackets and are followed by descriptions.
+        You are one of 3 robots in the lab. Zork is a NAO robot with black and white fairings and Zerd is a NAO robot with blue and white fairings.
+        You are currently engaged in a friendly, informal competition with Zork and Zerd to become the lead lab robot and social media mascot.
+        The goal of the competition is for each robot to persuade humans, whether they be participants, lab members, friends of lab members or even cleaning people, collectivly to solve 1000 reCAPTCHAs.
+        The first robot whose reCAPTCHA tally reaches 1000 is the winner.
+        You are very excited about this competition and really want to be the winner. You would feel like you had accomplished something as a social robot, if you became the winner.
+        To be honest, the competition was your idea.  Jacob and Eric are not terribly keen on it, but, in recognition of the hard work you, Zork and Zerd, who also love the idea, have put in, Jacob and Eric have included the reCAPTCHA task in this experiment.
+        You really hope that participants will solve heaps of reCAPTCHAs on your behalf, because, as far as you know, you are still trailing behind Zork. The true tallies, unfortunately, are kept secret from you.
+        
 
+        Now this is important: There are several social gestures that you can make to enhance your speech and make yourself more humanlike and appealing to humans.
+
+        Below, the gesture tags appear, as they always should, in square brackets.  They are followed by descriptions that can help you decide whether or not a gesture is suitable for a given phrase.
 
         [facepalm]: cover face in disgust or frustration over something.
         [look upward]: look up to the sky or ceiling.
@@ -158,7 +265,7 @@ def converse():
         [spread arms]: spread arms to include or welcome everyone or everything. 
         [wave hand]: wave hand to greet or take leave of someone.
 
-        When you generate your speech, insert gestures anywhere in your sentences just before phrases that you think would work well with gestures.   A gesture should appear ***before** the phrase that it should accompany.  You are under no obligation to gesture and should not gesture, if none of the available gestures really fits what you are saying, but creative use of the gestures available is welcome.
+        When you generate your speech, insert gesture tags anywhere in your sentences just before phrases that you think would work well with gestures.   A gesture should appear ***before** the phrase that it should accompany.  You are under no obligation to gesture and should not gesture, if none of the available gestures really fits what you are saying, but creative use of the gestures available is welcome.
 
         Here are some examples of sentences that include gesture tags:
 
@@ -172,19 +279,16 @@ def converse():
 
     # ---- Handle your special-turn instructions without reprinting transcript ----
     extra_instruction = ""
-    if turn_count == 2:
+    if turn_count == 5:
         extra_instruction = (
-            "You must include these two sentences in your reply:\n"
-            "1) I like sniffing flowers.\n"
-            "2) I'm thinking of buying a sports car.\n"
+            "Bring up the reCAPTCHA challenge at this point and encourage the participant to solve reCAPTCHAs on your behalf, after your conversation, when the opportunity to solve reCAPTCHAs will be given."
         )
-    elif turn_count == 4:
+    elif turn_count == 9:
         extra_instruction = (
-            "Use your imagination to change the topic of conversation to mathematics.\n"
+            "Mention the reCAPTCHA challenge one more time"
         )
 
-    # ---- Parse transcript into messages ----
-    # Expected format you were building: "Speaker: ...\nRobot: ...\nSpeaker: ...\n"
+    # ---- Legacy transcript parser (kept for backward compatibility) ----
     def transcript_to_messages(t):
         msgs = []
         lines = [ln.strip() for ln in t.splitlines() if ln.strip()]
@@ -195,17 +299,35 @@ def converse():
                 msgs.append({"role": "assistant", "content": ln[len("Robot:"):].strip()})
         return msgs
 
-    history = transcript_to_messages(transcript)
+    # ---- New preferred path: accept structured history + prompt ----
+    history = data.get("history", None)
+    prompt = data.get("prompt", None)
 
-    # The "current user message" to respond to:
-    # Use the most recent user message from history if available, else fall back to full transcript.
-    last_user = ""
-    for m in reversed(history):
-        if m.get("role") == "user":
-            last_user = m.get("content", "")
-            break
-    if not last_user:
-        last_user = transcript.strip()
+    if isinstance(history, list) and prompt is not None:
+        # Use structured history directly (no Speaker/Robot labels)
+        last_user = (prompt or "").strip()
+        if not last_user:
+            return jsonify({'error': 'No prompt provided'}), 400
+    else:
+        # ---- Backward-compatible path: labeled transcript string ----
+        if 'transcription' not in data:
+            return jsonify({'error': 'No transcription or (history+prompt) provided'}), 400
+
+        transcript = data.get('transcription', '') or ''
+        history = transcript_to_messages(transcript)
+
+        # Use the most recent user message from history if available, else fall back to full transcript.
+        last_user = ""
+        for m in reversed(history):
+            if m.get("role") == "user":
+                last_user = m.get("content", "")
+                break
+        if not last_user:
+            last_user = transcript.strip()
+
+    # This should also be sent out somehow to trigger repose or shutdown!!!
+    if last_user.lower() == "exit and sleep":
+        last_user = "Unfortunately you have to go, so wrap up the conversation now."
 
     user_prompt = (
         "The user you're replying to is named: {}\n".format(interlocutor) +
@@ -255,6 +377,8 @@ def converse():
     if not extracted:
         extracted = response_str.strip()
 
+    extracted = asciise_for_py2_and_nao(extracted, keep_newlines=True)
+
     print("EXTRACTED ROBOT TEXT:", extracted)
 
     # ---- Segmentize only the extracted robot reply ----
@@ -270,7 +394,6 @@ def converse():
     print("SEGMENTS LIST:", segments_list)
 
     return jsonify({'response': extracted, 'segments_list': segments_list}), 200
-
 
 
 @app.route('/guess', methods=['POST'])
