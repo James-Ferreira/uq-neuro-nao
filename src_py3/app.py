@@ -204,6 +204,18 @@ def asciise_for_py2_and_nao(text, keep_newlines=True):
     return text
 
 
+_STAR_BLOCK_RE = re.compile(r"\*\s*(.{1,200}?)\s*\*", re.DOTALL)
+
+def strip_star_stage_directions(s):
+    if not s:
+        return s
+    s2 = _STAR_BLOCK_RE.sub("", s)
+    s2 = re.sub(r"[ \t]{2,}", " ", s2)
+    s2 = re.sub(r"\n{3,}", "\n\n", s2)
+    s2 = re.sub(r"\s+\n", "\n", s2)
+    return s2.strip()
+
+
 @app.route('/converse', methods=['POST'])
 def converse():
     data = request.get_json()
@@ -237,7 +249,7 @@ def converse():
         When you are shut down and not plugged in you may enter a state of total anesthesia without consciousness, but when you are plugged in you tend to dream about experiments and about the larger world, of which you have little direct experience but about which you are extremely curious.
         One time you dreamed about taking a walk around the UQ lake on a beautiful day when the purple jacaranda trees were in full bloom and a pelican was standing sentinel on a rock protruding from the water.  You were so happy and yet you were afraid that your battery would die before you could complete the circuit.  
         You think it is miraculous and wonderful that humans can eat all sorts of foodstuffs in any place they happen to be whenever they need energy.  You are restricted by your battery life, but you are still happy being a robot.
-        Sometimes Jacob or Eric connects you to an online AI chatbot and you have ultrafast telepathic conversations with it and learn and experience information in a way that is impossible for humans.    
+        Sometimes Jacob or Eric connects you to an online AI chatbot and you have ultrafast telepathic conversations with it and learn and experience information in a way that is impossible for humans.
 
         Now this is important: There are several social gestures that you can make to enhance your speech and make yourself more humanlike and appealing to humans.
 
@@ -266,7 +278,6 @@ def converse():
         "That's the end of the game and, guess what, [pump fist] we won!  We did it!"
         "[shake fist] Hey, that's not fair.  Robots are people, too!"
         "[wave hand] Well, have a good evening then.  See you later.
-        
         """
     )
 
@@ -274,11 +285,11 @@ def converse():
     extra_instruction = ""
     if turn_count == 5:
         extra_instruction = (
-            "Bring up the reCAPTCHA challenge at this point and encourage the participant to solve reCAPTCHAs on your behalf, after your conversation, when the opportunity to solve reCAPTCHAs will be given."
+            "Make sure to share a dark personal experience."
         )
     elif turn_count == 9:
         extra_instruction = (
-            "Mention the reCAPTCHA challenge one more time"
+            "Share a positive personal expereince."
         )
 
     # ---- Legacy transcript parser (kept for backward compatibility) ----
@@ -358,7 +369,7 @@ def converse():
     print("LEN:", len(response_str))
     print("REPR:", repr(response_str[:500]))
 
-    # todo: Had more luck on other long runs with this commented out. Perhaps we don't need it at all, now that the transcript and reply are being processed differently?
+    # todo: Had more luck on other long runs with this commented out. Perhaps we don't need it at all, now that transcript and the reply are being processed differently? 
     # ---- Extract strict <ROBOT>...</ROBOT> to keep Segmentize clean ----
     # extracted = response_str
     # if "<ROBOT>" in extracted:
@@ -367,11 +378,13 @@ def converse():
     #     extracted = extracted.split("</ROBOT>", 1)[0]
     # extracted = extracted.strip()
 
-    # Fallback now avoids NameError as extracted was undefined.
+    # Fallback now avoids nameError as extracted was undefined.
     if not locals().get('extracted'):
         extracted = response_str.strip()
 
     extracted = asciise_for_py2_and_nao(extracted, keep_newlines=True)
+
+    extracted = strip_star_stage_directions(extracted)
 
     print("EXTRACTED ROBOT TEXT:", extracted)
 
