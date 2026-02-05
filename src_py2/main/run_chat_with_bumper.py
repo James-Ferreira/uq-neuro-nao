@@ -4,7 +4,22 @@ from src_py2.integrations.voice_job import NaoJobConsumer
 from src_py2.robot.nao_robot import NAORobot
 from src_py2.robot.conversation_manager import ConversationManager
 
-SESSIONS_ROOT = "/Users/neurorobots/Desktop/repos/voice-llm-chat/sessions"
+# --- Machine-agnostic sessions root (derive from repo structure) ---
+def default_sessions_root():
+    # this file: .../repos/uq-neuro-nao/src_py2/main/run_chat_with_bumper.py
+    here = os.path.dirname(os.path.abspath(__file__))
+    
+    # go up: src_py2/main -> src_py2 -> uq-neuro-nao
+    uq_repo_root = os.path.abspath(os.path.join(here, "..", ".."))
+    
+    # parent folder that contains both repos (e.g., .../repos)
+    repos_parent = os.path.dirname(uq_repo_root)
+    
+    # .../repos/voice-llm-chat/sessions
+    return os.path.join(repos_parent, "voice-llm-chat", "sessions")
+
+SESSIONS_ROOT = default_sessions_root()
+
 CURRENT_SESSION_FILENAME = "CURRENT_SESSION.txt"
 
 BRIDGE = "http://127.0.0.1:5055"  # or Mac mini LAN IP if bridge_server is elsewhere

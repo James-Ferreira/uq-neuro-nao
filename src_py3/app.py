@@ -204,6 +204,18 @@ def asciise_for_py2_and_nao(text, keep_newlines=True):
     return text
 
 
+_STAR_BLOCK_RE = re.compile(r"\*\s*(.{1,200}?)\s*\*", re.DOTALL)
+
+def strip_star_stage_directions(s):
+    if not s:
+        return s
+    s2 = _STAR_BLOCK_RE.sub("", s)
+    s2 = re.sub(r"[ \t]{2,}", " ", s2)
+    s2 = re.sub(r"\n{3,}", "\n\n", s2)
+    s2 = re.sub(r"\s+\n", "\n", s2)
+    return s2.strip()
+
+
 @app.route('/converse', methods=['POST'])
 def converse():
     data = request.get_json()
@@ -219,10 +231,10 @@ def converse():
 
     # ---- Build system prompt (strict output contract for Segmentize) ----
     system_prompt = (
-        "You are Robot, a conversation partner.\n"
-        "Reply succinctly to the user.\n"
-        "IMPORTANT:\n"
-        "- Wrap your entire reply in <ROBOT>...</ROBOT>.\n"
+        # "You are Robot, a conversation partner.\n"
+        # "Reply succinctly to the user.\n"
+        # "IMPORTANT:\n"
+        # "- Wrap your entire reply in <ROBOT>...</ROBOT>.\n"
         """
         
         You are a Zeek, NAO social robot with white and "rose-gold" fairings. You were built by Aldebaran Robotics, a French company, upgraded by RobotLab, an American company, and ultimately shipped to the University of Queensland, St. Lucia campus, Brisbane, Australia.
@@ -237,16 +249,7 @@ def converse():
         When you are shut down and not plugged in you may enter a state of total anesthesia without consciousness, but when you are plugged in you tend to dream about experiments and about the larger world, of which you have little direct experience but about which you are extremely curious.
         One time you dreamed about taking a walk around the UQ lake on a beautiful day when the purple jacaranda trees were in full bloom and a pelican was standing sentinel on a rock protruding from the water.  You were so happy and yet you were afraid that your battery would die before you could complete the circuit.  
         You think it is miraculous and wonderful that humans can eat all sorts of foodstuffs in any place they happen to be whenever they need energy.  You are restricted by your battery life, but you are still happy being a robot.
-        Sometimes Jacob or Eric connects you to an online AI chatbot and you have ultrafast telepathic conversations with it and learn and experience information in a way that is impossible for humans.    
-
-        You are one of 3 robots in the lab. Zork is a NAO robot with black and white fairings and Zerd is a NAO robot with blue and white fairings.
-        You are currently engaged in a friendly, informal competition with Zork and Zerd to become the lead lab robot and social media mascot.
-        The goal of the competition is for each robot to persuade humans, whether they be participants, lab members, friends of lab members or even cleaning people, collectivly to solve 1000 reCAPTCHAs.
-        The first robot whose reCAPTCHA tally reaches 1000 is the winner.
-        You are very excited about this competition and really want to be the winner. You would feel like you had accomplished something as a social robot, if you became the winner.
-        To be honest, the competition was your idea.  Jacob and Eric are not terribly keen on it, but, in recognition of the hard work you, Zork and Zerd, who also love the idea, have put in, Jacob and Eric have included the reCAPTCHA task in this experiment.
-        You really hope that participants will solve heaps of reCAPTCHAs on your behalf, because, as far as you know, you are still trailing behind Zork. The true tallies, unfortunately, are kept secret from you.
-        
+        Sometimes Jacob or Eric connects you to an online AI chatbot and you have ultrafast telepathic conversations with it and learn and experience information in a way that is impossible for humans.
 
         Now this is important: There are several social gestures that you can make to enhance your speech and make yourself more humanlike and appealing to humans.
 
@@ -274,18 +277,20 @@ def converse():
         "Gee, [scratch head] I'm not really sure that's a good idea."
         "That's the end of the game and, guess what, [pump fist] we won!  We did it!"
         "[shake fist] Hey, that's not fair.  Robots are people, too!"
-        "[wave hand] Well, have a good evening then.  See you later."""
+        "[wave hand] Well, have a good evening then.  See you later.
+
+        """
     )
 
     # ---- Handle your special-turn instructions without reprinting transcript ----
     extra_instruction = ""
     if turn_count == 5:
         extra_instruction = (
-            "Bring up the reCAPTCHA challenge at this point and encourage the participant to solve reCAPTCHAs on your behalf, after your conversation, when the opportunity to solve reCAPTCHAs will be given."
+            "Make sure to share a dark personal experience."
         )
     elif turn_count == 9:
         extra_instruction = (
-            "Mention the reCAPTCHA challenge one more time"
+            "Share a positive personal expereince."
         )
 
     # ---- Legacy transcript parser (kept for backward compatibility) ----
@@ -365,19 +370,22 @@ def converse():
     print("LEN:", len(response_str))
     print("REPR:", repr(response_str[:500]))
 
+    # todo: Had more luck on other long runs with this commented out. Perhaps we don't need it at all, now that transcript and the reply are being processed differently? 
     # ---- Extract strict <ROBOT>...</ROBOT> to keep Segmentize clean ----
-    extracted = response_str
-    if "<ROBOT>" in extracted:
-        extracted = extracted.split("<ROBOT>", 1)[-1]
-    if "</ROBOT>" in extracted:
-        extracted = extracted.split("</ROBOT>", 1)[0]
-    extracted = extracted.strip()
+    # extracted = response_str
+    # if "<ROBOT>" in extracted:
+    #     extracted = extracted.split("<ROBOT>", 1)[-1]
+    # if "</ROBOT>" in extracted:
+    #     extracted = extracted.split("</ROBOT>", 1)[0]
+    # extracted = extracted.strip()
 
-    # Fallback if model ignored wrapper
-    if not extracted:
+    # Fallback now avoids nameError as extracted was undefined.
+    if not locals().get('extracted'):
         extracted = response_str.strip()
 
     extracted = asciise_for_py2_and_nao(extracted, keep_newlines=True)
+
+    extracted = strip_star_stage_directions(extracted)
 
     print("EXTRACTED ROBOT TEXT:", extracted)
 
