@@ -60,6 +60,7 @@ def transcribe_file(filepath):
         print("Error opening audio file: {}".format(e))
         return None
 
+DEBUG = False
 
 def reply(transcript, model, interlocutor, type, turn_count, prompt=None, history=None):
     api_url = "http://localhost:5000/converse"
@@ -82,17 +83,21 @@ def reply(transcript, model, interlocutor, type, turn_count, prompt=None, histor
         response = requests.post(api_url, json=payload)
         response.raise_for_status()
         data = response.json()
-        print("JSON DATA: {}".format(data))
+        if DEBUG:
+            print("JSON DATA: {}".format(data))
         reply = data.get('response')
         reply_segments_list = data.get('segments_list')
-        print("REPLY_SEGMENTS_LIST: {}".format(reply_segments_list))
+        if DEBUG:
+            print("REPLY_SEGMENTS_LIST: {}".format(reply_segments_list))
 
         if reply:
             if type == str:
-                print("Reply '{}'".format(reply))
+                if DEBUG:
+                    print("Reply '{}'".format(reply))
                 return reply
             elif type == list:
-                print("Reply '{}'".format(reply))
+                if DEBUG:
+                    print("Reply '{}'".format(reply))
                 return reply_segments_list
         else:
             print("Error: API returned empty reply.")

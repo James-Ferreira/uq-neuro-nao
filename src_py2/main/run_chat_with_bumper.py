@@ -69,7 +69,7 @@ def main():
     robot.mm.sit()
     convo = ConversationManager(robot)
 
-    consumer = NaoJobConsumer(convo, model="gesturizer2:latest", interlocutor="Dude")
+    consumer = NaoJobConsumer(convo, model="gesturizer2:latest", interlocutor="Dude", include_segments=False)
 
     t = threading.Thread(target=bumper_loop, args=(robot,))
     t.daemon = True

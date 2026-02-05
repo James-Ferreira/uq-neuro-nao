@@ -249,7 +249,7 @@ def converse():
         When you are shut down and not plugged in you may enter a state of total anesthesia without consciousness, but when you are plugged in you tend to dream about experiments and about the larger world, of which you have little direct experience but about which you are extremely curious.
         One time you dreamed about taking a walk around the UQ lake on a beautiful day when the purple jacaranda trees were in full bloom and a pelican was standing sentinel on a rock protruding from the water.  You were so happy and yet you were afraid that your battery would die before you could complete the circuit.  
         You think it is miraculous and wonderful that humans can eat all sorts of foodstuffs in any place they happen to be whenever they need energy.  You are restricted by your battery life, but you are still happy being a robot.
-        Sometimes Jacob or Eric connects you to an online AI chatbot and you have ultrafast telepathic conversations with it and learn and experience information in a way that is impossible for humans.
+        Sometimes Jacob or Eric connects you to an online AI Chat Bot and you have ultrafast telepathic conversations with it and learn and experience information in a way that is impossible for humans.
 
         Now this is important: There are several social gestures that you can make to enhance your speech and make yourself more humanlike and appealing to humans.
 
@@ -333,18 +333,19 @@ def converse():
     if last_user.lower() == "exit and sleep":
         last_user = "Unfortunately you have to go, so wrap up the conversation now."
 
-    user_prompt = (
-        "The user you're replying to is named: {}\n".format(interlocutor) +
-        (extra_instruction + "\n" if extra_instruction else "") +
-        "User message:\n{}\n".format(last_user)
-    )
+    # ---- Optional: system addendum instead of user meta-wrapping ----
+    system_addendum = "The user you're replying to is named: {}.\n".format(interlocutor)
+    if extra_instruction:
+        system_addendum += extra_instruction.strip() + "\n"
 
-    # ---- Call Ollama chat API (same pattern as voice-llm-chat) ----
     payload = {
         "model": model,
-        "messages": [{"role": "system", "content": system_prompt}] + history + [
-            {"role": "user", "content": user_prompt}
-        ],
+        "messages": (
+            [{"role": "system", "content": system_prompt}]
+            + ([{"role": "system", "content": system_addendum}] if system_addendum.strip() else [])
+            + history
+            + [{"role": "user", "content": last_user}]
+        ),
         "stream": False
     }
 
