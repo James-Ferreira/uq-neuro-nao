@@ -22,7 +22,7 @@ SESSIONS_ROOT = default_sessions_root()
 
 CURRENT_SESSION_FILENAME = "CURRENT_SESSION.txt"
 
-BRIDGE = "http://127.0.0.1:5055"  # or Mac mini LAN IP if bridge_server is elsewhere
+BRIDGE = "http://127.0.0.1:5055"
 
 def post_json(url, payload=None, timeout=10):
     data = json.dumps(payload or {}).encode("utf-8")
@@ -52,13 +52,51 @@ def wait_for_current_session(sessions_root, poll_sec=0.25):
                 return session_dir
         time.sleep(poll_sec)
 
-def bumper_loop(robot):
+def bumper_loop(robot, convo):
     while True:
         robot.tm.wait_for_left_bumper_press()
-        post_json(BRIDGE + "/start")
 
-        robot.tm.wait_for_left_bumper_release()
-        post_json(BRIDGE + "/stop")
+        # Busy: consume press->release but do nothing
+        if not convo.turn_gate.acquire(False):
+            print("BUSY: ignoring bumper press (turn in progress)")
+            robot.tm.wait_for_left_bumper_release()
+            time.sleep(0.05)
+            continue
+
+        convo.turn_in_progress = True
+
+        try:
+            # LISTENING (held down)
+            try:
+                convo.set_listening_mode()  # e.g., yellow
+            except Exception as e:
+                print("WARN: set_listening_mode failed: {}".format(e))
+
+            post_json(BRIDGE + "/start")
+
+            robot.tm.wait_for_left_bumper_release()
+
+            # BUSY (processing/speaking)
+            try:
+                convo.set_busy_mode()  # blue
+            except Exception as e:
+                print("WARN: set_busy_mode failed: {}".format(e))
+
+            post_json(BRIDGE + "/stop")
+
+            print("TURN CAPTURED: waiting for robot to finish reply before accepting another")
+
+            # IMPORTANT: do not release gate here.
+            # speak_n_gest_next_level() releases it in finally.
+
+        except Exception as e:
+            print("ERROR in bumper_loop: {}".format(e))
+            convo.turn_in_progress = False
+            try:
+                convo.turn_gate.release()
+            except Exception:
+                pass
+            raise
 
         time.sleep(0.05)
 
@@ -66,12 +104,14 @@ def main():
     session_dir = wait_for_current_session(SESSIONS_ROOT)
 
     robot = NAORobot("clas")
-    robot.mm.sit()
+    robot.mm.sit(post=True)
+
     convo = ConversationManager(robot)
+    convo.set_ready_mode()
 
     consumer = NaoJobConsumer(convo, model="gesturizer2:latest", interlocutor="Dude", include_segments=False)
 
-    t = threading.Thread(target=bumper_loop, args=(robot,))
+    t = threading.Thread(target=bumper_loop, args=(robot, convo))
     t.daemon = True
     t.start()
 

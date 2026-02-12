@@ -7,6 +7,7 @@ import os
 import random
 import re
 import string
+import threading
 import time
 import types
 import math
@@ -21,6 +22,9 @@ class ConversationManager(object):
         self.set_rand_joint_vars()
         self.set_gesture_tags()
         self.set_sound_library()
+
+        self.turn_gate = threading.Lock()
+        self.turn_in_flight = False
 
     ### INIT FUNCTIONS
 
@@ -485,7 +489,7 @@ class ConversationManager(object):
         # Only load the gesture, if its duration does not exceed the duration of the speech segment estimate by more than 0.5s
         timepoints = motions.get(tag, {}).get("time_points_list", []) # with a default if missing
         timepoint_max = max(max(sublist) for sublist in timepoints) 
-        if durations < timepoint_max:
+        if duration < timepoint_max:
             joints = []
             angles = []
             timepoints = []
@@ -822,50 +826,74 @@ class ConversationManager(object):
         self.robot.mm.sit_gently()
 
     
-    def speak_n_gest_next_level(self, segments_list):
+    def speak_n_gest_next_level(self, segments_list, leds=True):
 
         """
         Speak via NAORobot TTS and simultaneously gesture.
-        """      
+        """
+
+        if leds:
+            try:
+                self.set_replying_mode()   # e.g., purple (or whatever)
+            except Exception as e:
+                print("WARN: set_replying_mode failed: {}".format(e))
+        
         print("started speak_n_gest_next_level")
         print("SEGMENTS LIST: {}".format(segments_list))
 
-        for segment_list in segments_list:
+        try:
+            for segment_list in segments_list:
 
-            # segments list structure: [[segment, tag, gest_type, duration_est], [segment, tag, gest_type, duration_est], ...]
-            # Speak and execute the appropriate gestures
-            print("SEGMENT SINGULAR LIST: {}".format(segment_list))
+                # segments list structure: [[segment, tag, gest_type, duration_est], [segment, tag, gest_type, duration_est], ...]
+                # Speak and execute the appropriate gestures
+                print("SEGMENT SINGULAR LIST: {}".format(segment_list))
 
-            segment = self.to_ascii(segment_list[0])
-            print("SEGMENT: {}".format(segment))
+                segment = self.to_ascii(segment_list[0])
+                print("SEGMENT: {}".format(segment))
 
-            tag = segment_list[1]
-            if tag:
-                tag = self.to_ascii(tag)
-            print("TAG: {}".format(tag))
+                tag = segment_list[1]
+                if tag:
+                    tag = self.to_ascii(tag)
+                print("TAG: {}".format(tag))
 
-            gesture_type = segment_list[2]       
-            if gesture_type:
-                gesture_type = self.to_ascii(gesture_type)
-            print("GESTURE TYPE: {}".format(gesture_type))
-            
-            duration_est = segment_list[3]
+                gesture_type = segment_list[2]
+                if gesture_type:
+                    gesture_type = self.to_ascii(gesture_type)
+                print("GESTURE TYPE: {}".format(gesture_type))
 
-            print("DURATION_EST: {}".format(duration_est))
+                duration_est = segment_list[3]
 
-            print("that ascii stuff should have printed")
-            # Execute gentle sit on prettag segment, if there is time
-            if tag == "pretag":
-                pass
-                self.execute_random_gests(segment, duration_est)
-            # Execute tagged gesture on posttag segment
-            elif tag is not None:
-                self.execute_tagged_gest(segment, tag, gesture_type, duration_est)
-            # Execute random gestures on full segment
-            else:
-                self.execute_random_gests(segment, duration_est)
+                print("DURATION_EST: {}".format(duration_est))
 
-        self.robot.mm.sit_gently()
+                print("that ascii stuff should have printed")
+                # Execute gentle sit on prettag segment, if there is time
+                if tag == "pretag":
+                    pass
+                    self.execute_random_gests(segment, duration_est)
+                # Execute tagged gesture on posttag segment
+                elif tag is not None:
+                    self.execute_tagged_gest(segment, tag, gesture_type, duration_est)
+                # Execute random gestures on full segment
+                else:
+                    self.execute_random_gests(segment, duration_est)
+
+            self.robot.mm.sit_gently()
+
+        finally:
+            # Turn is DEFINITELY over from the perspective of allowing the next user capture.
+            self.turn_in_progress = False
+            if hasattr(self, "turn_gate") and self.turn_gate.locked():
+                try:
+                    self.turn_gate.release()
+                    print("TURN END: gate released (robot finished reply)")
+                except Exception:
+                    pass
+                # Then update LEDs (never allow LED issues to break turn-taking)
+            if leds:
+                try:
+                    self.set_ready_mode()
+                except Exception as e:
+                    print("WARN: set_listening_mode failed: {}".format(e))
 
     def converse(self, rounds=3, interlocutor="Dude", model="gesturizer2:latest", confirm=False):
             transcription = ""
@@ -941,3 +969,15 @@ class ConversationManager(object):
                     print("Error during conversation round {}: {}".format(i + 1, e))
                     continue
             return transcription
+    
+    def set_ready_mode(self):
+        self.robot.leds.fadeRGB("FaceLeds", 0xFFFFFF, 0.1)
+
+    def set_listening_mode(self):
+        self.robot.leds.fadeRGB("FaceLeds", 0x1F4FD8, 0.1)
+
+    def set_replying_mode(self):
+        self.robot.leds.fadeRGB("FaceLeds", 0x6A1B9A, 0.1)
+
+    def set_busy_mode(self):
+        self.robot.leds.fadeRGB("FaceLeds", 0xFFFFFF, 0.1)

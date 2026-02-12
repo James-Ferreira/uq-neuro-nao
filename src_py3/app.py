@@ -278,6 +278,9 @@ def converse():
         "That's the end of the game and, guess what, [pump fist] we won!  We did it!"
         "[shake fist] Hey, that's not fair.  Robots are people, too!"
         "[wave hand] Well, have a good evening then.  See you later.
+
+        Another important consideration: Keep your reply to the participant a similar length to their prompt. Dont' reply with a paragraph if given a sentence. When in doubt, be concise. It's good to ask questions, and you can occasionally share something about yourself if you deem it to be relevant. Again, for emphasis, being concise is preferred!
+
         """
     )
 

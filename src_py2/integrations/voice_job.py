@@ -106,7 +106,7 @@ class NaoJobConsumer(object):
 
         # Speak + gesture
         try:
-            self.convo.speak_n_gest_next_level(segments_list)
+            self.convo.speak_n_gest_next_level(segments_list, leds=True)
         except Exception as e:
             result["error"] = "speak_n_gest_next_level raised: {}".format(e)
             return result
