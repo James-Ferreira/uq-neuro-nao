@@ -1,4 +1,4 @@
-import os, time, json
+import os, time, json, re
 import src_py2.api.transcribe as transcribe
 
 
@@ -17,6 +17,16 @@ def _write_json_atomic(path, obj):
 
 def _now_iso_local():
     return time.strftime("%Y-%m-%dT%H:%M:%S")
+
+
+def _normalize_command_text(text):
+    """
+    Lowercase and strip punctuation/whitespace so phrase matching is robust
+    to casing, spacing, and symbols.
+    """
+    if text is None:
+        return ""
+    return re.sub(r"[^a-z0-9]+", "", str(text).lower())
 
 
 def _segments_to_text(segments_list):
@@ -57,6 +67,76 @@ class NaoJobConsumer(object):
 
         self.history = []   # [{"role":"user"/"assistant", "content": "..."}]
         self.turn_count = None
+        self.special_commands = {
+            "gotosleeplittlerobot": {
+                "reply_text": "Goodnight. I am going to sleep now. See you next time.",
+                "action": "repose",
+            },
+            "timetoshutdown": {
+                "reply_text": "Time to shut down. Goodbye for now.",
+                "action": "shutdown",
+            },
+        }
+
+    def _estimate_script_duration(self, text):
+        words = [w for w in (text or "").strip().split() if w]
+        return max(2.5, 0.45 * len(words))
+
+    def _match_special_command(self, user_text):
+        normalized = _normalize_command_text(user_text)
+        if not normalized:
+            return None
+        for key in self.special_commands:
+            if key in normalized:
+                return key
+        return None
+
+    def _run_special_command(self, command_key, result):
+        cfg = self.special_commands.get(command_key, {})
+        reply_text = cfg.get("reply_text", "")
+        action = cfg.get("action")
+        duration_est = self._estimate_script_duration(reply_text)
+        scripted_segments = [[reply_text, None, None, duration_est]]
+
+        action_log = {
+            "command": command_key,
+            "action": action,
+            "requested_at": _now_iso_local(),
+            "ok": False,
+            "error": None,
+            "completed_at": None,
+        }
+
+        t0 = time.time()
+        self.convo.speak_n_gest_next_level(scripted_segments, leds=True)
+        try:
+            if action == "repose":
+                if self.robot is None or getattr(self.robot, "mm", None) is None:
+                    raise RuntimeError("robot motion manager unavailable")
+                self.robot.mm.repose(False)
+            elif action == "shutdown":
+                if self.robot is None:
+                    raise RuntimeError("robot unavailable")
+                if not getattr(self.robot, "usrnme", None) or not getattr(self.robot, "pword", None):
+                    raise RuntimeError("robot SSH credentials missing (usrnme/pword)")
+                self.robot.shutdown()
+            else:
+                raise RuntimeError("unknown special action: {}".format(action))
+
+            action_log["ok"] = True
+        except Exception as e:
+            action_log["error"] = str(e)
+            raise
+        finally:
+            action_log["completed_at"] = _now_iso_local()
+
+        elapsed = max(0.0, time.time() - t0)
+
+        result["ai"] = reply_text
+        result["ai_duration_sec"] = elapsed
+        result["special_command"] = command_key
+        result["special_action"] = action_log
+        return result
 
     def handle_input_job(self, job):
         """
@@ -83,6 +163,29 @@ class NaoJobConsumer(object):
 
         # Empty input: still produce a valid output record (no error)
         if not user_text.strip():
+            return result
+
+        matched_command = self._match_special_command(user_text)
+        if matched_command:
+            try:
+                result = self._run_special_command(matched_command, result)
+            except Exception as e:
+                result["error"] = "special command '{}' failed: {}".format(matched_command, e)
+                if "special_action" not in result:
+                    cfg = self.special_commands.get(matched_command, {})
+                    result["special_action"] = {
+                        "command": matched_command,
+                        "action": cfg.get("action"),
+                        "requested_at": _now_iso_local(),
+                        "ok": False,
+                        "error": str(e),
+                        "completed_at": _now_iso_local(),
+                    }
+                return result
+
+            self.history.append({"role": "user", "content": user_text})
+            if result.get("ai"):
+                self.history.append({"role": "assistant", "content": result["ai"]})
             return result
 
         # Get gesturized segments list from local Py3 API

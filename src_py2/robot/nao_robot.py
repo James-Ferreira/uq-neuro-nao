@@ -5,6 +5,17 @@ from naoqi import ALProxy, ALProxy, ALBroker
 import paramiko
 import random
 import re
+import os
+import sys
+
+_THIS_FILE = globals().get("__file__")
+if _THIS_FILE:
+    _BASE_DIR = os.path.dirname(_THIS_FILE)
+else:
+    _BASE_DIR = os.getcwd()
+_REPO_ROOT = os.path.abspath(os.path.join(_BASE_DIR, "..", ".."))
+if _REPO_ROOT not in sys.path:
+    sys.path.append(_REPO_ROOT)
 
 class NAORobot(object):
     def __init__(self, name, ip=None, port=9559, connect_on_init=True,
@@ -118,7 +129,6 @@ class NAORobot(object):
         Raise if anything fails so the caller can try the next IP.
         """
         # Core proxies
-        self.animation = ALProxy("ALAnimationPlayer", ip, self.port)
         self.animated_speech = ALProxy('ALAnimatedSpeech', ip, self.port)
         self.audio_device = ALProxy("ALAudioDevice", ip, self.port)
         self.audio_player = ALProxy('ALAudioPlayer', ip, self.port)
@@ -133,6 +143,13 @@ class NAORobot(object):
         self.posture = ALProxy('ALRobotPosture', ip, self.port)
         self.speaking_movement = ALProxy('ALSpeakingMovement', ip, self.port)
         self.tts = ALProxy('ALTextToSpeech', ip, self.port)
+
+        # Optional proxies
+        try:
+            self.animation = ALProxy("ALAnimationPlayer", ip, self.port)
+        except Exception as e:
+            self.animation = None
+            print("WARN: ALAnimationPlayer unavailable: {}".format(e))
 
         # If we got here, proxies are alive for this IP
         self._proxies_initialized = True

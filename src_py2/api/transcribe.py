@@ -1,9 +1,11 @@
 import requests
 import os
 
+API_BASE = os.getenv("UQ_PY3_API", "http://localhost:5001")
+
 def transcribe_filepath(filepath):
     # relies on the api having access to the same file system
-    api_url = "http://localhost:5000/transcribe/filepath"
+    api_url = API_BASE.rstrip("/") + "/transcribe/filepath"
 
     if not os.path.exists(filepath):
         print("Audio file not found at {}".format(filepath))
@@ -32,7 +34,7 @@ def transcribe_filepath(filepath):
 
 
 def transcribe_file(filepath):
-    api_url = "http://localhost:5000/transcribe/file"
+    api_url = API_BASE.rstrip("/") + "/transcribe/file"
 
     if not os.path.exists(filepath):
         print("Audio file not found at {}".format(filepath))
@@ -63,7 +65,7 @@ def transcribe_file(filepath):
 DEBUG = False
 
 def reply(transcript, model, interlocutor, type, turn_count, prompt=None, history=None):
-    api_url = "http://localhost:5000/converse"
+    api_url = API_BASE.rstrip("/") + "/converse"
 
     payload = {
         'model': model,

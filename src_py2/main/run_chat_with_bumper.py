@@ -103,7 +103,7 @@ def bumper_loop(robot, convo):
 def main():
     session_dir = wait_for_current_session(SESSIONS_ROOT)
 
-    robot = NAORobot("clas")
+    robot = NAORobot("clas", usrnme="nao", pword="nao")
     robot.mm.sit(post=True)
 
     convo = ConversationManager(robot)
