@@ -104,10 +104,11 @@ def main():
     session_dir = wait_for_current_session(SESSIONS_ROOT)
 
     robot = NAORobot("clas", usrnme="nao", pword="nao")
-    robot.mm.sit(post=True)
+    robot.mm.sit(post=False)
+    robot.mm.repose(False)
 
     convo = ConversationManager(robot)
-    convo.set_ready_mode()
+    robot.leds.fadeRGB("FaceLeds", 0x000000, 0.1)
 
     consumer = NaoJobConsumer(convo, model="gesturizer2:latest", interlocutor="Dude", include_segments=False)
 
