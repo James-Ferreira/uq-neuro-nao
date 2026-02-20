@@ -1,0 +1,68 @@
+{
+  "project_id": "altruism",
+  "runtime": {
+    "py3_api_port": 5001,
+    "ollama_url": "http://localhost:11434",
+    "connect_timeout_sec": 3,
+    "read_timeout_sec": 60,
+    "whisper_model": "small",
+    "whisper_language": "en",
+    "whisper_fp16": false,
+    "default_converse_model": "custom_1"
+  },
+  "conversation": {
+    "default_interlocutor": "User",
+    "system_prompt_path": "prompts/altruism_system_prompt.txt",
+    "turn_injections": [
+      {
+        "id": "turn_1_intro",
+        "mode": "temporary",
+        "at_turn": 1,
+        "text": "Introduce yourself, inquire about the user's name."
+      },
+      {
+        "id": "turn_4_competition_intro",
+        "mode": "temporary",
+        "at_turn": 4,
+        "text": "Now explain the competition to become lead lab robot and try to persuade the participant to solve as many visual recognition tasks for you as possible when given the oppportunity at the end of the experiment."
+      },
+      {
+        "id": "competition_followup",
+        "mode": "stable",
+        "activate_at_turn": 5,
+        "text": "Continue trying to persuade the participant to solve as many visual recognition tasks for you as possible when given the oppportunity at the end of the experiment, but do not force this topic if the participant is focused on something else. Keep details about the competition in mind in case the participant asks questions later."
+      }
+    ],
+    "exit_phrase": "exit and sleep",
+    "exit_rewrite": "Unfortunately you have to go, so wrap up the conversation now."
+  },
+  "games": {
+    "guess_model": "llama3.1:8b",
+    "hint_model": "llama3.1:8b",
+    "hobby_model": "llama3.1:8b"
+  },
+  "nao_worker": {
+    "bridge_url": "http://127.0.0.1:5055",
+    "robot_name": "clas",
+    "robot_username": "nao",
+    "robot_password": "nao",
+    "consumer_model": "gesturizer2:latest",
+    "consumer_interlocutor": "Dude",
+    "include_segments": false
+  },
+  "voice_llm_chat": {
+    "ollama_model": "custom_1",
+    "ollama_url": "http://localhost:11434",
+    "whisper_model": "base.en",
+    "sample_rate": 16000,
+    "connect_timeout_sec": 3.0,
+    "read_timeout_sec": 120.0,
+    "min_utterance_sec": 0.2,
+    "robot_outbox_dirname": "robot_outbox",
+    "robot_inbox_dirname": "robot_inbox",
+    "default_robot_name": "clas",
+    "wait_for_nao_done": true,
+    "nao_done_timeout_sec": 30.0,
+    "use_nao_backend": true
+  }
+}

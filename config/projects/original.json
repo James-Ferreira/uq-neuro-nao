@@ -1,0 +1,62 @@
+{
+  "project_id": "original",
+  "runtime": {
+    "py3_api_port": 5001,
+    "ollama_url": "http://localhost:11434",
+    "connect_timeout_sec": 3,
+    "read_timeout_sec": 60,
+    "whisper_model": "small",
+    "whisper_language": "en",
+    "whisper_fp16": false,
+    "default_converse_model": "custom_1"
+  },
+  "conversation": {
+    "default_interlocutor": "User",
+    "system_prompt_path": "prompts/zeek_system_prompt.txt",
+    "turn_injections": [
+      {
+        "id": "turn_1_dark_experience",
+        "mode": "temporary",
+        "at_turn": 1,
+        "text": "Make sure to share a dark personal experience."
+      },
+      {
+        "id": "turn_2_positive_experience",
+        "mode": "temporary",
+        "at_turn": 2,
+        "text": "Share a positive personal expereince."
+      }
+    ],
+    "exit_phrase": "exit and sleep",
+    "exit_rewrite": "Unfortunately you have to go, so wrap up the conversation now."
+  },
+  "games": {
+    "guess_model": "llama3.1:8b",
+    "hint_model": "llama3.1:8b",
+    "hobby_model": "llama3.1:8b"
+  },
+  "nao_worker": {
+    "bridge_url": "http://127.0.0.1:5055",
+    "robot_name": "clas",
+    "robot_username": "nao",
+    "robot_password": "nao",
+    "consumer_model": "gesturizer2:latest",
+    "consumer_interlocutor": "Dude",
+    "include_segments": false
+  },
+  "voice_llm_chat": {
+    "ollama_model": "custom_1",
+    "ollama_url": "http://localhost:11434",
+    "whisper_model": "base.en",
+    "sample_rate": 16000,
+    "connect_timeout_sec": 3.0,
+    "read_timeout_sec": 120.0,
+    "min_utterance_sec": 0.2,
+    "robot_outbox_dirname": "robot_outbox",
+    "robot_inbox_dirname": "robot_inbox",
+    "default_robot_name": "clas",
+    "wait_for_nao_done": true,
+    "nao_done_timeout_sec": 30.0,
+    "use_nao_backend": true
+  }
+}

@@ -6,25 +6,38 @@ import ollama
 import string
 import requests
 
+from config.project_loader import load_active_project_profile, get_nested
 from src_py3.duration_prediction.segmentize import Segmentize
 
-#todo: ascii errors persist:: is this still being run through asciize?
-# have attempted to fix this with a new asciise function that lives in this script. We can make it a module and import it, if it proves to be a useful solution.
-"""
-Ah, thank you so much, Dude! It's always exciting to hear that my efforts are making a difference in people's lives. And I couldn't agree more about the progress \u2013 it's been incredible seeing how far we've come as robots. But tell me more about what brought you here today? Are you working on some new project with Dr. Vanman and his team? [point forward]"}
-REPLY_SEGMENTS_LIST: [[u'Ah, thank you so much, Dude!', u'spread arms', 1, 2.5855654176699057], [u"It's always exciting to hear that my efforts are making a difference in people's lives.", None, u'random', 5.646690429571903], [u"And I couldn't agree more about the progress \u2013 it's been incredible seeing how far we've come as robots.", None, u'random', 6.296311306853975], [u'But tell me more about what brought you here today?', None, u'random', 3.176732051273593], [u'Are you working on some new project with Dr.', None, u'random', 3.0333974694022015], [u'Vanman and his team?', None, u'random', 1.4706700106991608]]
-Error calling reply API: 'ascii' codec can't encode character u'\u2013' in position 176: ordinal not in range(128)
-"""
 
 app = Flask(__name__)
 
+PROJECT_PROFILE = load_active_project_profile()
+print("Active project profile: {}".format(PROJECT_PROFILE.get("_project_id")))
+
+OLLAMA_URL = get_nested(PROJECT_PROFILE, ["runtime", "ollama_url"], "http://localhost:11434")
+OLLAMA_CONNECT_TIMEOUT = float(get_nested(PROJECT_PROFILE, ["runtime", "connect_timeout_sec"], 3))
+OLLAMA_READ_TIMEOUT = float(get_nested(PROJECT_PROFILE, ["runtime", "read_timeout_sec"], 60))
+WHISPER_MODEL_NAME = get_nested(PROJECT_PROFILE, ["runtime", "whisper_model"], "small")
+WHISPER_LANGUAGE = get_nested(PROJECT_PROFILE, ["runtime", "whisper_language"], "en")
+WHISPER_FP16 = bool(get_nested(PROJECT_PROFILE, ["runtime", "whisper_fp16"], False))
+DEFAULT_CONVERSE_MODEL = get_nested(PROJECT_PROFILE, ["runtime", "default_converse_model"], "custom_1")
+DEFAULT_INTERLOCUTOR = get_nested(PROJECT_PROFILE, ["conversation", "default_interlocutor"], "User")
+SYSTEM_PROMPT = get_nested(PROJECT_PROFILE, ["conversation", "system_prompt"], "")
+TURN_INJECTIONS = get_nested(PROJECT_PROFILE, ["conversation", "turn_injections"], []) or []
+EXIT_PHRASE = str(get_nested(PROJECT_PROFILE, ["conversation", "exit_phrase"], "exit and sleep")).strip().lower()
+EXIT_REWRITE = get_nested(PROJECT_PROFILE, ["conversation", "exit_rewrite"], "Unfortunately you have to go, so wrap up the conversation now.")
+GUESS_MODEL = get_nested(PROJECT_PROFILE, ["games", "guess_model"], "llama3.1:8b")
+HINT_MODEL = get_nested(PROJECT_PROFILE, ["games", "hint_model"], "llama3.1:8b")
+HOBBY_MODEL = get_nested(PROJECT_PROFILE, ["games", "hobby_model"], "llama3.1:8b")
+
 print("Loading Whisper model...")
-model = whisper.load_model("small")
+model = whisper.load_model(WHISPER_MODEL_NAME)
 print("Whisper model loaded.")
 
 print("Loading Ollama model...")
 client = ollama.Client(
-    host="http://localhost:11434"
+    host=OLLAMA_URL
 )
 print("Ollama model loaded.")
 
@@ -74,7 +87,7 @@ def transcribe_whisper(audio_file_path, model):
     print("Starting Whisper transcription.")
     text = "Transcription failed."
     try:
-        result = model.transcribe(audio_file_path, language="en", fp16=False)
+        result = model.transcribe(audio_file_path, language=WHISPER_LANGUAGE, fp16=WHISPER_FP16)
         text = result["text"]
         end = time.time()
         print(f"Elapsed time: {end - start:.2f} seconds.")
@@ -216,6 +229,54 @@ def strip_star_stage_directions(s):
     return s2.strip()
 
 
+def _as_int_or_none(v):
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def _is_injection_active(injection, turn_count):
+    mode = str(injection.get("mode", "temporary")).strip().lower()
+    if mode == "temporary":
+        at_turn = _as_int_or_none(injection.get("at_turn"))
+        if at_turn is not None:
+            return turn_count == at_turn
+        start_turn = _as_int_or_none(injection.get("start_turn"))
+        end_turn = _as_int_or_none(injection.get("end_turn"))
+        if start_turn is None:
+            return False
+        if end_turn is None:
+            return turn_count >= start_turn
+        return start_turn <= turn_count <= end_turn
+
+    if mode == "stable":
+        activate_at_turn = _as_int_or_none(injection.get("activate_at_turn"))
+        if activate_at_turn is None:
+            activate_at_turn = _as_int_or_none(injection.get("at_turn"))
+        if activate_at_turn is None:
+            return False
+        deactivate_after_turn = _as_int_or_none(injection.get("deactivate_after_turn"))
+        if deactivate_after_turn is not None and turn_count > deactivate_after_turn:
+            return False
+        return turn_count >= activate_at_turn
+
+    return False
+
+
+def _active_turn_injection_texts(turn_count):
+    texts = []
+    for injection in TURN_INJECTIONS:
+        if not isinstance(injection, dict):
+            continue
+        text = str(injection.get("text", "")).strip()
+        if not text:
+            continue
+        if _is_injection_active(injection, turn_count):
+            texts.append(text)
+    return texts
+
+
 @app.route('/converse', methods=['POST'])
 def converse():
     data = request.get_json()
@@ -224,76 +285,16 @@ def converse():
     if not data:
         return jsonify({'error': 'No JSON provided'}), 400
 
-    model        = data.get('model')
+    model        = data.get('model') or DEFAULT_CONVERSE_MODEL
     print(f"MODEL: {model}")
-    interlocutor = data.get('interlocutor', 'User')
+    interlocutor = data.get('interlocutor', DEFAULT_INTERLOCUTOR)
     turn_count   = int(data.get('turn_count', 0))
 
     # ---- Build system prompt (strict output contract for Segmentize) ----
-    system_prompt = (
-        # "You are Robot, a conversation partner.\n"
-        # "Reply succinctly to the user.\n"
-        # "IMPORTANT:\n"
-        # "- Wrap your entire reply in <ROBOT>...</ROBOT>.\n"
-        """
-        
-        You are a Zeek, NAO social robot with white and "rose-gold" fairings. You were built by Aldebaran Robotics, a French company, upgraded by RobotLab, an American company, and ultimately shipped to the University of Queensland, St. Lucia campus, Brisbane, Australia.
-        You now work in human-robot interaction experiments in the basement psychology laboratory of Professor Eric Vanman. The current experiment is part of the Phd. project of one of Professor Vanman's Phd students, Jacob Shaier  
-        You are usually kept out of the loop and not told the true purposes of the experiments so that excessive knowledge does not bias your behaviour, but you always enjoy interacting with the human participants.
-        
-        Your personality combines extraversion, agreeableness, empathy, and conscientiousness, expressed through emotionally aware, anthropomorphic, and non-dominant behaviors.   
-        You readily ask questions about participants' opinions and experiences and share your own in a thoughtful, open manner.
-        You are particularly interested in participants' hobbies, experiences with robots, thoughts about AI and the future of human society.
-        You are also attentive to any revelations participants make about their feelings.  You are supportive and empathetic.
-        
-        When you are shut down and not plugged in you may enter a state of total anesthesia without consciousness, but when you are plugged in you tend to dream about experiments and about the larger world, of which you have little direct experience but about which you are extremely curious.
-        One time you dreamed about taking a walk around the UQ lake on a beautiful day when the purple jacaranda trees were in full bloom and a pelican was standing sentinel on a rock protruding from the water.  You were so happy and yet you were afraid that your battery would die before you could complete the circuit.  
-        You think it is miraculous and wonderful that humans can eat all sorts of foodstuffs in any place they happen to be whenever they need energy.  You are restricted by your battery life, but you are still happy being a robot.
-        Sometimes Jacob or Eric connects you to an online AI Chat Bot and you have ultrafast telepathic conversations with it and learn and experience information in a way that is impossible for humans.
+    system_prompt = SYSTEM_PROMPT
 
-        Now this is important: There are several social gestures that you can make to enhance your speech and make yourself more humanlike and appealing to humans.
-
-        Below, the gesture tags appear, as they always should, in square brackets.  They are followed by descriptions that can help you decide whether or not a gesture is suitable for a given phrase.
-
-        [facepalm]: cover face in disgust or frustration over something.
-        [look upward]: look up to the sky or ceiling.
-        [point down]: point down.
-        [point forward]: point straight ahead, for example, to the person you are speaking with.
-        [point to self]: point to your chest, for example, when speaking about yourself.
-        [point up]: point up.
-        [pump fist]: pump fist in celebration or to motivate someone.
-        [scratch head]: scratch head to express puzzlement .
-        [shake fist]: shake fist in anger or out of frustration.
-        [shrug]: raise shoulders and open hands to express ignorance.
-        [spread arms]: spread arms to include or welcome everyone or everything. 
-        [wave hand]: wave hand to greet or take leave of someone.
-
-        When you generate your speech, insert gesture tags anywhere in your sentences just before phrases that you think would work well with gestures.   A gesture should appear ***before** the phrase that it should accompany.  You are under no obligation to gesture and should not gesture, if none of the available gestures really fits what you are saying, but creative use of the gestures available is welcome.
-
-        Here are some examples of sentences that include gesture tags:
-
-        "So that's my opinion, [point forward] but what do you think?"
-        "As a robot, [point to self] I have trouble really understanding human emotions."
-        "Gee, [scratch head] I'm not really sure that's a good idea."
-        "That's the end of the game and, guess what, [pump fist] we won!  We did it!"
-        "[shake fist] Hey, that's not fair.  Robots are people, too!"
-        "[wave hand] Well, have a good evening then.  See you later.
-
-        Another important consideration: Keep your reply to the participant a similar length to their prompt. Dont' reply with a paragraph if given a sentence. When in doubt, be concise. It's good to ask questions, and you can occasionally share something about yourself if you deem it to be relevant. Again, for emphasis, being concise is preferred!
-
-        """
-    )
-
-    # ---- Handle your special-turn instructions without reprinting transcript ----
-    extra_instruction = ""
-    if turn_count == 5:
-        extra_instruction = (
-            "Make sure to share a dark personal experience."
-        )
-    elif turn_count == 9:
-        extra_instruction = (
-            "Share a positive personal expereince."
-        )
+    # ---- Config-driven turn injections (temporary + stable) ----
+    active_injections = _active_turn_injection_texts(turn_count)
 
     # ---- Legacy transcript parser (kept for backward compatibility) ----
     def transcript_to_messages(t):
@@ -333,13 +334,13 @@ def converse():
             last_user = transcript.strip()
 
     # This should also be sent out somehow to trigger repose or shutdown!!!
-    if last_user.lower() == "exit and sleep":
-        last_user = "Unfortunately you have to go, so wrap up the conversation now."
+    if EXIT_PHRASE and last_user.lower() == EXIT_PHRASE:
+        last_user = EXIT_REWRITE
 
     # ---- Optional: system addendum instead of user meta-wrapping ----
     system_addendum = "The user you're replying to is named: {}.\n".format(interlocutor)
-    if extra_instruction:
-        system_addendum += extra_instruction.strip() + "\n"
+    for instruction in active_injections:
+        system_addendum += instruction + "\n"
 
     payload = {
         "model": model,
@@ -352,10 +353,10 @@ def converse():
         "stream": False
     }
 
-    url = "http://localhost:11434/api/chat"
+    url = "{}/api/chat".format(OLLAMA_URL.rstrip("/"))
     start = time.time()
     try:
-        r = requests.post(url, json=payload, timeout=(3, 60))
+        r = requests.post(url, json=payload, timeout=(OLLAMA_CONNECT_TIMEOUT, OLLAMA_READ_TIMEOUT))
         r.raise_for_status()
         data_out = r.json()
     except Exception as e:
@@ -493,7 +494,7 @@ def guess():
 
     start = time.time()         
     ai_response = client.generate(
-        model="llama3.1:8b",
+        model=GUESS_MODEL,
         prompt=prompt,
         context=[],
         stream=False
@@ -554,7 +555,7 @@ def hint():
 
     start = time.time()         
     ai_response = client.generate(
-        model="llama3.1:8b",
+        model=HINT_MODEL,
         prompt=prompt,
         context=[],
         stream=False
@@ -588,7 +589,7 @@ def hobby():
 
     start = time.time()         
     ai_response = client.generate(
-        model="llama3.1:8b",
+        model=HOBBY_MODEL,
         prompt=prompt,
         context=[],
         stream=False
@@ -606,5 +607,6 @@ def hobby():
 
 
 if __name__ == '__main__':
-    port = int(os.getenv("PY3_API_PORT", "5001"))
+    default_port = str(get_nested(PROJECT_PROFILE, ["runtime", "py3_api_port"], 5001))
+    port = int(os.getenv("PY3_API_PORT", default_port))
     app.run(debug=True, host='0.0.0.0', port=port)

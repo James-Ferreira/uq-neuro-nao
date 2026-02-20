@@ -4,10 +4,19 @@ import time
 from src_py2.integrations.voice_job import NaoJobConsumer
 from src_py2.robot.nao_robot import NAORobot
 from src_py2.robot.conversation_manager import ConversationManager
+from config.project_loader import load_active_project_profile, get_nested
 
 
-# Set this once to the sessions/ folder inside voice-llm-chat
-SESSIONS_ROOT = "/Users/neurorobots/Desktop/repos/voice-llm-chat/sessions"
+def default_sessions_root():
+    here = os.path.dirname(os.path.abspath(__file__))
+    uq_repo_root = os.path.abspath(os.path.join(here, "..", ".."))
+    repos_parent = os.path.dirname(uq_repo_root)
+    return os.path.join(repos_parent, "voice-llm-chat", "sessions")
+
+
+PROJECT_PROFILE = load_active_project_profile()
+NAO_WORKER_CFG = PROJECT_PROFILE.get("nao_worker", {})
+SESSIONS_ROOT = get_nested(NAO_WORKER_CFG, ["sessions_root"], default_sessions_root())
 CURRENT_SESSION_FILENAME = "CURRENT_SESSION.txt"
 
 
@@ -46,16 +55,24 @@ def wait_for_current_session(sessions_root, poll_sec=0.25):
 
 
 def main():
+    print("Active project profile: {}".format(PROJECT_PROFILE.get("_project_id")))
     session_dir = wait_for_current_session(SESSIONS_ROOT)
 
-    robot = NAORobot("clas")
+    robot_name = get_nested(NAO_WORKER_CFG, ["robot_name"], "clas")
+    robot_username = get_nested(NAO_WORKER_CFG, ["robot_username"], None)
+    robot_password = get_nested(NAO_WORKER_CFG, ["robot_password"], None)
+    robot = NAORobot(robot_name, usrnme=robot_username, pword=robot_password)
     robot.mm.sit()
     convo = ConversationManager(robot)
 
+    consumer_model = get_nested(NAO_WORKER_CFG, ["consumer_model"], "gesturizer2:latest")
+    consumer_interlocutor = get_nested(NAO_WORKER_CFG, ["consumer_interlocutor"], "Dude")
+    consumer_include_segments = bool(get_nested(NAO_WORKER_CFG, ["include_segments"], False))
     consumer = NaoJobConsumer(
         convo,
-        model="gesturizer2:latest",
-        interlocutor="Dude"
+        model=consumer_model,
+        interlocutor=consumer_interlocutor,
+        include_segments=consumer_include_segments
     )
 
     consumer.run_job_worker(session_dir)

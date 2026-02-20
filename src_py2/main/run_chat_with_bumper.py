@@ -3,6 +3,7 @@ import os, time, json, urllib2, threading
 from src_py2.integrations.voice_job import NaoJobConsumer
 from src_py2.robot.nao_robot import NAORobot
 from src_py2.robot.conversation_manager import ConversationManager
+from config.project_loader import load_active_project_profile, get_nested
 
 # --- Machine-agnostic sessions root (derive from repo structure) ---
 def default_sessions_root():
@@ -18,11 +19,19 @@ def default_sessions_root():
     # .../repos/voice-llm-chat/sessions
     return os.path.join(repos_parent, "voice-llm-chat", "sessions")
 
-SESSIONS_ROOT = default_sessions_root()
+PROJECT_PROFILE = load_active_project_profile()
+NAO_WORKER_CFG = PROJECT_PROFILE.get("nao_worker", {})
+SESSIONS_ROOT = get_nested(NAO_WORKER_CFG, ["sessions_root"], default_sessions_root())
 
 CURRENT_SESSION_FILENAME = "CURRENT_SESSION.txt"
 
-BRIDGE = "http://127.0.0.1:5055"
+BRIDGE = get_nested(NAO_WORKER_CFG, ["bridge_url"], "http://127.0.0.1:5055")
+ROBOT_NAME = get_nested(NAO_WORKER_CFG, ["robot_name"], "clas")
+ROBOT_USERNAME = get_nested(NAO_WORKER_CFG, ["robot_username"], "nao")
+ROBOT_PASSWORD = get_nested(NAO_WORKER_CFG, ["robot_password"], "nao")
+CONSUMER_MODEL = get_nested(NAO_WORKER_CFG, ["consumer_model"], "gesturizer2:latest")
+CONSUMER_INTERLOCUTOR = get_nested(NAO_WORKER_CFG, ["consumer_interlocutor"], "Dude")
+CONSUMER_INCLUDE_SEGMENTS = bool(get_nested(NAO_WORKER_CFG, ["include_segments"], False))
 
 def post_json(url, payload=None, timeout=10):
     data = json.dumps(payload or {}).encode("utf-8")
@@ -101,16 +110,22 @@ def bumper_loop(robot, convo):
         time.sleep(0.05)
 
 def main():
+    print("Active project profile: {}".format(PROJECT_PROFILE.get("_project_id")))
     session_dir = wait_for_current_session(SESSIONS_ROOT)
 
-    robot = NAORobot("clas", usrnme="nao", pword="nao")
+    robot = NAORobot(ROBOT_NAME, usrnme=ROBOT_USERNAME, pword=ROBOT_PASSWORD)
     robot.mm.sit(post=False)
     robot.mm.repose(False)
 
     convo = ConversationManager(robot)
     robot.leds.fadeRGB("FaceLeds", 0x000000, 0.1)
 
-    consumer = NaoJobConsumer(convo, model="gesturizer2:latest", interlocutor="Dude", include_segments=False)
+    consumer = NaoJobConsumer(
+        convo,
+        model=CONSUMER_MODEL,
+        interlocutor=CONSUMER_INTERLOCUTOR,
+        include_segments=CONSUMER_INCLUDE_SEGMENTS,
+    )
 
     t = threading.Thread(target=bumper_loop, args=(robot, convo))
     t.daemon = True
