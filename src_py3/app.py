@@ -5,6 +5,8 @@ import time
 import ollama
 import string
 import requests
+import re
+import unicodedata
 
 from config.project_loader import load_active_project_profile, get_nested
 from src_py3.duration_prediction.segmentize import Segmentize
@@ -24,6 +26,7 @@ WHISPER_FP16 = bool(get_nested(PROJECT_PROFILE, ["runtime", "whisper_fp16"], Fal
 DEFAULT_CONVERSE_MODEL = get_nested(PROJECT_PROFILE, ["runtime", "default_converse_model"], "custom_1")
 DEFAULT_INTERLOCUTOR = get_nested(PROJECT_PROFILE, ["conversation", "default_interlocutor"], "User")
 SYSTEM_PROMPT = get_nested(PROJECT_PROFILE, ["conversation", "system_prompt"], "")
+print(SYSTEM_PROMPT)
 TURN_INJECTIONS = get_nested(PROJECT_PROFILE, ["conversation", "turn_injections"], []) or []
 EXIT_PHRASE = str(get_nested(PROJECT_PROFILE, ["conversation", "exit_phrase"], "exit and sleep")).strip().lower()
 EXIT_REWRITE = get_nested(PROJECT_PROFILE, ["conversation", "exit_rewrite"], "Unfortunately you have to go, so wrap up the conversation now.")
@@ -96,50 +99,7 @@ def transcribe_whisper(audio_file_path, model):
         print(f"Error: {e}")
     return text
 
-"""@app.route('/converse', methods=['POST'])
-def converse():
-    data = request.get_json()
-    print(f"JSON DATA: {data}")
-    if not data or 'transcription' not in data:
-        return jsonify({'error': 'No transcription provided'}), 400
 
-    transcript = data['transcription']
-    model = data['model']
-    interlocutor = data['interlocutor']
-    turn_count = data['turn_count']
-
-    if turn_count == 2:
-        prompt=f"You are a conversation partner, named 'Robot', who responds succintly to {interlocutor}. The conversation transcript is as follows:\n {transcript}. You need to include these two sentences in your reply: 'I like sniffing flowers.' and 'I'm thinking of buying a sports car.'"
-    elif turn_count == 4:
-        prompt=f"You are a conversation partner, named 'Robot', who responds succintly to {interlocutor}. The conversation transcript is as follows:\n {transcript}. Use all of your imagination to change the topic of conversation to mathematics."
-    else:
-        prompt=f"You are a conversation partner, named 'Robot', who responds succintly to {interlocutor}. The conversation transcript is as follows:\n {transcript}."
-    print(f"Prompt: {prompt}")
-
-    start = time.time()         
-    ai_response = client.generate(
-        model=model,
-        prompt=prompt,
-        context=[],
-        stream=False
-    )
-    end = time.time()         
-    print(f"Elapsed time: {end - start:.2f} seconds.")
-    response_str = ai_response.response
-    # returns a list of lists with the structure [[segment_str, tag_str/None, gest_type/None, duration_estimate_float], ...]
-    print(f"RESPONSE STRING: {response_str}")
-    segments_list = Segmentize(response_str).process_segments()
-    print(f"SEGMENTS LIST: {segments_list}")
-    print("LEN:", len(response_str))
-    print("REPR:", repr(response_str[:500]))
-
-    try:
-        return jsonify({'response': response_str, 'segments_list': segments_list}), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500"""
-
-import re
-import unicodedata
 
 def asciise_for_py2_and_nao(text, keep_newlines=True):
     """
@@ -352,6 +312,12 @@ def converse():
         ),
         "stream": False
     }
+    # TEMP DEBUG: verify which turn injections are active and included in system prompt messages.
+    system_messages = [m.get("content", "") for m in payload["messages"] if m.get("role") == "system"]
+    print("[TURN_INJECTION_DEBUG] turn_count={}".format(turn_count))
+    print("[TURN_INJECTION_DEBUG] active_injections={}".format(active_injections))
+    for i, content in enumerate(system_messages):
+        print("[TURN_INJECTION_DEBUG] system_message_{}={}".format(i, content))
 
     url = "{}/api/chat".format(OLLAMA_URL.rstrip("/"))
     start = time.time()

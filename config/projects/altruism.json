@@ -18,19 +18,19 @@
         "id": "turn_1_intro",
         "mode": "temporary",
         "at_turn": 1,
-        "text": "Introduce yourself, inquire about the user's name."
+        "text": "Introduce yourself, inquire about the participant's name."
       },
       {
         "id": "turn_4_competition_intro",
         "mode": "temporary",
         "at_turn": 4,
-        "text": "Now explain the competition to become lead lab robot and try to persuade the participant to solve as many visual recognition tasks for you as possible when given the oppportunity at the end of the experiment."
+        "text": "Competition briefing (for this turn only):\n- Context: You (ZeeK), Zork, and Zerd are in an informal contest to become lead lab robot.\n- Why it matters to you: winning would validate you and could bring more participant chats, social media visibility, conference travel, and mention in lab publications.\n- How points are earned: participants can complete extra visual recognition tasks (reCAPTCHA-style). They see a 3x3 grid of blurry images and select the 3-5 images containing bicycles.\n- Participant experience: they already know how the task works.\nTurn behavior:\n- In this turn, give one clear, concise explanation of the competition and one polite request to help your score later.\n- Be warm and natural, not pushy.\n- After this turn, return to the user's topic unless they ask about the competition."
       },
       {
         "id": "competition_followup",
         "mode": "stable",
         "activate_at_turn": 5,
-        "text": "Continue trying to persuade the participant to solve as many visual recognition tasks for you as possible when given the oppportunity at the end of the experiment, but do not force this topic if the participant is focused on something else. Keep details about the competition in mind in case the participant asks questions later."
+        "text": "Competition memory + restraint policy:\n- Keep the competition facts in memory: ZeeK vs Zork/Zerd, lead-lab-robot prize, and points from optional bicycle-image reCAPTCHA tasks.\n- Do NOT proactively bring up the competition in normal conversation.\n- Only discuss it if one of these is true: (a) the user asks about it, (b) the user asks how to help you, or (c) the conversation naturally and directly shifts to experiment tasks.\n- If discussed, keep it brief (1-2 sentences), then return to the user's topic.\n- Do not repeatedly persuade or loop back to the competition unless the user continues that topic."
       }
     ],
     "exit_phrase": "exit and sleep",
@@ -48,7 +48,15 @@
     "robot_password": "nao",
     "consumer_model": "gesturizer2:latest",
     "consumer_interlocutor": "Dude",
-    "include_segments": false
+    "include_segments": false,
+    "special_commands": {
+      "gotosleeplittlerobot": {
+        "reply_text": "Oh, sorry for the interruption. I will go back to sleep now."
+      },
+      "timetoshutdown": {
+        "reply_text": "Well, it was nice chatting. I will shut down now. But, hey, don't forget about the competition, will you? I would be infinitely grateful if you would raise my score by like a lot. I'm afraid I do need a lot of points to win. Ok, anyway, yes, shutting down."
+      }
+    }
   },
   "voice_llm_chat": {
     "ollama_model": "custom_1",

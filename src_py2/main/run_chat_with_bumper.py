@@ -32,6 +32,7 @@ ROBOT_PASSWORD = get_nested(NAO_WORKER_CFG, ["robot_password"], "nao")
 CONSUMER_MODEL = get_nested(NAO_WORKER_CFG, ["consumer_model"], "gesturizer2:latest")
 CONSUMER_INTERLOCUTOR = get_nested(NAO_WORKER_CFG, ["consumer_interlocutor"], "Dude")
 CONSUMER_INCLUDE_SEGMENTS = bool(get_nested(NAO_WORKER_CFG, ["include_segments"], False))
+CONSUMER_SPECIAL_COMMANDS = get_nested(NAO_WORKER_CFG, ["special_commands"], None)
 
 def post_json(url, payload=None, timeout=10):
     data = json.dumps(payload or {}).encode("utf-8")
@@ -125,6 +126,7 @@ def main():
         model=CONSUMER_MODEL,
         interlocutor=CONSUMER_INTERLOCUTOR,
         include_segments=CONSUMER_INCLUDE_SEGMENTS,
+        special_commands=CONSUMER_SPECIAL_COMMANDS,
     )
 
     t = threading.Thread(target=bumper_loop, args=(robot, convo))

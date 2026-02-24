@@ -68,11 +68,13 @@ def main():
     consumer_model = get_nested(NAO_WORKER_CFG, ["consumer_model"], "gesturizer2:latest")
     consumer_interlocutor = get_nested(NAO_WORKER_CFG, ["consumer_interlocutor"], "Dude")
     consumer_include_segments = bool(get_nested(NAO_WORKER_CFG, ["include_segments"], False))
+    consumer_special_commands = get_nested(NAO_WORKER_CFG, ["special_commands"], None)
     consumer = NaoJobConsumer(
         convo,
         model=consumer_model,
         interlocutor=consumer_interlocutor,
-        include_segments=consumer_include_segments
+        include_segments=consumer_include_segments,
+        special_commands=consumer_special_commands
     )
 
     consumer.run_job_worker(session_dir)

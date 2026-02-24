@@ -54,7 +54,7 @@ def _segments_to_duration_sec(segments_list):
 
 
 class NaoJobConsumer(object):
-    def __init__(self, convo, model="gesturizer2:latest", interlocutor="Dude", include_segments=False):
+    def __init__(self, convo, model="gesturizer2:latest", interlocutor="Dude", include_segments=False, special_commands=None):
         """
         convo: your NAO-side ConversationManager (or equivalent) defining speak_n_gest_next_level(...)
         include_segments: if True, write ai_segments_list into output json (for debugging)
@@ -69,14 +69,24 @@ class NaoJobConsumer(object):
         self.turn_count = None
         self.special_commands = {
             "gotosleeplittlerobot": {
-                "reply_text": "Goodnight. I am going to sleep now. See you next time.",
+                "reply_text": "Going to sleep now.",
                 "action": "repose",
             },
             "timetoshutdown": {
-                "reply_text": "Time to shut down. Goodbye for now.",
+                "reply_text": "Shutting down now.",
                 "action": "shutdown",
             },
         }
+        if isinstance(special_commands, dict):
+            for command_key, cfg in special_commands.items():
+                if not isinstance(cfg, dict):
+                    continue
+                base = self.special_commands.get(command_key, {})
+                merged = {
+                    "reply_text": cfg.get("reply_text", base.get("reply_text", "")),
+                    "action": cfg.get("action", base.get("action")),
+                }
+                self.special_commands[command_key] = merged
 
     def _estimate_script_duration(self, text):
         words = [w for w in (text or "").strip().split() if w]
