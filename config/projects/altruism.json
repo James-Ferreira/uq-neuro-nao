@@ -84,7 +84,6 @@
     "min_utterance_sec": 0.2,
     "robot_outbox_dirname": "robot_outbox",
     "robot_inbox_dirname": "robot_inbox",
-    "default_robot_name": "clas",
     "wait_for_nao_done": true,
     "nao_done_timeout_sec": 30.0,
     "use_nao_backend": true
