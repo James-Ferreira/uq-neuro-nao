@@ -33,6 +33,18 @@ CONSUMER_MODEL = get_nested(NAO_WORKER_CFG, ["consumer_model"], "gesturizer2:lat
 CONSUMER_INTERLOCUTOR = get_nested(NAO_WORKER_CFG, ["consumer_interlocutor"], "Dude")
 CONSUMER_INCLUDE_SEGMENTS = bool(get_nested(NAO_WORKER_CFG, ["include_segments"], False))
 CONSUMER_SPECIAL_COMMANDS = get_nested(NAO_WORKER_CFG, ["special_commands"], None)
+VERBOSE = os.getenv("NAO_WORKER_VERBOSE", "0") == "1"
+
+
+def vprint(msg):
+    if VERBOSE:
+        print(msg)
+
+def _one_line_text(s):
+    txt = (s or "").strip()
+    if not txt:
+        return "(no speech detected)"
+    return " ".join(txt.split())
 
 def post_json(url, payload=None, timeout=10):
     data = json.dumps(payload or {}).encode("utf-8")
@@ -68,7 +80,7 @@ def bumper_loop(robot, convo):
 
         # Busy: consume press->release but do nothing
         if not convo.turn_gate.acquire(False):
-            print("BUSY: ignoring bumper press (turn in progress)")
+            vprint("BUSY: ignoring bumper press (turn in progress)")
             robot.tm.wait_for_left_bumper_release()
             time.sleep(0.05)
             continue
@@ -80,7 +92,7 @@ def bumper_loop(robot, convo):
             try:
                 convo.set_listening_mode()  # e.g., yellow
             except Exception as e:
-                print("WARN: set_listening_mode failed: {}".format(e))
+                vprint("WARN: set_listening_mode failed: {}".format(e))
 
             post_json(BRIDGE + "/start")
 
@@ -90,11 +102,14 @@ def bumper_loop(robot, convo):
             try:
                 convo.set_busy_mode()  # blue
             except Exception as e:
-                print("WARN: set_busy_mode failed: {}".format(e))
+                vprint("WARN: set_busy_mode failed: {}".format(e))
 
-            post_json(BRIDGE + "/stop")
+            stop_resp = post_json(BRIDGE + "/stop")
+            turn_id = stop_resp.get("turn_id")
+            transcript = _one_line_text(stop_resp.get("transcript", ""))
+            print("Turn {} | Participant: {}".format(turn_id, transcript))
 
-            print("TURN CAPTURED: waiting for robot to finish reply before accepting another")
+            vprint("TURN CAPTURED: waiting for robot to finish reply before accepting another")
 
             # IMPORTANT: do not release gate here.
             # speak_n_gest_next_level() releases it in finally.

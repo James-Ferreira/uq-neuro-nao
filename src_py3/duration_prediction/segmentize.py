@@ -1,6 +1,4 @@
-from num2words import num2words
 import re
-from typing import Callable
 
 from src_py3.duration_prediction.duration_predictor import predict_duration
 
@@ -17,22 +15,32 @@ class Segmentize():
         self.gesture_tags = {
             "facepalm": 1,
             "look upward": 1,
+            "nod yes": 1,
             "point down": 1,
             "point forward": 1,
             "point to self": 1,
             "point up": 1,
             "pump fist": 1,
             "scratch head": 1,
+            "shake head no": 1,
             "shake fist": 1,
             "shrug": 1,
             "spread arms": 1,
-            "wave hand": 1
+            "wave hand": 1,
+        }
+        # Common LLM spelling variants / aliases -> canonical tags.
+        self.gesture_tag_aliases = {
+            "nodd yes": "nod yes",
+            "nodding yes": "nod yes",
+            "nod head yes": "nod yes",
+            "shake no": "shake head no",
+            "head shake no": "shake head no",
+            "shake your head no": "shake head no",
         }
 
-    ### GENERAL TEXT HANDLING
+    # GENERAL TEXT HANDLING
 
     def split_text(self):
-
         text_claused = self.mark_complete_clauses()
 
         # Split on punctuation while preserving it, but keep a trailing clause without punctuation.
@@ -91,7 +99,7 @@ class Segmentize():
         _LEADING_JUNK_EXCEPT_LBRACKET = re.compile(r'^[^A-Za-z0-9\[]+')
         return _LEADING_JUNK_EXCEPT_LBRACKET.sub('', s2)
 
-    ### TAGGED GESTURE HANDLING
+    # TAGGED GESTURE HANDLING
 
     def check_for_tags(self, segment):
         """
@@ -99,11 +107,12 @@ class Segmentize():
         Returns (gesture_name, gesture_type) if found, else (None, "random").
         """
         seg = (segment or "").lower()
-        pattern = r"\[([^\[\]]+)\]"   # capture tag content inside [ ]
+        pattern = r"\[([^\[\]]+)\]"  # capture tag content inside [ ]
 
         match = re.search(pattern, seg)
         if match:
-            tag = match.group(1).strip()
+            raw_tag = match.group(1).strip().lower()  # e.g., "shake head"
+            tag = self.gesture_tag_aliases.get(raw_tag, raw_tag)
             if tag in self.gesture_tags:
                 gesture_type = self.gesture_tags[tag]
                 return tag, gesture_type
@@ -132,7 +141,6 @@ class Segmentize():
         tag_combo = ""
         if match:
             start, end = match.span()
-
             before = (tagged_segment or "")[:start]
             after = (tagged_segment or "")[end:]
 
@@ -164,8 +172,9 @@ class Segmentize():
         first_valid = None
         for match in matches:
             candidate = match.group(1).strip().lower()
-            if candidate in self.gesture_tags:
-                first_valid = (candidate, match.span())
+            canonical = self.gesture_tag_aliases.get(candidate, candidate)
+            if canonical in self.gesture_tags:
+                first_valid = (canonical, match.span())
                 break
 
         if first_valid is None:
@@ -177,7 +186,7 @@ class Segmentize():
         pieces = [piece for piece in (before, "[{}]".format(valid_tag), after) if piece]
         return " ".join(pieces)
 
-    ### INTEGRATED SEGMENT HANDLING
+    # INTEGRATED SEGMENT HANDLING
 
     def process_segments(self):
         """
@@ -201,10 +210,12 @@ class Segmentize():
 
             # Identify tag, if present
             tag, gest_type = self.check_for_tags(segment)
-            print(f"TAG: {tag}")
-            print(f"GEST_TYPE: {gest_type}")
+            # in case AI generates an invalid tag
+            if tag == "invalid":
+                segment = self.remove_tags(segment)
+                tag = None
+                gest_type = None
 
-            # If brackets exist but no valid tag, remove them.
             if tag is None and len(re.findall(r"\[.*?\]", segment)) > 0:
                 segment = self.remove_tags(segment).strip()
                 if not self.has_alphanumeric(segment):
@@ -216,7 +227,7 @@ class Segmentize():
 
             else:
                 subsegments, tag_combo = self.split_on_tags(segment)
-                print(f"SUBSEGMENTS: {subsegments}")
+                #print(f"SUBSEGMENTS: {subsegments}")
 
                 if tag_combo == "pretag":
                     pretag_segment = self.strip_junk(subsegments[0])
@@ -242,6 +253,6 @@ class Segmentize():
                     # If you ever want "gesture-only" actions, you'd need to extend the downstream contract.
                     pass
 
-            print("SEGMENTS LIST COMPILED IN SEGMENTIZE")
+            #print("SEGMENTS LIST COMPILED IN SEGMENTIZE")
 
         return segments_list  # [segment, tag, gest_type, duration_estimate]

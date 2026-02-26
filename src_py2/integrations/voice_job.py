@@ -53,6 +53,13 @@ def _segments_to_duration_sec(segments_list):
     return total
 
 
+def _single_line(text):
+    s = (text or "").strip()
+    if not s:
+        return "(no speech detected)"
+    return re.sub(r"\s+", " ", s)
+
+
 class NaoJobConsumer(object):
     def __init__(self, convo, model="gesturizer2:latest", interlocutor="Dude", include_segments=False, special_commands=None):
         """
@@ -259,10 +266,6 @@ class NaoJobConsumer(object):
         processed = set()
 
         print("NAO job worker started")
-        print("session_dir: {}".format(session_dir))
-        print("inbox_dir: {}".format(inbox_dir))
-        print("outbox_dir: {}".format(outbox_dir))
-        print("include_segments: {}".format(self.include_segments))
 
         while True:
             try:
@@ -284,11 +287,13 @@ class NaoJobConsumer(object):
                         processed.add(name)
                         continue
 
-                    print("Processing turn {}".format(turn_id))
-
                     result = self.handle_input_job(job)
 
                     _write_json_atomic(done_path, result)
+
+                    user_text = _single_line(job.get("user", ""))
+                    ai_text = _single_line(result.get("ai", ""))
+                    print("Turn {} | Participant: {} | Robot: {}".format(turn_id, user_text, ai_text))
 
                     processed.add(name)
 

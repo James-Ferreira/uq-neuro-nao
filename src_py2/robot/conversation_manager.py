@@ -96,16 +96,26 @@ class ConversationManager(object):
         self.gesture_tags = {
                             "facepalm": 1,
                             "look upward": 1,
+                            "nod yes": 1,
                             "point down": 1,
                             "point forward": 1,
                             "point to self": 1,
                             "point up": 1,
                             "pump fist": 1,
                             "scratch head": 1,
+                            "shake head no": 1,
                             "shake fist": 1,
                             "shrug": 1,
                             "spread arms": 1,
                             "wave hand": 1
+                        }
+        self.gesture_tag_aliases = {
+                            "nodd yes": "nod yes",
+                            "nodding yes": "nod yes",
+                            "nod head yes": "nod yes",
+                            "shake no": "shake head no",
+                            "head shake no": "shake head no",
+                            "shake your head no": "shake head no",
                         }
     
     
@@ -331,7 +341,7 @@ class ConversationManager(object):
 
         # Divide text into segments.
         segments_raw = self.split_text(text)
-        print("segments: {}".format(segments_raw))
+        #print("segments: {}".format(segments_raw))
 
         segments_list = []
         for segment_raw in segments_raw:            
@@ -359,7 +369,7 @@ class ConversationManager(object):
                     #Estimate segment durations
                     duration_est = self.estimate_duration(segment)
                     # Build list   
-                    segments_list += [[segment, tag, gest_type, duration_est]]
+                    segments_list += [[segment, None, None, duration_est]]
             else:
                 # Isolate pre-/post- segments and tag
                 subsegments = self.split_on_tags(segment)
@@ -391,6 +401,7 @@ class ConversationManager(object):
         match = re.search(pattern, text)
         if match:
             tag = match.group(1).strip()  # e.g., "shake head"
+            tag = self.gesture_tag_aliases.get(tag, tag)
             if tag in self.gesture_tags:
                 gesture_type = self.gesture_tags[tag]
                 return tag, gesture_type
@@ -501,7 +512,7 @@ class ConversationManager(object):
     
     def execute_pretag_gest(self, segment, duration_est):
         # Sit if there is time, otherwise hold last posture.
-        print("SEGMENT INSIDE execute_pretag_gests {}".format(segment))
+        #print("SEGMENT INSIDE execute_pretag_gests {}".format(segment))
         if duration_est > 1.5:
             self.robot.mm.sit_gently(post=True)
         self.robot.tts.say(segment)
@@ -512,7 +523,7 @@ class ConversationManager(object):
             Identify its type and run.
             Consider moving the text processing to another function.
             """ 
-            print("SEGMENT INSIDE execute_tagged_gests {}".format(posttag_segment))
+            #print("SEGMENT INSIDE execute_tagged_gests {}".format(posttag_segment))
 
             posttag_joints, posttag_angles, posttag_timepoints = [], [], []
             if gesture_type == 1:
@@ -574,7 +585,7 @@ class ConversationManager(object):
         return int(reps_hand)
     
     def set_reps_head(self, duration_est):
-        print("delete: duration_est: {}".format(duration_est))
+
         reps_head = math.floor(duration_est / (self.gest_duration_head + self.sleep_duration))
         return int(reps_head)
     
@@ -607,27 +618,18 @@ class ConversationManager(object):
         # Integrate joints, angles and time points into Torso lists
 
         joints_torso = self.joints_headarms + joints_hand + joints_other_hand
-        print("joints_torso: {}".format(joints_torso))
         angles_torso = angles_head + angles_arm + angles_hand + self.rand_angles_other_hand
-        print(("angles_torso: {}".format(angles_torso)))           
-
-        print("timepoints arm: {}".format(timepoints_arm))
-        print("timepoints head: {}".format(timepoints_head))
-        print("timepoints hand: {}".format(timepoints_hand))
-        print("timepoints hand: {}".format(timepoints_hand))
-        print("timepoints other hand: {}".format(self.rand_timepoints_other_hand))
-        print("timepoints other hand: {}".format(self.rand_timepoints_other_hand))
 
         timepoints_torso = timepoints_head + timepoints_arm + timepoints_hand + self.rand_timepoints_other_hand
-        print('timepoints_torso', timepoints_torso)
+
 
         return joints_torso, angles_torso, timepoints_torso
     
     def execute_random_gests(self, segment, duration):
 
             joints, angles, timepoints = self.set_random_gest(duration)
-            print("SEGMENT INSIDE execute_random_gests {}".format(segment))
-            print(type(segment))
+            #print("SEGMENT INSIDE execute_random_gests {}".format(segment))
+            #print(type(segment))
             # Execute posttag segment with speech
             self.robot.motion.post.angleInterpolation(joints, angles, timepoints, True)
             self.robot.tts.say(segment)   
@@ -806,11 +808,11 @@ class ConversationManager(object):
             gesture_type = segment_list[2]
             duration_est = segment_list[3]
 
-            print("SEGMENTS LIST: {}".format(segment_list))
-            print("SEGMENT: {}".format(segment))
-            print("TAG: {}".format(tag))
-            print("GESTURE TYPE: {}".format(gesture_type))
-            print("DURATION_EST: {}".format(duration_est))
+            #print("SEGMENTS LIST: {}".format(segment_list))
+            #print("SEGMENT: {}".format(segment))
+            #print("TAG: {}".format(tag))
+            #print("GESTURE TYPE: {}".format(gesture_type))
+            #print("DURATION_EST: {}".format(duration_est))
 
             # Execute gentle sit on prettag segment, if there is time
             if tag == "pretag":
@@ -838,34 +840,34 @@ class ConversationManager(object):
             except Exception as e:
                 print("WARN: set_replying_mode failed: {}".format(e))
         
-        print("started speak_n_gest_next_level")
-        print("SEGMENTS LIST: {}".format(segments_list))
+        #print("started speak_n_gest_next_level")
+        #print("SEGMENTS LIST: {}".format(segments_list))
 
         try:
             for segment_list in segments_list:
 
                 # segments list structure: [[segment, tag, gest_type, duration_est], [segment, tag, gest_type, duration_est], ...]
                 # Speak and execute the appropriate gestures
-                print("SEGMENT SINGULAR LIST: {}".format(segment_list))
+                #print("SEGMENT SINGULAR LIST: {}".format(segment_list))
 
                 segment = self.to_ascii(segment_list[0])
-                print("SEGMENT: {}".format(segment))
+                #print("SEGMENT: {}".format(segment))
 
                 tag = segment_list[1]
                 if tag:
                     tag = self.to_ascii(tag)
-                print("TAG: {}".format(tag))
+                #print("TAG: {}".format(tag))
 
                 gesture_type = segment_list[2]
                 if gesture_type:
                     gesture_type = self.to_ascii(gesture_type)
-                print("GESTURE TYPE: {}".format(gesture_type))
+                #print("GESTURE TYPE: {}".format(gesture_type))
 
                 duration_est = segment_list[3]
 
-                print("DURATION_EST: {}".format(duration_est))
+                #print("DURATION_EST: {}".format(duration_est))
 
-                print("that ascii stuff should have printed")
+                #print("that ascii stuff should have printed")
                 # Execute gentle sit on prettag segment, if there is time
                 if tag == "pretag":
                     pass
@@ -885,7 +887,7 @@ class ConversationManager(object):
             if hasattr(self, "turn_gate") and self.turn_gate.locked():
                 try:
                     self.turn_gate.release()
-                    print("TURN END: gate released (robot finished reply)")
+                    #print("TURN END: gate released (robot finished reply)")
                 except Exception:
                     pass
                 # Then update LEDs (never allow LED issues to break turn-taking)

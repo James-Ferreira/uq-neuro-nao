@@ -10,6 +10,12 @@ import runpy
 import sys
 import time
 
+### TO ANIMATE:
+# 1. Run nao_robot.py
+# 2. create a robot instance: clas = NAORobot("clas") or meta = NAORobot("meta")
+# 3. Run clas.anm.animate() or meta.anm.animate() and follow the prompts to create the animation.  You can also specify dialogue_script=1 to create a dialogue animation
+
+
 ###########################################
 ### CREATE COMPRESSED AND UNCOMPRESSED ANIMATIONS FOR PURE ACTIONS AND DIALOGUE ACTIONS
 ### ALSO OPTIONALLY CREATE DICTIONARIES FOR DIALOGUE ACTIONS
@@ -317,7 +323,7 @@ joint_names_list = {}
 
 
     ### ANIMATION VARIANTS    
-    def silent_animation(self, action_count):     
+    def silent_animation(self, action_count=100):     
 
                 # Default movement count is 100.
                 for stage in range(action_count):

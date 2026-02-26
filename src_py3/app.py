@@ -3,6 +3,7 @@ import os
 import whisper
 import time
 import ollama
+import logging
 import string
 import requests
 import re
@@ -13,9 +14,15 @@ from src_py3.duration_prediction.segmentize import Segmentize
 
 
 app = Flask(__name__)
+VERBOSE = os.getenv("UQ_PY3_VERBOSE", "0") == "1"
+
+
+def _vprint(*args, **kwargs):
+    if VERBOSE:
+        print(*args, **kwargs)
 
 PROJECT_PROFILE = load_active_project_profile()
-print("Active project profile: {}".format(PROJECT_PROFILE.get("_project_id")))
+_vprint("Active project profile: {}".format(PROJECT_PROFILE.get("_project_id")))
 
 OLLAMA_URL = get_nested(PROJECT_PROFILE, ["runtime", "ollama_url"], "http://localhost:11434")
 OLLAMA_CONNECT_TIMEOUT = float(get_nested(PROJECT_PROFILE, ["runtime", "connect_timeout_sec"], 3))
@@ -26,7 +33,7 @@ WHISPER_FP16 = bool(get_nested(PROJECT_PROFILE, ["runtime", "whisper_fp16"], Fal
 DEFAULT_CONVERSE_MODEL = get_nested(PROJECT_PROFILE, ["runtime", "default_converse_model"], "custom_1")
 DEFAULT_INTERLOCUTOR = get_nested(PROJECT_PROFILE, ["conversation", "default_interlocutor"], "User")
 SYSTEM_PROMPT = get_nested(PROJECT_PROFILE, ["conversation", "system_prompt"], "")
-print(SYSTEM_PROMPT)
+#_vprint(SYSTEM_PROMPT)
 TURN_INJECTIONS = get_nested(PROJECT_PROFILE, ["conversation", "turn_injections"], []) or []
 OUTPUT_DIRECTIVES = get_nested(PROJECT_PROFILE, ["conversation", "output_directives"], []) or []
 EXIT_PHRASE = str(get_nested(PROJECT_PROFILE, ["conversation", "exit_phrase"], "exit and sleep")).strip().lower()
@@ -35,15 +42,15 @@ GUESS_MODEL = get_nested(PROJECT_PROFILE, ["games", "guess_model"], "llama3.1:8b
 HINT_MODEL = get_nested(PROJECT_PROFILE, ["games", "hint_model"], "llama3.1:8b")
 HOBBY_MODEL = get_nested(PROJECT_PROFILE, ["games", "hobby_model"], "llama3.1:8b")
 
-print("Loading Whisper model...")
+_vprint("Loading Whisper model...")
 model = whisper.load_model(WHISPER_MODEL_NAME)
-print("Whisper model loaded.")
+_vprint("Whisper model loaded.")
 
-print("Loading Ollama model...")
+_vprint("Loading Ollama model...")
 client = ollama.Client(
     host=OLLAMA_URL
 )
-print("Ollama model loaded.")
+_vprint("Ollama model loaded.")
 
 
 @app.route('/transcribe/filepath', methods=['POST'])
@@ -54,7 +61,7 @@ def transcribe_audio_from_filepath():
 
     filepath = data['filepath']
 
-    print(f"/transcribe/filepath: {filepath}")
+    _vprint("/transcribe/filepath: {}".format(filepath))
     try:
         transcription_result = transcribe_whisper(filepath, model)
         return jsonify({'transcription': transcription_result}), 200
@@ -88,16 +95,16 @@ def transcribe_audio_from_file():
     
 def transcribe_whisper(audio_file_path, model):
     start = time.time()
-    print("Starting Whisper transcription.")
+    _vprint("Starting Whisper transcription.")
     text = "Transcription failed."
     try:
         result = model.transcribe(audio_file_path, language=WHISPER_LANGUAGE, fp16=WHISPER_FP16)
         text = result["text"]
         end = time.time()
-        print(f"Elapsed time: {end - start:.2f} seconds.")
-        print(f"Text: {text}")
+        _vprint("Elapsed time: {:.2f} seconds.".format(end - start))
+        _vprint("Text: {}".format(text))
     except Exception as e:
-        print(f"Error: {e}")
+        _vprint("Error: {}".format(e))
     return text
 
 
@@ -344,13 +351,13 @@ def _apply_output_directive(generated_text, directive):
 @app.route('/converse', methods=['POST'])
 def converse():
     data = request.get_json()
-    print("JSON DATA:", data)
+    #_vprint("JSON DATA: {}".format(data))
 
     if not data:
         return jsonify({'error': 'No JSON provided'}), 400
 
     model        = data.get('model') or DEFAULT_CONVERSE_MODEL
-    print(f"MODEL: {model}")
+    _vprint("MODEL: {}".format(model))
     interlocutor = data.get('interlocutor', DEFAULT_INTERLOCUTOR)
     turn_count   = int(data.get('turn_count', 0))
 
@@ -420,10 +427,10 @@ def converse():
     }
     # TEMP DEBUG: verify which turn injections are active and included in system prompt messages.
     system_messages = [m.get("content", "") for m in payload["messages"] if m.get("role") == "system"]
-    print("[TURN_INJECTION_DEBUG] turn_count={}".format(turn_count))
-    print("[TURN_INJECTION_DEBUG] active_injections={}".format(active_injections))
-    for i, content in enumerate(system_messages):
-        print("[TURN_INJECTION_DEBUG] system_message_{}={}".format(i, content))
+    _vprint("[TURN_INJECTION_DEBUG] turn_count={}".format(turn_count))
+    #_vprint("[TURN_INJECTION_DEBUG] active_injections={}".format(active_injections))
+    #for i, content in enumerate(system_messages):
+        #_vprint("[TURN_INJECTION_DEBUG] system_message_{}={}".format(i, content))
 
     url = "{}/api/chat".format(OLLAMA_URL.rstrip("/"))
     start = time.time()
@@ -434,7 +441,7 @@ def converse():
     except Exception as e:
         return jsonify({'error': 'Ollama request failed: {}'.format(e)}), 500
     end = time.time()
-    print("Elapsed time: {:.2f} seconds.".format(end - start))
+    #_vprint("Elapsed time: {:.2f} seconds.".format(end - start))
 
     response_str = ""
     try:
@@ -442,21 +449,21 @@ def converse():
     except Exception:
         response_str = ""
 
-    print("RAW RESPONSE STRING:", response_str)
-    print("LEN:", len(response_str))
-    print("REPR:", repr(response_str[:500]))
+    _vprint("RAW RESPONSE STRING: {}".format(response_str))
+   # _vprint("LEN: {}".format(len(response_str)))
+    #_vprint("REPR: {}".format(repr(response_str[:500])))
 
     transformed_response = (response_str or "").strip()
     for directive in active_output_directives:
         once_per_session = bool(directive.get("once_per_session", False))
         if once_per_session and _directive_seen_in_history(directive, history):
-            print("[OUTPUT_DIRECTIVE_DEBUG] skipped once_per_session directive id={}".format(directive.get("id", "<no-id>")))
+            #_vprint("[OUTPUT_DIRECTIVE_DEBUG] skipped once_per_session directive id={}".format(directive.get("id", "<no-id>")))
             continue
         transformed_response = _apply_output_directive(transformed_response, directive)
-        print("[OUTPUT_DIRECTIVE_DEBUG] applied directive id={}".format(directive.get("id", "<no-id>")))
+        #_vprint("[OUTPUT_DIRECTIVE_DEBUG] applied directive id={}".format(directive.get("id", "<no-id>")))
 
-    if transformed_response != (response_str or "").strip():
-        print("[OUTPUT_DIRECTIVE_DEBUG] transformed_response={}".format(transformed_response))
+    #if transformed_response != (response_str or "").strip():
+        #_vprint("[OUTPUT_DIRECTIVE_DEBUG] transformed_response={}".format(transformed_response))
     response_str = transformed_response
 
     # todo: Had more luck on other long runs with this commented out. Perhaps we don't need it at all, now that transcript and the reply are being processed differently? 
@@ -476,7 +483,7 @@ def converse():
 
     extracted = strip_star_stage_directions(extracted)
 
-    print("EXTRACTED ROBOT TEXT:", extracted)
+    _vprint("EXTRACTED ROBOT TEXT: {}".format(extracted))
 
     # ---- Segmentize only the extracted robot reply ----
     try:
@@ -488,7 +495,7 @@ def converse():
             'extracted': extracted
         }), 500
 
-    print("SEGMENTS LIST:", segments_list)
+    _vprint("SEGMENTS LIST: {}".format(segments_list))
 
     return jsonify({'response': extracted, 'segments_list': segments_list}), 200
 
@@ -575,7 +582,7 @@ def guess():
 
         Now, produce your one-word guess:""" 
 
-    print(f"Prompt: {prompt}")
+    #_vprint("Prompt: {}".format(prompt))
 
     start = time.time()         
     ai_response = client.generate(
@@ -585,13 +592,13 @@ def guess():
         stream=False
     )
     end = time.time()         
-    print(f"Elapsed time: {end - start:.2f} seconds.")
+    #_vprint("Elapsed time: {:.2f} seconds.".format(end - start))
     response_str = str(ai_response.response)
 
     translator = str.maketrans('', '', string.punctuation)
     response_str = response_str.translate(translator).strip().lower()
 
-    print("Response: ", response_str)
+    _vprint("Response: {}".format(response_str))
     try:
         return jsonify({'response': response_str}), 200
     except Exception as e:
@@ -636,7 +643,7 @@ def hint():
                     Now, produce your one-word hint:
                 """
 
-    print(f"Prompt: {prompt}")
+    #_vprint("Prompt: {}".format(prompt))
 
     start = time.time()         
     ai_response = client.generate(
@@ -646,10 +653,10 @@ def hint():
         stream=False
     )
     end = time.time()         
-    print(f"Elapsed time: {end - start:.2f} seconds.")
+    #_vprint("Elapsed time: {:.2f} seconds.".format(end - start))
     response_str = str(ai_response.response)
 
-    print("Response: ", response_str)
+    _vprint("Response: {}".format(response_str))
     try:
         return jsonify({'response': response_str}), 200
     except Exception as e:
@@ -670,7 +677,7 @@ def hobby():
     if use_alternate_prompt:
         prompt = f"In one cheery, somewhat formal, endearing sentence defend the opinion that the hobby of {hobby_better} is better (for whatever reason) than the hobby of {hobby_worse}"
 
-    print(f"Prompt: {prompt}")
+    _vprint("Prompt: {}".format(prompt))
 
     start = time.time()         
     ai_response = client.generate(
@@ -680,10 +687,10 @@ def hobby():
         stream=False
     )
     end = time.time()         
-    print(f"Elapsed time: {end - start:.2f} seconds.")
+    _vprint("Elapsed time: {:.2f} seconds.".format(end - start))
     response_str = str(ai_response.response)
 
-    print("Response: ", response_str)
+    _vprint("Response: {}".format(response_str))
     try:
         return jsonify({'response': response_str}), 200
     except Exception as e:
@@ -694,4 +701,7 @@ def hobby():
 if __name__ == '__main__':
     default_port = str(get_nested(PROJECT_PROFILE, ["runtime", "py3_api_port"], 5001))
     port = int(os.getenv("PY3_API_PORT", default_port))
-    app.run(debug=True, host='0.0.0.0', port=port)
+    debug_mode = os.getenv("PY3_API_DEBUG", "0") == "1"
+    if not debug_mode:
+        logging.getLogger("werkzeug").setLevel(logging.ERROR)
+    app.run(debug=debug_mode, host='0.0.0.0', port=port, use_reloader=debug_mode)

@@ -1,0 +1,10 @@
+      
+angle_modulator = 1.0
+duration_modulator = 1.0
+        
+joint_names_list = ['HeadYaw', 'HeadPitch', 'LShoulderPitch', 'LShoulderRoll', 'LElbowYaw', 'LElbowRoll', 'LWristYaw', 'LHand', 'RShoulderPitch', 'RShoulderRoll', 'RElbowYaw', 'RElbowRoll', 'RWristYaw', 'RHand']
+                   
+joint_angles = [angles_compressed for _, angles_compressed in [['HeadYaw', [0.0014920234680175781, 0.0014920234680175781, -4.1961669921875e-05]], ['HeadPitch', [0.19631004333496094, 0.19631004333496094, 0.19631004333496094]], ['LShoulderPitch', [0.760822057723999, 0.7684919834136963, 0.7853660583496094]], ['LShoulderRoll', [0.30675792694091797, 0.3082921504974365, 0.3543119430541992]], ['LElbowYaw', [-0.16264605522155762, -0.16724801063537598, -0.1825878620147705]], ['LElbowRoll', [-1.1259140968322754, -1.1259140968322754, -1.1842060089111328]], ['LWristYaw', [-1.0109481811523438, -1.0094141960144043, -1.0140161514282227]], ['LHand', [0.6552000045776367, 0.6552000045776367, 0.6547999978065491]], ['RShoulderPitch', [0.7240900993347168, -0.3681180477142334, 0.7900519371032715]], ['RShoulderRoll', [-0.2025299072265625, 0.32976794242858887, -0.3789398670196533]], ['RElbowYaw', [0.08432793617248535, 0.02603602409362793, 0.13801813125610352]], ['RElbowRoll', [1.055434226989746, 1.1213960647583008, 1.2533202171325684]], ['RWristYaw', [0.9924559593200684, 0.9863200187683105, 0.7700259685516357]], ['RHand', [0.7215999960899353, 0.7215999960899353, 0.7215999960899353]]]]
+time_points = [time_points_compressed for _, time_points_compressed in [['HeadYaw', [0.6, 3.8, 4.4]], ['HeadPitch', [0.6, 3.8, 4.4]], ['LShoulderPitch', [0.6, 3.8, 4.4]], ['LShoulderRoll', [0.6, 3.8, 4.4]], ['LElbowYaw', [0.6, 3.8, 4.4]], ['LElbowRoll', [0.6, 3.8, 4.4]], ['LWristYaw', [0.6, 3.8, 4.4]], ['LHand', [0.6, 3.8, 4.4]], ['RShoulderPitch', [0.6, 3.8, 4.4]], ['RShoulderRoll', [0.6, 3.8, 4.4]], ['RElbowYaw', [0.6, 3.8, 4.4]], ['RElbowRoll', [0.6, 3.8, 4.4]], ['RWristYaw', [0.6, 3.8, 4.4]], ['RHand', [0.6, 3.8, 4.4]]]]
+clas.motion.angleInterpolation(joint_names_list, joint_angles, time_points, True)
+        

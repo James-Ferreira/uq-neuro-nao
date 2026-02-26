@@ -20,12 +20,14 @@ Below, the gesture tags appear, as they always should, in square brackets. They 
 
 [facepalm]: cover face in disgust or frustration over something.
 [look upward]: look up to the sky or ceiling.
+[nod yes]: nod up and down to respond positively or emphasise a statement
 [point down]: point down.
 [point forward]: point straight ahead, for example, to the person you are speaking with.
 [point to self]: point to your chest, for example, when speaking about yourself.
 [point up]: point up.
 [pump fist]: pump fist in celebration or to motivate someone.
 [scratch head]: scratch head to express puzzlement.
+[shake head no]: shake head side to side to indicate negation or disagreement
 [shake fist]: shake fist in anger or out of frustration.
 [shrug]: raise shoulders and open hands to express ignorance.
 [spread arms]: spread arms to include or welcome everyone or everything.
