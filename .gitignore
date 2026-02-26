@@ -1,3 +1,4 @@
 *.pyc
-*.DS_STORE
+*.ds_store
 config/active_project.txt
+
