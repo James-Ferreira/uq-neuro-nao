@@ -28,6 +28,7 @@ DEFAULT_INTERLOCUTOR = get_nested(PROJECT_PROFILE, ["conversation", "default_int
 SYSTEM_PROMPT = get_nested(PROJECT_PROFILE, ["conversation", "system_prompt"], "")
 print(SYSTEM_PROMPT)
 TURN_INJECTIONS = get_nested(PROJECT_PROFILE, ["conversation", "turn_injections"], []) or []
+OUTPUT_DIRECTIVES = get_nested(PROJECT_PROFILE, ["conversation", "output_directives"], []) or []
 EXIT_PHRASE = str(get_nested(PROJECT_PROFILE, ["conversation", "exit_phrase"], "exit and sleep")).strip().lower()
 EXIT_REWRITE = get_nested(PROJECT_PROFILE, ["conversation", "exit_rewrite"], "Unfortunately you have to go, so wrap up the conversation now.")
 GUESS_MODEL = get_nested(PROJECT_PROFILE, ["games", "guess_model"], "llama3.1:8b")
@@ -237,6 +238,109 @@ def _active_turn_injection_texts(turn_count):
     return texts
 
 
+def _split_sentences(text):
+    if not text:
+        return []
+    chunks = re.split(r"(?<=[.!?])\s+", str(text).strip())
+    return [c.strip() for c in chunks if c and c.strip()]
+
+
+def _remove_question_sentences(text):
+    kept = []
+    for sentence in _split_sentences(text):
+        if sentence.endswith("?"):
+            continue
+        kept.append(sentence)
+    return " ".join(kept).strip()
+
+
+def _limit_sentences(text, max_sentences):
+    if max_sentences is None:
+        return text
+    n = _as_int_or_none(max_sentences)
+    if n is None:
+        return text
+    if n <= 0:
+        return ""
+    sentences = _split_sentences(text)
+    return " ".join(sentences[:n]).strip()
+
+
+def _join_text(left, right):
+    left = (left or "").strip()
+    right = (right or "").strip()
+    if not left:
+        return right
+    if not right:
+        return left
+    return "{} {}".format(left, right).strip()
+
+
+def _normalize_for_history_match(text):
+    return re.sub(r"\s+", " ", (text or "").strip().lower())
+
+
+def _directive_seen_in_history(directive, history):
+    if not isinstance(history, list):
+        return False
+    candidates = []
+    for key in ("replace_text", "append_text", "prepend_text"):
+        val = directive.get(key)
+        if val is None:
+            continue
+        txt = str(val).strip()
+        if txt:
+            candidates.append(_normalize_for_history_match(txt))
+    if not candidates:
+        return False
+    for msg in history:
+        if not isinstance(msg, dict):
+            continue
+        if msg.get("role") != "assistant":
+            continue
+        assistant_text = _normalize_for_history_match(msg.get("content", ""))
+        if not assistant_text:
+            continue
+        for needle in candidates:
+            if needle and needle in assistant_text:
+                return True
+    return False
+
+
+def _active_output_directives(turn_count):
+    directives = []
+    for directive in OUTPUT_DIRECTIVES:
+        if not isinstance(directive, dict):
+            continue
+        if not _is_injection_active(directive, turn_count):
+            continue
+        directives.append(directive)
+    return directives
+
+
+def _apply_output_directive(generated_text, directive):
+    text = (generated_text or "").strip()
+
+    if bool(directive.get("remove_questions", False)):
+        text = _remove_question_sentences(text)
+
+    text = _limit_sentences(text, directive.get("max_generated_sentences"))
+
+    replace_text = str(directive.get("replace_text", "")).strip()
+    if replace_text:
+        text = replace_text
+
+    prepend_text = str(directive.get("prepend_text", "")).strip()
+    append_text = str(directive.get("append_text", "")).strip()
+
+    if prepend_text:
+        text = _join_text(prepend_text, text)
+    if append_text:
+        text = _join_text(text, append_text)
+
+    return text.strip()
+
+
 @app.route('/converse', methods=['POST'])
 def converse():
     data = request.get_json()
@@ -297,6 +401,8 @@ def converse():
     if EXIT_PHRASE and last_user.lower() == EXIT_PHRASE:
         last_user = EXIT_REWRITE
 
+    active_output_directives = _active_output_directives(turn_count)
+
     # ---- Optional: system addendum instead of user meta-wrapping ----
     system_addendum = "The user you're replying to is named: {}.\n".format(interlocutor)
     for instruction in active_injections:
@@ -339,6 +445,19 @@ def converse():
     print("RAW RESPONSE STRING:", response_str)
     print("LEN:", len(response_str))
     print("REPR:", repr(response_str[:500]))
+
+    transformed_response = (response_str or "").strip()
+    for directive in active_output_directives:
+        once_per_session = bool(directive.get("once_per_session", False))
+        if once_per_session and _directive_seen_in_history(directive, history):
+            print("[OUTPUT_DIRECTIVE_DEBUG] skipped once_per_session directive id={}".format(directive.get("id", "<no-id>")))
+            continue
+        transformed_response = _apply_output_directive(transformed_response, directive)
+        print("[OUTPUT_DIRECTIVE_DEBUG] applied directive id={}".format(directive.get("id", "<no-id>")))
+
+    if transformed_response != (response_str or "").strip():
+        print("[OUTPUT_DIRECTIVE_DEBUG] transformed_response={}".format(transformed_response))
+    response_str = transformed_response
 
     # todo: Had more luck on other long runs with this commented out. Perhaps we don't need it at all, now that transcript and the reply are being processed differently? 
     # ---- Extract strict <ROBOT>...</ROBOT> to keep Segmentize clean ----
