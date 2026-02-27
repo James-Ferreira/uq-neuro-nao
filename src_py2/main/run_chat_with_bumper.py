@@ -33,6 +33,7 @@ CONSUMER_MODEL = get_nested(NAO_WORKER_CFG, ["consumer_model"], "gesturizer2:lat
 CONSUMER_INTERLOCUTOR = get_nested(NAO_WORKER_CFG, ["consumer_interlocutor"], "Dude")
 CONSUMER_INCLUDE_SEGMENTS = bool(get_nested(NAO_WORKER_CFG, ["include_segments"], False))
 CONSUMER_SPECIAL_COMMANDS = get_nested(NAO_WORKER_CFG, ["special_commands"], None)
+WATCHDOG_CFG = get_nested(PROJECT_PROFILE, ["conversation", "watchdog"], {})
 VERBOSE = os.getenv("NAO_WORKER_VERBOSE", "0") == "1"
 
 
@@ -142,6 +143,7 @@ def main():
         interlocutor=CONSUMER_INTERLOCUTOR,
         include_segments=CONSUMER_INCLUDE_SEGMENTS,
         special_commands=CONSUMER_SPECIAL_COMMANDS,
+        watchdog_cfg=WATCHDOG_CFG,
     )
 
     t = threading.Thread(target=bumper_loop, args=(robot, convo))

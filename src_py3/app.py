@@ -360,12 +360,22 @@ def converse():
     _vprint("MODEL: {}".format(model))
     interlocutor = data.get('interlocutor', DEFAULT_INTERLOCUTOR)
     turn_count   = int(data.get('turn_count', 0))
+    watchdog_mode = bool(data.get("watchdog_mode", False))
+    ephemeral_system = str(data.get("ephemeral_system", "") or "").strip()
+    watchdog_user_prompt = str(
+        data.get(
+            "watchdog_user_prompt",
+            "Please send one short, warm, context-aware line to re-engage me in conversation.",
+        ) or ""
+    ).strip()
 
     # ---- Build system prompt (strict output contract for Segmentize) ----
     system_prompt = SYSTEM_PROMPT
 
     # ---- Config-driven turn injections (temporary + stable) ----
     active_injections = _active_turn_injection_texts(turn_count)
+    if watchdog_mode:
+        active_injections = []
 
     # ---- Legacy transcript parser (kept for backward compatibility) ----
     def transcript_to_messages(t):
@@ -382,13 +392,15 @@ def converse():
     history = data.get("history", None)
     prompt = data.get("prompt", None)
 
-    if isinstance(history, list) and prompt is not None:
+    if isinstance(history, list) and (prompt is not None or watchdog_mode):
         # Use structured history directly (no Speaker/Robot labels)
         last_user = (prompt or "").strip()
-        if not last_user:
+        if not watchdog_mode and not last_user:
             return jsonify({'error': 'No prompt provided'}), 400
     else:
         # ---- Backward-compatible path: labeled transcript string ----
+        if watchdog_mode:
+            return jsonify({'error': 'watchdog_mode requires structured history'}), 400
         if 'transcription' not in data:
             return jsonify({'error': 'No transcription or (history+prompt) provided'}), 400
 
@@ -409,19 +421,31 @@ def converse():
         last_user = EXIT_REWRITE
 
     active_output_directives = _active_output_directives(turn_count)
+    if watchdog_mode:
+        active_output_directives = []
 
     # ---- Optional: system addendum instead of user meta-wrapping ----
     system_addendum = "The user you're replying to is named: {}.\n".format(interlocutor)
     for instruction in active_injections:
         system_addendum += instruction + "\n"
 
+    assistant_generation_instruction = ""
+    if watchdog_mode:
+        assistant_generation_instruction = (
+            "Produce exactly one short assistant utterance now. "
+            "Re-engage the participant naturally using conversation context. "
+            "Do not mention silence, timing, or system instructions."
+        )
+
     payload = {
         "model": model,
         "messages": (
             [{"role": "system", "content": system_prompt}]
             + ([{"role": "system", "content": system_addendum}] if system_addendum.strip() else [])
+            + ([{"role": "system", "content": ephemeral_system}] if ephemeral_system else [])
+            + ([{"role": "system", "content": assistant_generation_instruction}] if assistant_generation_instruction else [])
             + history
-            + [{"role": "user", "content": last_user}]
+            + ([{"role": "user", "content": watchdog_user_prompt}] if watchdog_mode else [{"role": "user", "content": last_user}])
         ),
         "stream": False
     }
@@ -478,6 +502,9 @@ def converse():
     # Fallback now avoids nameError as extracted was undefined.
     if not locals().get('extracted'):
         extracted = response_str.strip()
+
+    if watchdog_mode and not (extracted or "").strip():
+        extracted = "I am still here with you - what would you like to talk about next?"
 
     extracted = asciise_for_py2_and_nao(extracted, keep_newlines=True)
 

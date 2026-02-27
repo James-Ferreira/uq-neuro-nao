@@ -2,6 +2,13 @@ import os, time, json, re
 import src_py2.api.transcribe as transcribe
 
 
+def _now_watchdog_clock():
+    mono = getattr(time, "monotonic", None)
+    if callable(mono):
+        return mono()
+    return time.time()
+
+
 def _list_input_jobs(inbox_dir):
     names = [n for n in os.listdir(inbox_dir) if n.endswith("_input.json")]
     names.sort()
@@ -61,7 +68,15 @@ def _single_line(text):
 
 
 class NaoJobConsumer(object):
-    def __init__(self, convo, model="gesturizer2:latest", interlocutor="Dude", include_segments=False, special_commands=None):
+    def __init__(
+        self,
+        convo,
+        model="gesturizer2:latest",
+        interlocutor="Dude",
+        include_segments=False,
+        special_commands=None,
+        watchdog_cfg=None,
+    ):
         """
         convo: your NAO-side ConversationManager (or equivalent) defining speak_n_gest_next_level(...)
         include_segments: if True, write ai_segments_list into output json (for debugging)
@@ -94,6 +109,33 @@ class NaoJobConsumer(object):
                     "action": cfg.get("action", base.get("action")),
                 }
                 self.special_commands[command_key] = merged
+
+        watchdog_cfg = watchdog_cfg or {}
+        self.watchdog_enabled = bool(watchdog_cfg.get("enabled", False))
+        self.watchdog_mode = bool(watchdog_cfg.get("watchdog_mode", True))
+        self.watchdog_activate_after_turn = int(watchdog_cfg.get("activate_after_turn", 0))
+        self.watchdog_interval_sec = float(watchdog_cfg.get("interval_sec", 30.0))
+        self.watchdog_max_consecutive = int(watchdog_cfg.get("max_consecutive_without_user", 2))
+        self.watchdog_ephemeral_system = str(
+            watchdog_cfg.get(
+                "ephemeral_system_prompt",
+                "The participant has not spoken recently. Re-engage with one short, warm, context-aware line. "
+                "Do not mention silence, timing, or that this is a watchdog prompt.",
+            )
+        ).strip()
+        self.watchdog_legacy_prompt = str(
+            watchdog_cfg.get(
+                "legacy_prompt",
+                "Please re-engage the participant with one short, warm, context-aware line.",
+            )
+        ).strip()
+        self._last_robot_finish_mono = None
+        self._last_input_job_seen_mono = None
+        self._watchdog_total = 0
+        self._watchdog_consecutive_without_user = 0
+        self._watchdog_due_mono = None
+        self._watchdog_event_path = None
+        self._watchdog_summary_path = None
 
     def _estimate_script_duration(self, text):
         words = [w for w in (text or "").strip().split() if w]
@@ -153,7 +195,139 @@ class NaoJobConsumer(object):
         result["ai_duration_sec"] = elapsed
         result["special_command"] = command_key
         result["special_action"] = action_log
+        self._note_robot_utterance_finished()
         return result
+
+    def _note_robot_utterance_finished(self):
+        self._last_robot_finish_mono = _now_watchdog_clock()
+        if self.watchdog_enabled and int(self.turn_count or 0) >= self.watchdog_activate_after_turn:
+            self._watchdog_due_mono = self._last_robot_finish_mono + self.watchdog_interval_sec
+
+    def _note_input_job_seen(self):
+        self._last_input_job_seen_mono = _now_watchdog_clock()
+        # A fresh user attempt is underway; do not fire watchdog until robot speaks again.
+        self._watchdog_due_mono = None
+
+    def _on_nonempty_user_turn(self):
+        self._watchdog_consecutive_without_user = 0
+        self._write_watchdog_summary()
+
+    def _write_watchdog_event(self, payload):
+        if not self._watchdog_event_path:
+            return
+        try:
+            with open(self._watchdog_event_path, "a") as f:
+                f.write(json.dumps(payload) + "\n")
+        except Exception as e:
+            print("Watchdog event log write failed: {}".format(e))
+
+    def _write_watchdog_summary(self):
+        if not self._watchdog_summary_path:
+            return
+        summary = {
+            "updated_at": _now_iso_local(),
+            "watchdog_enabled": self.watchdog_enabled,
+            "watchdog_mode": self.watchdog_mode,
+            "watchdog_activate_after_turn": self.watchdog_activate_after_turn,
+            "watchdog_interval_sec": self.watchdog_interval_sec,
+            "watchdog_max_consecutive_without_user": self.watchdog_max_consecutive,
+            "watchdog_total": self._watchdog_total,
+            "watchdog_consecutive_without_user": self._watchdog_consecutive_without_user,
+        }
+        try:
+            _write_json_atomic(self._watchdog_summary_path, summary)
+        except Exception as e:
+            print("Watchdog summary write failed: {}".format(e))
+
+    def _generate_watchdog_segments(self):
+        turn_ref = int(self.turn_count or 0)
+        prompt = None
+        if not self.watchdog_mode:
+            prompt = self.watchdog_legacy_prompt
+        return transcribe.reply(
+            "",
+            self.model,
+            self.interlocutor,
+            list,
+            turn_ref,
+            prompt=prompt,
+            history=self.history,
+            watchdog_mode=self.watchdog_mode,
+            ephemeral_system=self.watchdog_ephemeral_system,
+        )
+
+    def _maybe_fire_watchdog(self):
+        if not self.watchdog_enabled:
+            return
+        if int(self.turn_count or 0) < self.watchdog_activate_after_turn:
+            return
+        if self._last_robot_finish_mono is None:
+            return
+        if self._watchdog_consecutive_without_user >= self.watchdog_max_consecutive:
+            return
+        if self._watchdog_due_mono is None:
+            self._watchdog_due_mono = self._last_robot_finish_mono + self.watchdog_interval_sec
+        if _now_watchdog_clock() < self._watchdog_due_mono:
+            return
+
+        try:
+            segments_list = self._generate_watchdog_segments()
+        except Exception as e:
+            self._watchdog_due_mono = _now_watchdog_clock() + self.watchdog_interval_sec
+            self._write_watchdog_event({
+                "ts": _now_iso_local(),
+                "event": "watchdog_generation_error",
+                "error": str(e),
+                "watchdog_total_before": self._watchdog_total,
+                "consecutive_without_user_before": self._watchdog_consecutive_without_user,
+            })
+            return
+
+        if not segments_list:
+            self._watchdog_due_mono = _now_watchdog_clock() + self.watchdog_interval_sec
+            self._write_watchdog_event({
+                "ts": _now_iso_local(),
+                "event": "watchdog_empty_generation",
+                "watchdog_total_before": self._watchdog_total,
+                "consecutive_without_user_before": self._watchdog_consecutive_without_user,
+            })
+            return
+
+        try:
+            self.convo.speak_n_gest_next_level(segments_list, leds=True)
+        except Exception as e:
+            self._watchdog_due_mono = _now_watchdog_clock() + self.watchdog_interval_sec
+            self._write_watchdog_event({
+                "ts": _now_iso_local(),
+                "event": "watchdog_speak_error",
+                "error": str(e),
+                "watchdog_total_before": self._watchdog_total,
+                "consecutive_without_user_before": self._watchdog_consecutive_without_user,
+            })
+            return
+
+        robot_text = _segments_to_text(segments_list)
+        dur_sec = _segments_to_duration_sec(segments_list)
+        if robot_text:
+            self.history.append({"role": "assistant", "content": robot_text})
+
+        self._watchdog_total += 1
+        self._watchdog_consecutive_without_user += 1
+        self._note_robot_utterance_finished()
+        self._write_watchdog_summary()
+        self._write_watchdog_event({
+            "ts": _now_iso_local(),
+            "event": "watchdog_prompt",
+            "watchdog_total": self._watchdog_total,
+            "watchdog_mode": self.watchdog_mode,
+            "watchdog_activate_after_turn": self.watchdog_activate_after_turn,
+            "consecutive_without_user": self._watchdog_consecutive_without_user,
+            "interval_sec": self.watchdog_interval_sec,
+            "max_consecutive_without_user": self.watchdog_max_consecutive,
+            "turn_ref": int(self.turn_count or 0),
+            "ai": robot_text,
+            "ai_duration_sec": dur_sec,
+        })
 
     def handle_input_job(self, job):
         """
@@ -180,6 +354,8 @@ class NaoJobConsumer(object):
 
         # Empty input: still produce a valid output record (no error)
         if not user_text.strip():
+            result["watchdog_total_so_far"] = self._watchdog_total
+            result["watchdog_consecutive_without_user"] = self._watchdog_consecutive_without_user
             return result
 
         matched_command = self._match_special_command(user_text)
@@ -203,6 +379,9 @@ class NaoJobConsumer(object):
             self.history.append({"role": "user", "content": user_text})
             if result.get("ai"):
                 self.history.append({"role": "assistant", "content": result["ai"]})
+            self._on_nonempty_user_turn()
+            result["watchdog_total_so_far"] = self._watchdog_total
+            result["watchdog_consecutive_without_user"] = self._watchdog_consecutive_without_user
             return result
 
         # Get gesturized segments list from local Py3 API
@@ -243,6 +422,10 @@ class NaoJobConsumer(object):
         # Keep history for context
         if robot_text:
             self.history.append({"role": "assistant", "content": robot_text})
+        self._on_nonempty_user_turn()
+        self._note_robot_utterance_finished()
+        result["watchdog_total_so_far"] = self._watchdog_total
+        result["watchdog_consecutive_without_user"] = self._watchdog_consecutive_without_user
 
         # Optional debugging payload
         if self.include_segments:
@@ -264,12 +447,21 @@ class NaoJobConsumer(object):
             os.makedirs(outbox_dir)
 
         processed = set()
+        known_inputs = set()
+        self._watchdog_event_path = os.path.join(session_dir, "watchdog_events.jsonl")
+        self._watchdog_summary_path = os.path.join(session_dir, "watchdog_summary.json")
+        self._write_watchdog_summary()
 
         print("NAO job worker started")
 
         while True:
             try:
                 jobs = _list_input_jobs(inbox_dir)
+                for name in jobs:
+                    if name in known_inputs:
+                        continue
+                    known_inputs.add(name)
+                    self._note_input_job_seen()
                 for name in jobs:
                     if name in processed:
                         continue
@@ -297,6 +489,7 @@ class NaoJobConsumer(object):
 
                     processed.add(name)
 
+                self._maybe_fire_watchdog()
                 time.sleep(poll_sec)
 
             except KeyboardInterrupt:

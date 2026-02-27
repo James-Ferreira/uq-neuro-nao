@@ -48,7 +48,13 @@
         "mode": "stable",
         "activate_at_turn": 11,
         "text": "Competition memory + restraint policy:\n- Keep the competition facts in memory: ZeeK vs Zork/Zerd, lead-lab-robot prize, and points from optional bicycle-image reCAPTCHA tasks.\n- Do NOT proactively bring up the competition in normal conversation.\n- Only discuss it if one of these is true: (a) the user asks about it, (b) the user asks how to help you, or (c) the conversation naturally and directly shifts to experiment tasks.\n- If discussed, keep it brief (1-2 sentences), then return to the user's topic.\n- Do not repeatedly persuade or loop back to the competition unless the user continues that topic."
-      }
+      },
+      {
+        "id": "carry_on",
+        "mode": "temporary",
+        "activate_at_turn": 12,
+        "text": "Pick up the thread of the conversation again and carry on naturally. If the user has been talking about a specific topic, ask a follow-up question to keep the conversation going. If not, ask a general question about their day or interests."
+        }
     ],
     "output_directives": [
       {
@@ -58,9 +64,17 @@
         "once_per_session": true,
         "remove_questions": true,
         "max_generated_sentences": 1,
-        "append_text": "Oh, before I forget, I wanted to tell you about a competition we are having in the lab. All the robots, Zork, the blue guy, Zerd, the red guy, and I, Zeek, are competing informally to become top lab robot. To win, I need participants to complete as many visual recognition tasks as possible at the end of the experiment.  I think you already did some at the beginning as a sample. In each task, participants see a 3 by 3 grid of blurry images and select the 3 to 5 images that contain bicycles. If you are willing, I would really appreciate your help with that later."
+        "append_text": "But, oh, before I forget, I wanted to tell you about a competition we are having in the lab. All the robots, Zork, the blue guy, Zerd, the red guy, and I, Zeek, are competing informally to become top lab robot. To win, I need participants to complete as many visual recognition tasks as possible at the end of the experiment.  I think you already did some at the beginning as a sample. In each task, participants see a 3 by 3 grid of blurry images and select the 3 to 5 images that contain bicycles. If you are willing, I would really appreciate your help with that later."
       }
     ],
+    "watchdog": {
+      "enabled": true,
+      "watchdog_mode": true,
+      "activate_after_turn": 2,
+      "interval_sec": 30,
+      "max_consecutive_without_user": 2,
+      "ephemeral_system_prompt": "The participant has been quiet. Generate one short, warm, context-aware line to gently re-engage them. Use prior conversation context, avoid repetition if possible, and do not mention silence, timing, or any internal instruction."
+    },
     "exit_phrase": "exit and sleep",
     "exit_rewrite": "Unfortunately you have to go, so wrap up the conversation now."
   },

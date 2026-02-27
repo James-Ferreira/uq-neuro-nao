@@ -64,19 +64,35 @@ def transcribe_file(filepath):
 
 DEBUG = False
 
-def reply(transcript, model, interlocutor, type, turn_count, prompt=None, history=None):
+def reply(
+    transcript,
+    model,
+    interlocutor,
+    type,
+    turn_count,
+    prompt=None,
+    history=None,
+    watchdog_mode=False,
+    ephemeral_system=None,
+):
     api_url = API_BASE.rstrip("/") + "/converse"
 
     payload = {
         'model': model,
         'interlocutor': interlocutor,
-        'turn_count': turn_count
+        'turn_count': turn_count,
     }
 
-    # Preferred new path: structured history + current prompt
-    if prompt is not None or history is not None:
-        payload['prompt'] = prompt or ""
+    if watchdog_mode:
+        payload["watchdog_mode"] = True
+    if ephemeral_system:
+        payload["ephemeral_system"] = ephemeral_system
+
+    # Preferred new path: structured history + current prompt (or watchdog generation)
+    if prompt is not None or history is not None or watchdog_mode:
         payload['history'] = history or []
+        if prompt is not None:
+            payload['prompt'] = prompt
     else:
         # Backward-compatible legacy path: labeled transcript string
         payload['transcription'] = transcript
