@@ -1,2 +1,4 @@
 *.pyc
-*.DS_STORE
+*.DS_Store
+
+config/active_project.txt
