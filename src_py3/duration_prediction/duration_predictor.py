@@ -15,7 +15,7 @@ WORD_RE = re.compile(r"[A-Za-z0-9']+")
 
 def make_features(text: str) -> dict:
     words = WORD_RE.findall(text)
-    print(f"make_features: {words}")
+    #print(f"make_features: {words}")
     sylls = syllapy.count(text)
     puncts = {',': text.count(','), '.': text.count('.'),
               ':': text.count(':'), ';': text.count(';'),
@@ -86,7 +86,7 @@ class DurationPredictor:
         if not os.path.exists(path):
             raise FileNotFoundError(f"Model not found: {path}")
         model = joblib.load(path)
-        print(f"Model loaded from {path}")
+       #print(f"Model loaded from {path}")
         return model
 
 # -------------------------------------------------
@@ -109,5 +109,5 @@ def predict_duration(text: str, model_path: str = None) -> float:
         model_path = _default_model_path()
     predictor = DurationPredictor.load(model_path)
     prediction = predictor.predict(text)
-    print(f"predict_duration: \n text: {text}, predictor: {prediction}")
+    #print(f"predict_duration: \n text: {text}, predictor: {prediction}")
     return prediction
