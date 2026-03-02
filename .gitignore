@@ -1,4 +1,9 @@
+# Python
 *.pyc
-*.DS_Store
+__pycache__/
 
+# macOS
+.DS_Store
+
+# Local machine config
 config/active_project.txt
