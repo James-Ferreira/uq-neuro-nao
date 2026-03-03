@@ -42,6 +42,7 @@ CONSUMER_REQUIRE_ENTER_FOR_WATCHDOG = get_nested(
     NAO_WORKER_CFG, ["require_enter_for_watchdog"], False
 )
 WATCHDOG_CFG = get_nested(PROJECT_PROFILE, ["conversation", "watchdog"], {})
+SESSION_END_CFG = get_nested(PROJECT_PROFILE, ["conversation", "session_end"], {})
 VERBOSE = os.getenv("NAO_WORKER_VERBOSE", "0") == "1"
 
 
@@ -157,7 +158,7 @@ def main():
     session_dir = wait_for_current_session(SESSIONS_ROOT)
 
     robot = NAORobot(ROBOT_NAME, usrnme=ROBOT_USERNAME, pword=ROBOT_PASSWORD)
-    robot.mm.sit()
+    robot.mm.sit_gently()
     robot.mm.repose(False)
 
     convo = ConversationManager(robot)
@@ -169,6 +170,7 @@ def main():
         include_segments=CONSUMER_INCLUDE_SEGMENTS,
         special_commands=CONSUMER_SPECIAL_COMMANDS,
         watchdog_cfg=WATCHDOG_CFG,
+        session_end_cfg=SESSION_END_CFG,
         require_enter_before_speak=CONSUMER_REQUIRE_ENTER_BEFORE_SPEAK,
         require_enter_for_watchdog=CONSUMER_REQUIRE_ENTER_FOR_WATCHDOG,
     )

@@ -42,3 +42,28 @@ Example:
   }
 }
 ```
+
+## Session End Timer
+
+Use `conversation.session_end` to end a session on a wall-clock timer at the end of the next robot reply.
+
+Example:
+
+```json
+{
+  "conversation": {
+    "session_end": {
+      "enabled": true,
+      "after_sec": 900,
+      "final_line": "We have now reached the end of this session. Please let the experimenter know that this chat is complete.",
+      "action": "",
+      "stop_worker": true
+    }
+  }
+}
+```
+
+- `after_sec`: timer length in seconds from worker startup.
+- `final_line`: deterministic sentence appended to the robot's final reply.
+- `action`: optional robot action after final reply (`"repose"` or `"shutdown"`).
+- `stop_worker`: if true, the NAO job worker exits immediately after final reply.

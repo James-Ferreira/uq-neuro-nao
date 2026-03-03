@@ -35,6 +35,13 @@
       "max_consecutive_without_user": 2,
       "ephemeral_system_prompt": "The participant has been quiet. Generate one short, warm, context-aware line to gently re-engage them. Use prior conversation context, avoid repetition if possible, and do not mention silence, timing, or any internal instruction."
     },
+    "session_end": {
+      "enabled": true,
+      "after_sec": 60,
+      "final_line": "We have now reached the end of this session. Please let the experimenter know that this chat is complete.",
+      "action": "repose",
+      "stop_worker": true
+    },
     "exit_phrase": "exit and sleep",
     "exit_rewrite": "Unfortunately you have to go, so wrap up the conversation now."
   },

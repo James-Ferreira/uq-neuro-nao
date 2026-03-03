@@ -91,6 +91,7 @@ class NaoJobConsumer(object):
         include_segments=False,
         special_commands=None,
         watchdog_cfg=None,
+        session_end_cfg=None,
         require_enter_before_speak=False,
         require_enter_for_watchdog=False,
     ):
@@ -153,6 +154,19 @@ class NaoJobConsumer(object):
         self._watchdog_due_mono = None
         self._watchdog_event_path = None
         self._watchdog_summary_path = None
+
+        session_end_cfg = session_end_cfg or {}
+        self.session_end_enabled = bool(session_end_cfg.get("enabled", False))
+        self.session_end_after_sec = float(session_end_cfg.get("after_sec", 0.0))
+        self.session_end_final_line = str(session_end_cfg.get("final_line", "")).strip()
+        self.session_end_action = str(session_end_cfg.get("action", "")).strip() or None
+        self.session_end_stop_worker = _as_bool(session_end_cfg.get("stop_worker", True), True)
+        self._session_started_mono = _now_watchdog_clock()
+        self._session_started_at = _now_iso_local()
+        self._session_end_announced = False
+        self._session_end_turn_id = None
+        self._session_should_stop_worker = False
+        self._session_end_summary_path = None
 
         self.require_enter_before_speak = _as_bool(require_enter_before_speak, False)
         self.require_enter_for_watchdog = _as_bool(require_enter_for_watchdog, False)
@@ -240,18 +254,7 @@ class NaoJobConsumer(object):
         self._wait_for_operator_enter("special_command")
         self.convo.speak_n_gest_next_level(scripted_segments, leds=True)
         try:
-            if action == "repose":
-                if self.robot is None or getattr(self.robot, "mm", None) is None:
-                    raise RuntimeError("robot motion manager unavailable")
-                self.robot.mm.repose(False)
-            elif action == "shutdown":
-                if self.robot is None:
-                    raise RuntimeError("robot unavailable")
-                if not getattr(self.robot, "usrnme", None) or not getattr(self.robot, "pword", None):
-                    raise RuntimeError("robot SSH credentials missing (usrnme/pword)")
-                self.robot.shutdown()
-            else:
-                raise RuntimeError("unknown special action: {}".format(action))
+            self._perform_robot_action(action)
 
             action_log["ok"] = True
         except Exception as e:
@@ -268,6 +271,74 @@ class NaoJobConsumer(object):
         result["special_action"] = action_log
         self._note_robot_utterance_finished()
         return result
+
+    def _perform_robot_action(self, action):
+        if action == "repose":
+            if self.robot is None or getattr(self.robot, "mm", None) is None:
+                raise RuntimeError("robot motion manager unavailable")
+            self.robot.mm.repose(False)
+            return
+        if action == "shutdown":
+            if self.robot is None:
+                raise RuntimeError("robot unavailable")
+            if not getattr(self.robot, "usrnme", None) or not getattr(self.robot, "pword", None):
+                raise RuntimeError("robot SSH credentials missing (usrnme/pword)")
+            self.robot.shutdown()
+            return
+        raise RuntimeError("unknown special action: {}".format(action))
+
+    def _session_elapsed_sec(self):
+        return max(0.0, _now_watchdog_clock() - self._session_started_mono)
+
+    def _is_session_end_due(self):
+        if not self.session_end_enabled:
+            return False
+        if self._session_end_announced:
+            return False
+        if self.session_end_after_sec <= 0:
+            return False
+        return self._session_elapsed_sec() >= self.session_end_after_sec
+
+    def _append_session_final_line(self, segments_list):
+        if not self.session_end_final_line:
+            return segments_list
+        merged = list(segments_list or [])
+        merged.append(
+            [
+                self.session_end_final_line,
+                None,
+                None,
+                self._estimate_script_duration(self.session_end_final_line),
+            ]
+        )
+        return merged
+
+    def _mark_session_end_announced(self, turn_id):
+        self._session_end_announced = True
+        self._session_end_turn_id = turn_id
+        self._session_should_stop_worker = self.session_end_stop_worker
+        self._write_session_end_summary()
+
+    def _write_session_end_summary(self):
+        if not self._session_end_summary_path:
+            return
+        summary = {
+            "updated_at": _now_iso_local(),
+            "enabled": self.session_end_enabled,
+            "after_sec": self.session_end_after_sec,
+            "final_line": self.session_end_final_line,
+            "action": self.session_end_action,
+            "stop_worker": self.session_end_stop_worker,
+            "session_started_at": self._session_started_at,
+            "session_elapsed_sec": self._session_elapsed_sec(),
+            "session_end_announced": self._session_end_announced,
+            "session_end_turn_id": self._session_end_turn_id,
+            "session_should_stop_worker": self._session_should_stop_worker,
+        }
+        try:
+            _write_json_atomic(self._session_end_summary_path, summary)
+        except Exception as e:
+            print("Session end summary write failed: {}".format(e))
 
     def _note_robot_utterance_finished(self):
         self._last_robot_finish_mono = _now_watchdog_clock()
@@ -423,6 +494,8 @@ class NaoJobConsumer(object):
             "ai": "",
             "ai_duration_sec": 0.0,
         }
+        if self.session_end_enabled:
+            result["session_elapsed_sec"] = self._session_elapsed_sec()
 
         # Empty input: still produce a valid output record (no error)
         if not user_text.strip():
@@ -458,6 +531,8 @@ class NaoJobConsumer(object):
             result["watchdog_consecutive_without_user"] = self._watchdog_consecutive_without_user
             return result
 
+        session_end_due = self._is_session_end_due()
+
         # Get gesturized segments list from local Py3 API
         try:
             segments_list = transcribe.reply(
@@ -478,6 +553,12 @@ class NaoJobConsumer(object):
             self._release_turn_gate_if_held("empty_segments_list")
             result["error"] = "No segments_list returned"
             return result
+
+        if (not session_end_due) and self._is_session_end_due():
+            session_end_due = True
+        if session_end_due:
+            segments_list = self._append_session_final_line(segments_list)
+            result["session_end_due_before_reply"] = True
 
         # Speak + gesture
         try:
@@ -504,10 +585,29 @@ class NaoJobConsumer(object):
         self._note_robot_utterance_finished()
         result["watchdog_total_so_far"] = self._watchdog_total
         result["watchdog_consecutive_without_user"] = self._watchdog_consecutive_without_user
+        if self.session_end_enabled:
+            result["session_elapsed_sec"] = self._session_elapsed_sec()
 
         # Optional debugging payload
         if self.include_segments:
             result["ai_segments_list"] = segments_list
+
+        if session_end_due:
+            result["session_end_triggered"] = True
+            result["session_end_stop_worker"] = self.session_end_stop_worker
+            result["session_end_action"] = self.session_end_action
+
+            action_error = None
+            if self.session_end_action:
+                try:
+                    self._perform_robot_action(self.session_end_action)
+                except Exception as e:
+                    action_error = str(e)
+                    print("Session end action failed: {}".format(e))
+            if action_error:
+                result["session_end_action_error"] = action_error
+
+            self._mark_session_end_announced(turn_id)
 
         return result
 
@@ -528,7 +628,9 @@ class NaoJobConsumer(object):
         known_inputs = set()
         self._watchdog_event_path = os.path.join(session_dir, "watchdog_events.jsonl")
         self._watchdog_summary_path = os.path.join(session_dir, "watchdog_summary.json")
+        self._session_end_summary_path = os.path.join(session_dir, "session_end_summary.json")
         self._write_watchdog_summary()
+        self._write_session_end_summary()
 
         print("NAO job worker started")
 
@@ -566,6 +668,9 @@ class NaoJobConsumer(object):
                     print("Turn {} | Participant: {} | Robot: {}".format(turn_id, user_text, ai_text))
 
                     processed.add(name)
+                    if result.get("session_end_triggered") and self._session_should_stop_worker:
+                        print("Session end condition met at turn {}. Exiting worker.".format(turn_id))
+                        return
 
                 self._maybe_fire_watchdog()
                 time.sleep(poll_sec)
