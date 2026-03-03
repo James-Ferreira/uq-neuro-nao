@@ -91,6 +91,8 @@
     "consumer_model": "gesturizer2:latest",
     "consumer_interlocutor": "Dude",
     "include_segments": false,
+    "require_enter_before_speak": false,
+    "require_enter_for_watchdog": false,
     "special_commands": {
       "gotosleeplittlerobot": {
         "reply_text": "Oh, sorry for the interruption. I will go back to sleep now."
@@ -108,6 +110,7 @@
     "connect_timeout_sec": 3.0,
     "read_timeout_sec": 120.0,
     "min_utterance_sec": 0.2,
+    "silence_rms_threshold": 0.005,
     "robot_outbox_dirname": "robot_outbox",
     "robot_inbox_dirname": "robot_inbox",
     "wait_for_nao_done": true,

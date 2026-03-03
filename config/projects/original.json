@@ -12,7 +12,7 @@
   },
   "conversation": {
     "default_interlocutor": "User",
-    "system_prompt_path": "prompts/zeek_system_prompt.txt",
+    "system_prompt_path": "prompts/concise_system_prompt.txt",
     "turn_injections": [
       {
         "id": "turn_1_dark_experience",
@@ -30,7 +30,7 @@
     "watchdog": {
       "enabled": false,
       "watchdog_mode": true,
-      "activate_after_turn": 0,
+      "activate_after_turn": 2,
       "interval_sec": 30,
       "max_consecutive_without_user": 2,
       "ephemeral_system_prompt": "The participant has been quiet. Generate one short, warm, context-aware line to gently re-engage them. Use prior conversation context, avoid repetition if possible, and do not mention silence, timing, or any internal instruction."
@@ -50,7 +50,9 @@
     "robot_password": "nao",
     "consumer_model": "gesturizer2:latest",
     "consumer_interlocutor": "Dude",
-    "include_segments": false
+    "include_segments": false,
+    "require_enter_before_speak": true,
+    "require_enter_for_watchdog": false
   },
   "voice_llm_chat": {
     "ollama_model": "custom_1",
@@ -59,7 +61,8 @@
     "sample_rate": 16000,
     "connect_timeout_sec": 3.0,
     "read_timeout_sec": 120.0,
-    "min_utterance_sec": 0.2,
+    "min_utterance_sec": 0.35,
+    "silence_rms_threshold": 0.005,
     "robot_outbox_dirname": "robot_outbox",
     "robot_inbox_dirname": "robot_inbox",
     "wait_for_nao_done": true,

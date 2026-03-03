@@ -26,6 +26,8 @@ SESSIONS_ROOT = get_nested(NAO_WORKER_CFG, ["sessions_root"], default_sessions_r
 CURRENT_SESSION_FILENAME = "CURRENT_SESSION.txt"
 
 BRIDGE = get_nested(NAO_WORKER_CFG, ["bridge_url"], "http://127.0.0.1:5055")
+BRIDGE_START_TIMEOUT_SEC = float(get_nested(NAO_WORKER_CFG, ["bridge_start_timeout_sec"], 10.0))
+BRIDGE_STOP_TIMEOUT_SEC = float(get_nested(NAO_WORKER_CFG, ["bridge_stop_timeout_sec"], 120.0))
 ROBOT_NAME = get_nested(NAO_WORKER_CFG, ["robot_name"], "clas")
 ROBOT_USERNAME = get_nested(NAO_WORKER_CFG, ["robot_username"], "nao")
 ROBOT_PASSWORD = get_nested(NAO_WORKER_CFG, ["robot_password"], "nao")
@@ -33,6 +35,12 @@ CONSUMER_MODEL = get_nested(NAO_WORKER_CFG, ["consumer_model"], "gesturizer2:lat
 CONSUMER_INTERLOCUTOR = get_nested(NAO_WORKER_CFG, ["consumer_interlocutor"], "Dude")
 CONSUMER_INCLUDE_SEGMENTS = bool(get_nested(NAO_WORKER_CFG, ["include_segments"], False))
 CONSUMER_SPECIAL_COMMANDS = get_nested(NAO_WORKER_CFG, ["special_commands"], None)
+CONSUMER_REQUIRE_ENTER_BEFORE_SPEAK = get_nested(
+    NAO_WORKER_CFG, ["require_enter_before_speak"], False
+)
+CONSUMER_REQUIRE_ENTER_FOR_WATCHDOG = get_nested(
+    NAO_WORKER_CFG, ["require_enter_for_watchdog"], False
+)
 WATCHDOG_CFG = get_nested(PROJECT_PROFILE, ["conversation", "watchdog"], {})
 VERBOSE = os.getenv("NAO_WORKER_VERBOSE", "0") == "1"
 
@@ -75,6 +83,18 @@ def wait_for_current_session(sessions_root, poll_sec=0.25):
                 return session_dir
         time.sleep(poll_sec)
 
+def _release_turn_gate(convo, reason):
+    convo.turn_in_progress = False
+    if hasattr(convo, "turn_gate") and convo.turn_gate.locked():
+        try:
+            convo.turn_gate.release()
+        except Exception:
+            pass
+    try:
+        convo.set_ready_mode()
+    except Exception as e:
+        vprint("WARN: set_ready_mode failed ({}): {}".format(reason, e))
+
 def bumper_loop(robot, convo):
     while True:
         robot.tm.wait_for_left_bumper_press()
@@ -95,7 +115,7 @@ def bumper_loop(robot, convo):
             except Exception as e:
                 vprint("WARN: set_listening_mode failed: {}".format(e))
 
-            post_json(BRIDGE + "/start")
+            post_json(BRIDGE + "/start", timeout=BRIDGE_START_TIMEOUT_SEC)
 
             robot.tm.wait_for_left_bumper_release()
 
@@ -105,10 +125,19 @@ def bumper_loop(robot, convo):
             except Exception as e:
                 vprint("WARN: set_busy_mode failed: {}".format(e))
 
-            stop_resp = post_json(BRIDGE + "/stop")
+            stop_resp = post_json(BRIDGE + "/stop", timeout=BRIDGE_STOP_TIMEOUT_SEC)
             turn_id = stop_resp.get("turn_id")
-            transcript = _one_line_text(stop_resp.get("transcript", ""))
+            raw_transcript = stop_resp.get("transcript", "")
+            transcript = _one_line_text(raw_transcript)
             print("Turn {} | Participant: {}".format(turn_id, transcript))
+
+            # If no usable speech was captured, no downstream robot reply may occur.
+            # Release the turn gate here to avoid a deadlock waiting for speak_n_gest_next_level().
+            if (not turn_id) or (not str(raw_transcript or "").strip()):
+                print("No valid user utterance captured; releasing turn gate.")
+                _release_turn_gate(convo, "empty_or_missing_transcript")
+                time.sleep(0.05)
+                continue
 
             vprint("TURN CAPTURED: waiting for robot to finish reply before accepting another")
 
@@ -117,12 +146,9 @@ def bumper_loop(robot, convo):
 
         except Exception as e:
             print("ERROR in bumper_loop: {}".format(e))
-            convo.turn_in_progress = False
-            try:
-                convo.turn_gate.release()
-            except Exception:
-                pass
-            raise
+            _release_turn_gate(convo, "bumper_loop_exception")
+            time.sleep(0.2)
+            continue
 
         time.sleep(0.05)
 
@@ -131,11 +157,10 @@ def main():
     session_dir = wait_for_current_session(SESSIONS_ROOT)
 
     robot = NAORobot(ROBOT_NAME, usrnme=ROBOT_USERNAME, pword=ROBOT_PASSWORD)
-    robot.mm.sit(post=False)
+    robot.mm.sit()
     robot.mm.repose(False)
 
     convo = ConversationManager(robot)
-    robot.leds.fadeRGB("FaceLeds", 0x000000, 0.1)
 
     consumer = NaoJobConsumer(
         convo,
@@ -144,6 +169,8 @@ def main():
         include_segments=CONSUMER_INCLUDE_SEGMENTS,
         special_commands=CONSUMER_SPECIAL_COMMANDS,
         watchdog_cfg=WATCHDOG_CFG,
+        require_enter_before_speak=CONSUMER_REQUIRE_ENTER_BEFORE_SPEAK,
+        require_enter_for_watchdog=CONSUMER_REQUIRE_ENTER_FOR_WATCHDOG,
     )
 
     t = threading.Thread(target=bumper_loop, args=(robot, convo))

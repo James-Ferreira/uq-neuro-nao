@@ -67,6 +67,21 @@ def _single_line(text):
     return re.sub(r"\s+", " ", s)
 
 
+def _as_bool(value, default=False):
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    text = str(value).strip().lower()
+    if text in ("1", "true", "t", "yes", "y", "on"):
+        return True
+    if text in ("0", "false", "f", "no", "n", "off", ""):
+        return False
+    return default
+
+
 class NaoJobConsumer(object):
     def __init__(
         self,
@@ -76,6 +91,8 @@ class NaoJobConsumer(object):
         include_segments=False,
         special_commands=None,
         watchdog_cfg=None,
+        require_enter_before_speak=False,
+        require_enter_for_watchdog=False,
     ):
         """
         convo: your NAO-side ConversationManager (or equivalent) defining speak_n_gest_next_level(...)
@@ -137,6 +154,59 @@ class NaoJobConsumer(object):
         self._watchdog_event_path = None
         self._watchdog_summary_path = None
 
+        self.require_enter_before_speak = _as_bool(require_enter_before_speak, False)
+        self.require_enter_for_watchdog = _as_bool(require_enter_for_watchdog, False)
+
+        env_gate = os.getenv("NAO_REQUIRE_ENTER_BEFORE_SPEAK")
+        if env_gate is not None:
+            self.require_enter_before_speak = _as_bool(env_gate, self.require_enter_before_speak)
+
+        env_watchdog_gate = os.getenv("NAO_REQUIRE_ENTER_FOR_WATCHDOG")
+        if env_watchdog_gate is not None:
+            self.require_enter_for_watchdog = _as_bool(
+                env_watchdog_gate, self.require_enter_for_watchdog
+            )
+
+    def _wait_for_operator_enter(self, source_label):
+        if not self.require_enter_before_speak:
+            return
+        if source_label == "watchdog" and not self.require_enter_for_watchdog:
+            return
+
+        prompt = (
+            "\n[operator_gate] Reply is ready ({src}). "
+            "Press Enter in this terminal to execute robot speech/gestures... "
+        ).format(src=source_label)
+
+        try:
+            raw_input(prompt)
+        except EOFError:
+            print("[operator_gate] stdin unavailable; continuing without Enter confirmation.")
+        except Exception as e:
+            print("[operator_gate] Enter gate failed ({}); continuing.".format(e))
+
+    def _release_turn_gate_if_held(self, reason):
+        """
+        Release bumper turn gate when no robot speech will run.
+        speak_n_gest_next_level() normally releases this in finally, but early-return
+        paths (empty input, generation errors) need a manual release to avoid deadlock.
+        """
+        if not hasattr(self.convo, "turn_gate"):
+            return
+        gate = self.convo.turn_gate
+        if not gate.locked():
+            return
+        try:
+            gate.release()
+            self.convo.turn_in_progress = False
+            print("Turn gate released without robot speech: {}".format(reason))
+            try:
+                self.convo.set_ready_mode()
+            except Exception as led_error:
+                print("WARN: set_ready_mode failed after gate release: {}".format(led_error))
+        except Exception as e:
+            print("WARN: could not release turn gate ({}): {}".format(reason, e))
+
     def _estimate_script_duration(self, text):
         words = [w for w in (text or "").strip().split() if w]
         return max(2.5, 0.45 * len(words))
@@ -167,6 +237,7 @@ class NaoJobConsumer(object):
         }
 
         t0 = time.time()
+        self._wait_for_operator_enter("special_command")
         self.convo.speak_n_gest_next_level(scripted_segments, leds=True)
         try:
             if action == "repose":
@@ -294,6 +365,7 @@ class NaoJobConsumer(object):
             return
 
         try:
+            self._wait_for_operator_enter("watchdog")
             self.convo.speak_n_gest_next_level(segments_list, leds=True)
         except Exception as e:
             self._watchdog_due_mono = _now_watchdog_clock() + self.watchdog_interval_sec
@@ -354,6 +426,7 @@ class NaoJobConsumer(object):
 
         # Empty input: still produce a valid output record (no error)
         if not user_text.strip():
+            self._release_turn_gate_if_held("empty_user_text")
             result["watchdog_total_so_far"] = self._watchdog_total
             result["watchdog_consecutive_without_user"] = self._watchdog_consecutive_without_user
             return result
@@ -363,6 +436,7 @@ class NaoJobConsumer(object):
             try:
                 result = self._run_special_command(matched_command, result)
             except Exception as e:
+                self._release_turn_gate_if_held("special_command_error")
                 result["error"] = "special command '{}' failed: {}".format(matched_command, e)
                 if "special_action" not in result:
                     cfg = self.special_commands.get(matched_command, {})
@@ -396,17 +470,21 @@ class NaoJobConsumer(object):
                 history=self.history
             )
         except Exception as e:
+            self._release_turn_gate_if_held("transcribe_reply_error")
             result["error"] = "transcribe.reply raised: {}".format(e)
             return result
 
         if not segments_list:
+            self._release_turn_gate_if_held("empty_segments_list")
             result["error"] = "No segments_list returned"
             return result
 
         # Speak + gesture
         try:
+            self._wait_for_operator_enter("turn_reply")
             self.convo.speak_n_gest_next_level(segments_list, leds=True)
         except Exception as e:
+            self._release_turn_gate_if_held("speak_n_gest_error")
             result["error"] = "speak_n_gest_next_level raised: {}".format(e)
             return result
 
