@@ -440,7 +440,7 @@ def converse():
     payload = {
         "model": model,
         "messages": (
-            [{"role": "system", "content": system_prompt}]
+            ([{"role": "system", "content": system_prompt}] if system_prompt.strip() else [])
             + ([{"role": "system", "content": system_addendum}] if system_addendum.strip() else [])
             + ([{"role": "system", "content": ephemeral_system}] if ephemeral_system else [])
             + ([{"role": "system", "content": assistant_generation_instruction}] if assistant_generation_instruction else [])

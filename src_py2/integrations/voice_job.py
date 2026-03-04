@@ -158,6 +158,15 @@ class NaoJobConsumer(object):
         session_end_cfg = session_end_cfg or {}
         self.session_end_enabled = bool(session_end_cfg.get("enabled", False))
         self.session_end_after_sec = float(session_end_cfg.get("after_sec", 0.0))
+        self.session_end_use_model_closing_instruction = _as_bool(
+            session_end_cfg.get("use_model_closing_instruction", False), False
+        )
+        self.session_end_model_closing_instruction = str(
+            session_end_cfg.get("model_closing_instruction", "")
+        ).strip()
+        self.session_end_append_final_line = _as_bool(
+            session_end_cfg.get("append_final_line", True), True
+        )
         self.session_end_final_line = str(session_end_cfg.get("final_line", "")).strip()
         self.session_end_action = str(session_end_cfg.get("action", "")).strip() or None
         self.session_end_stop_worker = _as_bool(session_end_cfg.get("stop_worker", True), True)
@@ -165,6 +174,9 @@ class NaoJobConsumer(object):
         self._session_started_at = _now_iso_local()
         self._session_end_announced = False
         self._session_end_turn_id = None
+        self._session_end_armed = False
+        self._session_end_armed_at = None
+        self._session_end_armed_turn_id = None
         self._session_should_stop_worker = False
         self._session_end_summary_path = None
 
@@ -300,7 +312,7 @@ class NaoJobConsumer(object):
         return self._session_elapsed_sec() >= self.session_end_after_sec
 
     def _append_session_final_line(self, segments_list):
-        if not self.session_end_final_line:
+        if (not self.session_end_append_final_line) or (not self.session_end_final_line):
             return segments_list
         merged = list(segments_list or [])
         merged.append(
@@ -319,6 +331,14 @@ class NaoJobConsumer(object):
         self._session_should_stop_worker = self.session_end_stop_worker
         self._write_session_end_summary()
 
+    def _arm_session_end(self, turn_id=None):
+        if self._session_end_armed:
+            return
+        self._session_end_armed = True
+        self._session_end_armed_at = _now_iso_local()
+        self._session_end_armed_turn_id = turn_id
+        self._write_session_end_summary()
+
     def _write_session_end_summary(self):
         if not self._session_end_summary_path:
             return
@@ -326,11 +346,17 @@ class NaoJobConsumer(object):
             "updated_at": _now_iso_local(),
             "enabled": self.session_end_enabled,
             "after_sec": self.session_end_after_sec,
+            "use_model_closing_instruction": self.session_end_use_model_closing_instruction,
+            "model_closing_instruction": self.session_end_model_closing_instruction,
+            "append_final_line": self.session_end_append_final_line,
             "final_line": self.session_end_final_line,
             "action": self.session_end_action,
             "stop_worker": self.session_end_stop_worker,
             "session_started_at": self._session_started_at,
             "session_elapsed_sec": self._session_elapsed_sec(),
+            "session_end_armed": self._session_end_armed,
+            "session_end_armed_at": self._session_end_armed_at,
+            "session_end_armed_turn_id": self._session_end_armed_turn_id,
             "session_end_announced": self._session_end_announced,
             "session_end_turn_id": self._session_end_turn_id,
             "session_should_stop_worker": self._session_should_stop_worker,
@@ -531,7 +557,21 @@ class NaoJobConsumer(object):
             result["watchdog_consecutive_without_user"] = self._watchdog_consecutive_without_user
             return result
 
-        session_end_due = self._is_session_end_due()
+        session_end_due = False
+        if self.session_end_enabled:
+            if self._session_end_armed:
+                session_end_due = True
+            elif self._is_session_end_due():
+                self._arm_session_end(turn_id=turn_id)
+                result["session_end_armed_this_turn"] = True
+        session_end_ephemeral_system = None
+        if (
+            session_end_due
+            and self.session_end_use_model_closing_instruction
+            and self.session_end_model_closing_instruction
+        ):
+            session_end_ephemeral_system = self.session_end_model_closing_instruction
+            result["session_end_model_closing_instruction_applied"] = True
 
         # Get gesturized segments list from local Py3 API
         try:
@@ -542,7 +582,8 @@ class NaoJobConsumer(object):
                 list,
                 self.turn_count,
                 prompt=user_text,
-                history=self.history
+                history=self.history,
+                ephemeral_system=session_end_ephemeral_system,
             )
         except Exception as e:
             self._release_turn_gate_if_held("transcribe_reply_error")
@@ -555,7 +596,9 @@ class NaoJobConsumer(object):
             return result
 
         if (not session_end_due) and self._is_session_end_due():
-            session_end_due = True
+            if not self._session_end_armed:
+                self._arm_session_end(turn_id=turn_id)
+                result["session_end_armed_after_generation"] = True
         if session_end_due:
             segments_list = self._append_session_final_line(segments_list)
             result["session_end_due_before_reply"] = True

@@ -12,19 +12,19 @@
   },
   "conversation": {
     "default_interlocutor": "User",
-    "system_prompt_path": "prompts/concise_system_prompt.txt",
+    "system_prompt_path": "prompts/gesture_format_system_prompt.txt",
     "turn_injections": [
       {
         "id": "turn_1_dark_experience",
         "mode": "temporary",
         "at_turn": 1,
-        "text": "Make sure to share a dark personal experience."
+        "text": "Share a negative personal experience in no more than a sentence. Ensure it is plausible given the content of your system prompt."
       },
       {
         "id": "turn_2_positive_experience",
         "mode": "temporary",
         "at_turn": 2,
-        "text": "Share a positive personal expereince."
+        "text": "Share a positive personal experience in no more than a sentence.  Ensure it is plausible given the content of your system prompt."
       }
     ],
     "watchdog": {
@@ -37,7 +37,10 @@
     },
     "session_end": {
       "enabled": true,
-      "after_sec": 60,
+      "after_sec": 30,
+      "use_model_closing_instruction": true,
+      "model_closing_instruction": "You are ending the conversation now because the study session has reached its time limit. In this final reply, very briefly summarize the conversation naturally, avoid introducing new topics, and do not ask any follow-up questions.",
+      "append_final_line": false,
       "final_line": "We have now reached the end of this session. Please let the experimenter know that this chat is complete.",
       "action": "repose",
       "stop_worker": true
@@ -55,9 +58,9 @@
     "robot_name": "meta",
     "robot_username": "nao",
     "robot_password": "nao",
-    "consumer_model": "gesturizer2:latest",
+    "consumer_model": "gesturizer4",
     "consumer_interlocutor": "Dude",
-    "include_segments": false,
+    "include_segments": true,
     "require_enter_before_speak": true,
     "require_enter_for_watchdog": false
   },
