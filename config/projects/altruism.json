@@ -116,7 +116,7 @@
     "sample_rate": 16000,
     "connect_timeout_sec": 3.0,
     "read_timeout_sec": 120.0,
-    "min_utterance_sec": 0.2,
+    "min_utterance_sec": 0.5,
     "silence_rms_threshold": 0.005,
     "robot_outbox_dirname": "robot_outbox",
     "robot_inbox_dirname": "robot_inbox",

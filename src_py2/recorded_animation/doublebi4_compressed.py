@@ -1,0 +1,10 @@
+      
+angle_modulator = 1.0
+duration_modulator = 1.0
+        
+joint_names_list = ['HeadYaw', 'HeadPitch', 'LShoulderPitch', 'LShoulderRoll', 'LElbowYaw', 'LElbowRoll', 'LWristYaw', 'LHand', 'RShoulderPitch', 'RShoulderRoll', 'RElbowYaw', 'RElbowRoll', 'RWristYaw', 'RHand']
+                   
+joint_angles = [angles_compressed for _, angles_compressed in [['HeadYaw', [-0.05066394805908203, -0.05066394805908203, -0.05066394805908203]], ['HeadPitch', [-0.04452800750732422, -0.04606199264526367, -0.04452800750732422]], ['LShoulderPitch', [0.41567206382751465, 0.41567206382751465, 0.41567206382751465]], ['LShoulderRoll', [0.8359880447387695, 0.8359880447387695, 0.8359880447387695]], ['LElbowYaw', [-1.5325078964233398, -1.5325078964233398, -1.5325078964233398]], ['LElbowRoll', [-1.518618106842041, -1.5201520919799805, -1.518618106842041]], ['LWristYaw', [-1.5064301490783691, -1.5064301490783691, -1.5064301490783691]], ['LHand', [0.29360002279281616, 0.29360002279281616, 0.29399996995925903]], ['RShoulderPitch', [0.3007059097290039, 0.30223989486694336, 0.30223989486694336]], ['RShoulderRoll', [-0.9833359718322754, -0.9848699569702148, -0.9833359718322754]], ['RElbowYaw', [1.366752028465271, 1.366752028465271, 1.366752028465271]], ['RElbowRoll', [1.5079641342163086, 1.5079641342163086, 1.5079641342163086]], ['RWristYaw', [0.8620660305023193, 0.8620660305023193, 0.8620660305023193]], ['RHand', [0.29839998483657837, 0.29839998483657837, 0.29839998483657837]]]]
+time_points = [time_points_compressed for _, time_points_compressed in [['HeadYaw', [1.1, 4.1, 5.1]], ['HeadPitch', [1.1, 4.1, 5.1]], ['LShoulderPitch', [1.1, 4.1, 5.1]], ['LShoulderRoll', [1.1, 4.1, 5.1]], ['LElbowYaw', [1.1, 4.1, 5.1]], ['LElbowRoll', [1.1, 4.1, 5.1]], ['LWristYaw', [1.1, 4.1, 5.1]], ['LHand', [1.1, 4.1, 5.1]], ['RShoulderPitch', [1.1, 4.1, 5.1]], ['RShoulderRoll', [1.1, 4.1, 5.1]], ['RElbowYaw', [1.1, 4.1, 5.1]], ['RElbowRoll', [1.1, 4.1, 5.1]], ['RWristYaw', [1.1, 4.1, 5.1]], ['RHand', [1.1, 4.1, 5.1]]]]
+clas.motion.angleInterpolation(joint_names_list, joint_angles, time_points, True)
+        
