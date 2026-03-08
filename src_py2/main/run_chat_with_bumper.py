@@ -158,7 +158,7 @@ def main():
     session_dir = wait_for_current_session(SESSIONS_ROOT)
 
     robot = NAORobot(ROBOT_NAME, usrnme=ROBOT_USERNAME, pword=ROBOT_PASSWORD)
-    robot.mm.sit_gently()
+    robot.mm.sit()
     robot.mm.repose(False)
 
     convo = ConversationManager(robot)
