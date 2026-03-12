@@ -149,6 +149,7 @@ class NaoJobConsumer(object):
         ).strip()
         self._last_robot_finish_mono = None
         self._last_input_job_seen_mono = None
+        self._input_attempt_in_progress = False
         self._watchdog_total = 0
         self._watchdog_consecutive_without_user = 0
         self._watchdog_due_mono = None
@@ -376,6 +377,12 @@ class NaoJobConsumer(object):
         # A fresh user attempt is underway; do not fire watchdog until robot speaks again.
         self._watchdog_due_mono = None
 
+    def note_input_attempt_started(self):
+        self._input_attempt_in_progress = True
+
+    def note_input_attempt_finished(self):
+        self._input_attempt_in_progress = False
+
     def _on_nonempty_user_turn(self):
         self._watchdog_consecutive_without_user = 0
         self._write_watchdog_summary()
@@ -426,6 +433,8 @@ class NaoJobConsumer(object):
 
     def _maybe_fire_watchdog(self):
         if not self.watchdog_enabled:
+            return
+        if self._input_attempt_in_progress:
             return
         if int(self.turn_count or 0) < self.watchdog_activate_after_turn:
             return
