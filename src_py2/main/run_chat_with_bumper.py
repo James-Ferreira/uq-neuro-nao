@@ -96,7 +96,7 @@ def _release_turn_gate(convo, reason):
     except Exception as e:
         vprint("WARN: set_ready_mode failed ({}): {}".format(reason, e))
 
-def bumper_loop(robot, convo):
+def bumper_loop(robot, convo, consumer):
     while True:
         robot.tm.wait_for_left_bumper_press()
 
@@ -117,6 +117,7 @@ def bumper_loop(robot, convo):
                 vprint("WARN: set_listening_mode failed: {}".format(e))
 
             post_json(BRIDGE + "/start", timeout=BRIDGE_START_TIMEOUT_SEC)
+            consumer.note_input_attempt_started()
 
             robot.tm.wait_for_left_bumper_release()
 
@@ -127,6 +128,7 @@ def bumper_loop(robot, convo):
                 vprint("WARN: set_busy_mode failed: {}".format(e))
 
             stop_resp = post_json(BRIDGE + "/stop", timeout=BRIDGE_STOP_TIMEOUT_SEC)
+            consumer.note_input_attempt_finished()
             turn_id = stop_resp.get("turn_id")
             raw_transcript = stop_resp.get("transcript", "")
             transcript = _one_line_text(raw_transcript)
@@ -146,6 +148,7 @@ def bumper_loop(robot, convo):
             # speak_n_gest_next_level() releases it in finally.
 
         except Exception as e:
+            consumer.note_input_attempt_finished()
             print("ERROR in bumper_loop: {}".format(e))
             _release_turn_gate(convo, "bumper_loop_exception")
             time.sleep(0.2)
@@ -175,7 +178,7 @@ def main():
         require_enter_for_watchdog=CONSUMER_REQUIRE_ENTER_FOR_WATCHDOG,
     )
 
-    t = threading.Thread(target=bumper_loop, args=(robot, convo))
+    t = threading.Thread(target=bumper_loop, args=(robot, convo, consumer))
     t.daemon = True
     t.start()
 

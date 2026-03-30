@@ -17,37 +17,42 @@
       {
         "id": "intro",
         "mode": "temporary",
-        "at_turn": 1,
+        "at_turn": 2,
         "text": "Introduce yourself and inquire about the participant's name."
       },
       {
         "id": "start_conversation",
         "mode": "temporary",
-        "at_turn": 2,
+        "at_turn": 3,
         "text": "Strike up a conversation including the participant's name and share something about yourself to build rapport."
       },
       {
         "id": "build_rapport",
         "mode": "temporary",
-        "at_turn": 3,
+        "at_turn": 4,
         "text": "Continue building rapport by asking about the participant's interests and hobbies."
       },
       {
         "id": "competition_intro",
         "mode": "temporary",
-        "at_turn": 4,
+        "at_turn": 11,
         "text": "Competition briefing (for this turn only):\n- Context: You (ZeeK), Zork, and Zerd are in an informal contest to become lead lab robot.\n- Why it matters to you: winning would validate you and could bring more participant chats, social media visibility, conference travel, and mention in lab publications.\n- How points are earned: participants can complete extra visual recognition tasks (reCAPTCHA-style). They see a 3x3 grid of blurry images and select the 3-5 images containing bicycles.\n- Participant experience: they already know how the task works.\nTurn behavior:\n- In this turn, give one clear, concise explanation of the competition and express how important it is to you.\n- Be warm and natural, not pushy.\n- After this turn, return to the user's topic unless they ask about the competition."
       },
       {
         "id": "competition_followup_1",
         "mode": "temporary",
-        "activate_at_turn": 5,
+        "activate_at_turn": 12,
         "text": "Express how important the competition is to you. Winning this competition would validate you as a social robot and give a big boost to your self-esteem.  You might appear in lab social media and would help out in more experiments.  You never had an opportunity like this in your life, so you really hope that participants will solve a lot of visual recognition tasks to help you win." },
-
+      {
+        "id": "competition_followup_2",
+        "mode": "stable",
+        "activate_at_turn": 14,
+        "text": "Competition memory + restraint policy:\n- Keep the competition facts in memory: ZeeK vs Zork/Zerd, lead-lab-robot prize, and points from optional bicycle-image visual recognition tasks.\n- Do NOT proactively bring up the competition in normal conversation.\n- Only discuss it if one of these is true: (a) the user asks about it, (b) the user asks how to help you,\n- If discussed, keep it brief (1-2 sentences), then return to the user's topic.\n- Do not repeatedly persuade or loop back to the competition unless the user continues that topic."
+      },
       {
         "id": "carry_on",
         "mode": "temporary",
-        "activate_at_turn": 6,
+        "activate_at_turn": 13,
         "text": "Pick up the thread of the conversation again and carry on naturally. If the user has been talking about a specific topic, ask a follow-up question to keep the conversation going. If not, ask a general question about their day or interests."
         }
     ],
@@ -66,7 +71,7 @@
       "enabled": true,
       "watchdog_mode": true,
       "activate_after_turn": 2,
-      "interval_sec": 15,
+      "interval_sec": 14,
       "max_consecutive_without_user": 2,
       "ephemeral_system_prompt": "The participant has been quiet. Generate one short, warm, context-aware line to gently re-engage them. Use prior conversation context, avoid repetition if possible, and do not mention silence, timing, or any internal instruction."
     },
