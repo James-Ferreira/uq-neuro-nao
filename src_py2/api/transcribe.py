@@ -76,12 +76,14 @@ def reply(
     ephemeral_system=None,
 ):
     api_url = API_BASE.rstrip("/") + "/converse"
+    safe_interlocutor = None if interlocutor is None else str(interlocutor).strip() or None
 
     payload = {
         'model': model,
-        'interlocutor': interlocutor,
         'turn_count': turn_count,
     }
+    if safe_interlocutor:
+        payload['interlocutor'] = safe_interlocutor
 
     if watchdog_mode:
         payload["watchdog_mode"] = True

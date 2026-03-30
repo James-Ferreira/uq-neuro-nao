@@ -87,7 +87,7 @@ class NaoJobConsumer(object):
         self,
         convo,
         model="gesturizer2:latest",
-        interlocutor="Dude",
+        interlocutor=None,
         include_segments=False,
         special_commands=None,
         watchdog_cfg=None,

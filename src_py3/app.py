@@ -31,7 +31,7 @@ WHISPER_MODEL_NAME = get_nested(PROJECT_PROFILE, ["runtime", "whisper_model"], "
 WHISPER_LANGUAGE = get_nested(PROJECT_PROFILE, ["runtime", "whisper_language"], "en")
 WHISPER_FP16 = bool(get_nested(PROJECT_PROFILE, ["runtime", "whisper_fp16"], False))
 DEFAULT_CONVERSE_MODEL = get_nested(PROJECT_PROFILE, ["runtime", "default_converse_model"], "custom_1")
-DEFAULT_INTERLOCUTOR = get_nested(PROJECT_PROFILE, ["conversation", "default_interlocutor"], "User")
+DEFAULT_INTERLOCUTOR = get_nested(PROJECT_PROFILE, ["conversation", "default_interlocutor"], None)
 SYSTEM_PROMPT = get_nested(PROJECT_PROFILE, ["conversation", "system_prompt"], "")
 #_vprint(SYSTEM_PROMPT)
 TURN_INJECTIONS = get_nested(PROJECT_PROFILE, ["conversation", "turn_injections"], []) or []
@@ -359,6 +359,8 @@ def converse():
     model        = data.get('model') or DEFAULT_CONVERSE_MODEL
     _vprint("MODEL: {}".format(model))
     interlocutor = data.get('interlocutor', DEFAULT_INTERLOCUTOR)
+    if interlocutor is not None:
+        interlocutor = str(interlocutor).strip() or None
     turn_count   = int(data.get('turn_count', 0))
     watchdog_mode = bool(data.get("watchdog_mode", False))
     ephemeral_system = str(data.get("ephemeral_system", "") or "").strip()
@@ -425,7 +427,9 @@ def converse():
         active_output_directives = []
 
     # ---- Optional: system addendum instead of user meta-wrapping ----
-    system_addendum = "The user you're replying to is named: {}.\n".format(interlocutor)
+    system_addendum = ""
+    if interlocutor:
+        system_addendum = "The user you're replying to is named: {}.\n".format(interlocutor)
     for instruction in active_injections:
         system_addendum += instruction + "\n"
 

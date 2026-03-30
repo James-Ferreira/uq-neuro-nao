@@ -66,7 +66,7 @@ def main():
     convo = ConversationManager(robot)
 
     consumer_model = get_nested(NAO_WORKER_CFG, ["consumer_model"], "gesturizer2:latest")
-    consumer_interlocutor = get_nested(NAO_WORKER_CFG, ["consumer_interlocutor"], "Dude")
+    consumer_interlocutor = get_nested(NAO_WORKER_CFG, ["consumer_interlocutor"], None)
     consumer_include_segments = bool(get_nested(NAO_WORKER_CFG, ["include_segments"], False))
     consumer_special_commands = get_nested(NAO_WORKER_CFG, ["special_commands"], None)
     session_end_cfg = get_nested(PROJECT_PROFILE, ["conversation", "session_end"], {})

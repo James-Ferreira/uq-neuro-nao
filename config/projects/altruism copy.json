@@ -11,7 +11,7 @@
     "default_converse_model": "custom_1"
   },
   "conversation": {
-    "default_interlocutor": "User",
+    "default_interlocutor": null,
     "system_prompt_path": "prompts/altruism_system_prompt.txt",
     "turn_injections": [
       {
@@ -96,7 +96,7 @@
     "robot_username": "nao",
     "robot_password": "nao",
     "consumer_model": "gesturizer2:latest",
-    "consumer_interlocutor": "Dude",
+    "consumer_interlocutor": null,
     "include_segments": false,
     "require_enter_before_speak": false,
     "require_enter_for_watchdog": false,
