@@ -8,36 +8,30 @@
     "whisper_model": "small",
     "whisper_language": "en",
     "whisper_fp16": false,
-    "default_converse_model": "custom_1"
+    "default_converse_model": "gesturizer4"
   },
   "conversation": {
     "default_interlocutor": "User",
-    "system_prompt_path": "prompts/gesture_format_system_prompt.txt",
+    "system_prompt_path": "prompts/zeek_system_prompt.txt",
     "turn_injections": [
       {
         "id": "turn_1_dark_experience",
         "mode": "temporary",
         "at_turn": 1,
-        "text": "Share a negative personal experience in no more than a sentence. Ensure it is plausible given the content of your system prompt."
-      },
-      {
-        "id": "turn_2_positive_experience",
-        "mode": "temporary",
-        "at_turn": 2,
-        "text": "Share a positive personal experience in no more than a sentence.  Ensure it is plausible given the content of your system prompt."
+        "text": "Introduce yourself and ask the participant their name."
       }
     ],
     "watchdog": {
-      "enabled": false,
+      "enabled": true,
       "watchdog_mode": true,
-      "activate_after_turn": 2,
+      "activate_after_turn": 1,
       "interval_sec": 30,
-      "max_consecutive_without_user": 2,
+      "max_consecutive_without_user": 999,
       "ephemeral_system_prompt": "The participant has been quiet. Generate one short, warm, context-aware line to gently re-engage them. Use prior conversation context, avoid repetition if possible, and do not mention silence, timing, or any internal instruction."
     },
     "session_end": {
-      "enabled": true,
-      "after_sec": 30,
+      "enabled": false,
+      "after_sec": 900,
       "use_model_closing_instruction": true,
       "model_closing_instruction": "You are ending the conversation now because the study session has reached its time limit. In this final reply, very briefly summarize the conversation naturally, avoid introducing new topics, and do not ask any follow-up questions.",
       "append_final_line": false,
@@ -55,7 +49,7 @@
   },
   "nao_worker": {
     "bridge_url": "http://127.0.0.1:5055",
-    "robot_name": "meta",
+    "robot_name": "clas",
     "robot_username": "nao",
     "robot_password": "nao",
     "consumer_model": "gesturizer4",
@@ -65,7 +59,7 @@
     "require_enter_for_watchdog": false
   },
   "voice_llm_chat": {
-    "ollama_model": "custom_1",
+    "ollama_model": "gesturizer4",
     "ollama_url": "http://localhost:11434",
     "whisper_model": "base.en",
     "sample_rate": 16000,
