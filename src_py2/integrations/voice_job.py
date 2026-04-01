@@ -1,4 +1,5 @@
 import os, time, json, re
+from datetime import datetime
 import src_py2.api.transcribe as transcribe
 
 
@@ -15,6 +16,14 @@ def _list_input_jobs(inbox_dir):
     return names
 
 
+def _list_system_jobs(inbox_dir):
+    if not os.path.isdir(inbox_dir):
+        return []
+    names = [n for n in os.listdir(inbox_dir) if n.endswith(".json")]
+    names.sort()
+    return names
+
+
 def _write_json_atomic(path, obj):
     tmp = path + ".tmp"
     with open(tmp, "w") as f:
@@ -22,8 +31,37 @@ def _write_json_atomic(path, obj):
     os.rename(tmp, path)
 
 
+def _write_text_atomic(path, text):
+    tmp = path + ".tmp"
+    with open(tmp, "w") as f:
+        f.write(text)
+    os.rename(tmp, path)
+
+
 def _now_iso_local():
     return time.strftime("%Y-%m-%dT%H:%M:%S")
+
+
+def _parse_iso_local(text):
+    if not text:
+        return None
+    for fmt in ("%Y-%m-%dT%H:%M:%S.%f", "%Y-%m-%dT%H:%M:%S"):
+        try:
+            return datetime.strptime(str(text), fmt)
+        except Exception:
+            pass
+    return None
+
+
+def _seconds_between(start_text, end_text):
+    start_dt = _parse_iso_local(start_text)
+    end_dt = _parse_iso_local(end_text)
+    if start_dt is None or end_dt is None:
+        return None
+    delta = (end_dt - start_dt).total_seconds()
+    if delta < 0:
+        return 0.0
+    return float(delta)
 
 
 def _normalize_command_text(text):
@@ -67,6 +105,184 @@ def _single_line(text):
     return re.sub(r"\s+", " ", s)
 
 
+def _dialogue_line(turn_id, speaker, text):
+    return 'turn_{} {}: {}'.format(str(turn_id), speaker, json.dumps("" if text is None else str(text), ensure_ascii=False))
+
+
+def _count_words(text):
+    return len(re.findall(r"[A-Za-z0-9]+(?:['-][A-Za-z0-9]+)*", str(text or "")))
+
+
+def _load_watchdog_prompts(session_dir):
+    event_path = os.path.join(session_dir, "watchdog_events.jsonl")
+    prompts_by_turn = {}
+
+    if not os.path.isfile(event_path):
+        return prompts_by_turn
+
+    with open(event_path, "r") as f:
+        for raw_line in f:
+            raw_line = raw_line.strip()
+            if not raw_line:
+                continue
+            try:
+                payload = json.loads(raw_line)
+            except Exception:
+                continue
+
+            if payload.get("event") != "watchdog_prompt":
+                continue
+
+            turn_ref = payload.get("turn_ref")
+            if turn_ref is None:
+                continue
+
+            try:
+                turn_ref = int(turn_ref)
+            except Exception:
+                continue
+
+            prompts_by_turn.setdefault(turn_ref, []).append(payload.get("ai", ""))
+
+    return prompts_by_turn
+
+
+def _rewrite_session_dialogue(session_dir):
+    inbox_dir = os.path.join(session_dir, "robot_inbox")
+    outbox_dir = os.path.join(session_dir, "robot_outbox")
+    dialogue_path = os.path.join(session_dir, "session_dialogue.txt")
+    watchdog_prompts = _load_watchdog_prompts(session_dir)
+
+    turn_ids = set()
+
+    if os.path.isdir(inbox_dir):
+        for name in os.listdir(inbox_dir):
+            match = re.match(r"turn_(\d+)_input\.json$", name)
+            if match:
+                turn_ids.add(int(match.group(1)))
+
+    if os.path.isdir(outbox_dir):
+        for name in os.listdir(outbox_dir):
+            match = re.match(r"turn_(\d+)_output\.json$", name)
+            if match:
+                turn_ids.add(int(match.group(1)))
+
+    lines = []
+    for turn_id in sorted(turn_ids):
+        input_path = os.path.join(inbox_dir, "turn_{:04d}_input.json".format(turn_id))
+        output_path = os.path.join(outbox_dir, "turn_{:04d}_output.json".format(turn_id))
+
+        user_text = ""
+        ai_text = ""
+
+        if os.path.isfile(input_path):
+            with open(input_path, "r") as f:
+                input_payload = json.load(f)
+            user_text = input_payload.get("user", "")
+
+        if os.path.isfile(output_path):
+            with open(output_path, "r") as f:
+                output_payload = json.load(f)
+            ai_text = output_payload.get("ai", "")
+
+        if not str(user_text or "").strip() and not str(ai_text or "").strip():
+            continue
+
+        lines.append(_dialogue_line(turn_id, "user", user_text))
+        lines.append(_dialogue_line(turn_id, "robot", ai_text))
+
+        for idx, watchdog_text in enumerate(watchdog_prompts.get(turn_id, []), start=1):
+            lines.append(_dialogue_line("{}_{}".format(turn_id, idx), "watchdog", watchdog_text))
+
+    text = "\n".join(lines)
+    if text:
+        text += "\n"
+    _write_text_atomic(dialogue_path, text)
+
+
+def _write_language_metrics_summary(session_dir):
+    inbox_dir = os.path.join(session_dir, "robot_inbox")
+    outbox_dir = os.path.join(session_dir, "robot_outbox")
+    summary_path = os.path.join(session_dir, "session_language_metrics.json")
+
+    turn_ids = set()
+    if os.path.isdir(inbox_dir):
+        for name in os.listdir(inbox_dir):
+            match = re.match(r"turn_(\d+)_input\.json$", name)
+            if match:
+                turn_ids.add(int(match.group(1)))
+    if os.path.isdir(outbox_dir):
+        for name in os.listdir(outbox_dir):
+            match = re.match(r"turn_(\d+)_output\.json$", name)
+            if match:
+                turn_ids.add(int(match.group(1)))
+
+    total_words = 0
+    spoken_turns = 0
+    total_speaking_time_sec = 0.0
+    latency_vals = []
+
+    for turn_id in sorted(turn_ids):
+        input_path = os.path.join(inbox_dir, "turn_{:04d}_input.json".format(turn_id))
+        output_path = os.path.join(outbox_dir, "turn_{:04d}_output.json".format(turn_id))
+
+        input_payload = {}
+        output_payload = {}
+
+        if os.path.isfile(input_path):
+            try:
+                with open(input_path, "r") as f:
+                    input_payload = json.load(f)
+            except Exception:
+                input_payload = {}
+
+        if os.path.isfile(output_path):
+            try:
+                with open(output_path, "r") as f:
+                    output_payload = json.load(f)
+            except Exception:
+                output_payload = {}
+
+        word_count = _count_words(input_payload.get("user", ""))
+        if word_count <= 0:
+            continue
+
+        spoken_turns += 1
+        total_words += word_count
+
+        try:
+            duration_sec = float(input_payload.get("participant_duration_sec") or 0.0)
+        except Exception:
+            duration_sec = 0.0
+        if duration_sec > 0:
+            total_speaking_time_sec += duration_sec
+
+        try:
+            latency_sec = output_payload.get("latency_sec")
+            if latency_sec is not None:
+                latency_sec = float(latency_sec)
+                if latency_sec >= 0:
+                    latency_vals.append(latency_sec)
+        except Exception:
+            pass
+
+    summary = {
+        "updated_at": _now_iso_local(),
+        "spoken_turn_count": spoken_turns,
+        "total_words": total_words,
+        "mean_words_per_turn": (float(total_words) / float(spoken_turns)) if spoken_turns else None,
+        "total_speaking_time_sec": total_speaking_time_sec,
+        "word_rate_wps": (float(total_words) / float(total_speaking_time_sec)) if total_speaking_time_sec > 0 else None,
+        "latency_turn_count": len(latency_vals),
+        "mean_latency_sec": (sum(latency_vals) / float(len(latency_vals))) if latency_vals else None,
+    }
+
+    try:
+        _write_json_atomic(summary_path, summary)
+    except Exception as e:
+        print("Session language metrics write failed: {}".format(e))
+
+
 def _as_bool(value, default=False):
     if value is None:
         return default
@@ -106,7 +322,8 @@ class NaoJobConsumer(object):
         self.include_segments = include_segments
 
         self.history = []   # [{"role":"user"/"assistant", "content": "..."}]
-        self.turn_count = None
+        self.turn_count = 0
+        self.current_turn_id = None
         self.special_commands = {
             "gotosleeplittlerobot": {
                 "reply_text": "Going to sleep now.",
@@ -155,6 +372,7 @@ class NaoJobConsumer(object):
         self._watchdog_due_mono = None
         self._watchdog_event_path = None
         self._watchdog_summary_path = None
+        self._last_robot_finish_at = None
 
         session_end_cfg = session_end_cfg or {}
         self.session_end_enabled = bool(session_end_cfg.get("enabled", False))
@@ -238,6 +456,53 @@ class NaoJobConsumer(object):
         words = [w for w in (text or "").strip().split() if w]
         return max(2.5, 0.45 * len(words))
 
+    def _handle_system_say_job(self, job):
+        text = (job.get("text") or "").strip()
+        result = {
+            "kind": "say",
+            "created_at": _now_iso_local(),
+            "source": job.get("source"),
+            "text": text,
+            "ok": False,
+            "skipped": False,
+        }
+
+        if not text:
+            result["skipped"] = True
+            result["error"] = "empty system say text"
+            return result
+
+        if hasattr(self.convo, "turn_gate") and not self.convo.turn_gate.acquire(False):
+            return None
+
+        self.convo.turn_in_progress = True
+
+        segments_list = [[text, None, None, self._estimate_script_duration(text)]]
+        try:
+            self._wait_for_operator_enter("system_say")
+            self.convo.speak_n_gest_next_level(segments_list, leds=True)
+            self._note_robot_utterance_finished()
+            result["ok"] = True
+            result["robot_finish_at"] = self._last_robot_finish_at
+            result["ai_duration_sec"] = _segments_to_duration_sec(segments_list)
+            return result
+        except Exception as e:
+            self._release_turn_gate_if_held("system_say_error")
+            result["error"] = "system say failed: {}".format(e)
+            return result
+
+    def handle_system_job(self, job):
+        kind = str(job.get("kind") or "").strip().lower()
+        if kind == "say":
+            return self._handle_system_say_job(job)
+        return {
+            "kind": kind,
+            "created_at": _now_iso_local(),
+            "ok": False,
+            "skipped": True,
+            "error": "unknown system job kind: {}".format(kind or "(missing)"),
+        }
+
     def _match_special_command(self, user_text):
         normalized = _normalize_command_text(user_text)
         if not normalized:
@@ -283,6 +548,7 @@ class NaoJobConsumer(object):
         result["special_command"] = command_key
         result["special_action"] = action_log
         self._note_robot_utterance_finished()
+        result["robot_finish_at"] = self._last_robot_finish_at
         return result
 
     def _perform_robot_action(self, action):
@@ -369,6 +635,7 @@ class NaoJobConsumer(object):
 
     def _note_robot_utterance_finished(self):
         self._last_robot_finish_mono = _now_watchdog_clock()
+        self._last_robot_finish_at = _now_iso_local()
         if self.watchdog_enabled and int(self.turn_count or 0) >= self.watchdog_activate_after_turn:
             self._watchdog_due_mono = self._last_robot_finish_mono + self.watchdog_interval_sec
 
@@ -384,6 +651,7 @@ class NaoJobConsumer(object):
         self._input_attempt_in_progress = False
 
     def _on_nonempty_user_turn(self):
+        self.turn_count = int(self.turn_count or 0) + 1
         self._watchdog_consecutive_without_user = 0
         self._write_watchdog_summary()
 
@@ -433,19 +701,19 @@ class NaoJobConsumer(object):
 
     def _maybe_fire_watchdog(self):
         if not self.watchdog_enabled:
-            return
+            return False
         if self._input_attempt_in_progress:
-            return
+            return False
         if int(self.turn_count or 0) < self.watchdog_activate_after_turn:
-            return
+            return False
         if self._last_robot_finish_mono is None:
-            return
+            return False
         if self._watchdog_consecutive_without_user >= self.watchdog_max_consecutive:
-            return
+            return False
         if self._watchdog_due_mono is None:
             self._watchdog_due_mono = self._last_robot_finish_mono + self.watchdog_interval_sec
         if _now_watchdog_clock() < self._watchdog_due_mono:
-            return
+            return False
 
         try:
             segments_list = self._generate_watchdog_segments()
@@ -458,7 +726,7 @@ class NaoJobConsumer(object):
                 "watchdog_total_before": self._watchdog_total,
                 "consecutive_without_user_before": self._watchdog_consecutive_without_user,
             })
-            return
+            return False
 
         if not segments_list:
             self._watchdog_due_mono = _now_watchdog_clock() + self.watchdog_interval_sec
@@ -468,7 +736,7 @@ class NaoJobConsumer(object):
                 "watchdog_total_before": self._watchdog_total,
                 "consecutive_without_user_before": self._watchdog_consecutive_without_user,
             })
-            return
+            return False
 
         try:
             self._wait_for_operator_enter("watchdog")
@@ -482,7 +750,7 @@ class NaoJobConsumer(object):
                 "watchdog_total_before": self._watchdog_total,
                 "consecutive_without_user_before": self._watchdog_consecutive_without_user,
             })
-            return
+            return False
 
         robot_text = _segments_to_text(segments_list)
         dur_sec = _segments_to_duration_sec(segments_list)
@@ -505,7 +773,9 @@ class NaoJobConsumer(object):
             "turn_ref": int(self.turn_count or 0),
             "ai": robot_text,
             "ai_duration_sec": dur_sec,
+            "robot_finish_at": self._last_robot_finish_at,
         })
+        return True
 
     def handle_input_job(self, job):
         """
@@ -515,8 +785,10 @@ class NaoJobConsumer(object):
         """
         turn_id = job.get("turn_id")
         user_text = job.get("user") or ""
+        recording_started_at = job.get("recording_started_at")
 
-        self.turn_count = turn_id
+        self.current_turn_id = turn_id
+        latency_sec = _seconds_between(self._last_robot_finish_at, recording_started_at)
 
         # Base result payload (no "ok" field by design)
         result = {
@@ -528,6 +800,7 @@ class NaoJobConsumer(object):
             "user": user_text,
             "ai": "",
             "ai_duration_sec": 0.0,
+            "latency_sec": latency_sec,
         }
         if self.session_end_enabled:
             result["session_elapsed_sec"] = self._session_elapsed_sec()
@@ -589,7 +862,7 @@ class NaoJobConsumer(object):
                 self.model,
                 self.interlocutor,
                 list,
-                self.turn_count,
+                int(self.turn_count or 0) + 1,
                 prompt=user_text,
                 history=self.history,
                 ephemeral_system=session_end_ephemeral_system,
@@ -635,6 +908,7 @@ class NaoJobConsumer(object):
             self.history.append({"role": "assistant", "content": robot_text})
         self._on_nonempty_user_turn()
         self._note_robot_utterance_finished()
+        result["robot_finish_at"] = self._last_robot_finish_at
         result["watchdog_total_so_far"] = self._watchdog_total
         result["watchdog_consecutive_without_user"] = self._watchdog_consecutive_without_user
         if self.session_end_enabled:
@@ -670,11 +944,17 @@ class NaoJobConsumer(object):
         """
         inbox_dir = os.path.join(session_dir, "robot_inbox")
         outbox_dir = os.path.join(session_dir, "robot_outbox")
+        system_inbox_dir = os.path.join(session_dir, "robot_system_inbox")
+        system_done_dir = os.path.join(session_dir, "robot_system_done")
 
         if not os.path.isdir(inbox_dir):
             raise RuntimeError("Inbox not found: {}".format(inbox_dir))
         if not os.path.isdir(outbox_dir):
             os.makedirs(outbox_dir)
+        if not os.path.isdir(system_inbox_dir):
+            os.makedirs(system_inbox_dir)
+        if not os.path.isdir(system_done_dir):
+            os.makedirs(system_done_dir)
 
         processed = set()
         known_inputs = set()
@@ -683,11 +963,33 @@ class NaoJobConsumer(object):
         self._session_end_summary_path = os.path.join(session_dir, "session_end_summary.json")
         self._write_watchdog_summary()
         self._write_session_end_summary()
+        _write_language_metrics_summary(session_dir)
 
         print("NAO job worker started")
 
         while True:
             try:
+                system_jobs = _list_system_jobs(system_inbox_dir)
+                for name in system_jobs:
+                    job_path = os.path.join(system_inbox_dir, name)
+                    try:
+                        with open(job_path, "r") as f:
+                            job = json.load(f)
+                    except Exception as e:
+                        print("System job read failed ({}): {}".format(name, e))
+                        continue
+
+                    result = self.handle_system_job(job)
+                    if result is None:
+                        continue
+
+                    done_path = os.path.join(system_done_dir, name)
+                    _write_json_atomic(done_path, result)
+                    try:
+                        os.remove(job_path)
+                    except Exception as e:
+                        print("System job cleanup failed ({}): {}".format(name, e))
+
                 jobs = _list_input_jobs(inbox_dir)
                 for name in jobs:
                     if name in known_inputs:
@@ -714,6 +1016,8 @@ class NaoJobConsumer(object):
                     result = self.handle_input_job(job)
 
                     _write_json_atomic(done_path, result)
+                    _rewrite_session_dialogue(session_dir)
+                    _write_language_metrics_summary(session_dir)
 
                     user_text = _single_line(job.get("user", ""))
                     ai_text = _single_line(result.get("ai", ""))
@@ -724,7 +1028,8 @@ class NaoJobConsumer(object):
                         print("Session end condition met at turn {}. Exiting worker.".format(turn_id))
                         return
 
-                self._maybe_fire_watchdog()
+                if self._maybe_fire_watchdog():
+                    _write_language_metrics_summary(session_dir)
                 time.sleep(poll_sec)
 
             except KeyboardInterrupt:
