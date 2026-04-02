@@ -8,7 +8,7 @@
     "whisper_model": "small",
     "whisper_language": "en",
     "whisper_fp16": false,
-    "default_converse_model": "custom_1"
+    "default_converse_model": "gesturizer4"
   },
   "conversation": {
     "default_interlocutor": null,
@@ -110,7 +110,7 @@
     }
   },
   "voice_llm_chat": {
-    "ollama_model": "custom_1",
+    "ollama_model": "gesturizer4",
     "ollama_url": "http://localhost:11434",
     "whisper_model": "base.en",
     "sample_rate": 16000,

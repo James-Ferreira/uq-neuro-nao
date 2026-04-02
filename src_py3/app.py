@@ -30,7 +30,7 @@ OLLAMA_READ_TIMEOUT = float(get_nested(PROJECT_PROFILE, ["runtime", "read_timeou
 WHISPER_MODEL_NAME = get_nested(PROJECT_PROFILE, ["runtime", "whisper_model"], "small")
 WHISPER_LANGUAGE = get_nested(PROJECT_PROFILE, ["runtime", "whisper_language"], "en")
 WHISPER_FP16 = bool(get_nested(PROJECT_PROFILE, ["runtime", "whisper_fp16"], False))
-DEFAULT_CONVERSE_MODEL = get_nested(PROJECT_PROFILE, ["runtime", "default_converse_model"], "custom_1")
+DEFAULT_CONVERSE_MODEL = get_nested(PROJECT_PROFILE, ["runtime", "default_converse_model"], "gesturizer4")
 DEFAULT_INTERLOCUTOR = get_nested(PROJECT_PROFILE, ["conversation", "default_interlocutor"], None)
 SYSTEM_PROMPT = get_nested(PROJECT_PROFILE, ["conversation", "system_prompt"], "")
 #_vprint(SYSTEM_PROMPT)
