@@ -79,13 +79,9 @@ class MotionManager:
         if leds == False:
             self.nao.leds.post.fadeRGB("AllLeds", 0x000000, 0.1)
 
-        if not self.posture_check('Sit'):
-            print("repose failed")
-            return
-        else:
-            joint_angles = [angles_compressed for _, angles_compressed in [['HeadYaw', [-0.013848066329956055]], ['HeadPitch', [0.5752079486846924]], ['LShoulderPitch', [0.8896780014038086]], ['LShoulderRoll', [0.16716408729553223]], ['LElbowYaw', [-0.48018407821655273]], ['LElbowRoll', [-0.9970581531524658]], ['LWristYaw', [-0.8299360275268555]], ['LHand', [0.6647999882698059]], ['RShoulderPitch', [0.8575479984283447]], ['RShoulderRoll', [-0.127363920211792]], ['RElbowYaw', [0.4371480941772461]], ['RElbowRoll', [0.9112381935119629]], ['RWristYaw', [0.891211986541748]], ['RHand', [0.5971999764442444]]]]
-            time_points = [time_points_compressed for _, time_points_compressed in [['HeadYaw', [1]], ['HeadPitch', [1]], ['LShoulderPitch', [1]], ['LShoulderRoll', [1]], ['LElbowYaw', [1]], ['LElbowRoll', [1]], ['LWristYaw', [1]], ['LHand', [1]], ['RShoulderPitch', [1]], ['RShoulderRoll', [1]], ['RElbowYaw', [1]], ['RElbowRoll', [1]], ['RWristYaw', [1]], ['RHand', [1]]]]
-            self.motion.post.angleInterpolation(motion_library.joint_names_list, joint_angles, time_points, True)
+        joint_angles = [angles_compressed for _, angles_compressed in [['HeadYaw', [-0.013848066329956055]], ['HeadPitch', [0.5752079486846924]], ['LShoulderPitch', [0.8896780014038086]], ['LShoulderRoll', [0.16716408729553223]], ['LElbowYaw', [-0.48018407821655273]], ['LElbowRoll', [-0.9970581531524658]], ['LWristYaw', [-0.8299360275268555]], ['LHand', [0.6647999882698059]], ['RShoulderPitch', [0.8575479984283447]], ['RShoulderRoll', [-0.127363920211792]], ['RElbowYaw', [0.4371480941772461]], ['RElbowRoll', [0.9112381935119629]], ['RWristYaw', [0.891211986541748]], ['RHand', [0.5971999764442444]]]]
+        time_points = [time_points_compressed for _, time_points_compressed in [['HeadYaw', [1]], ['HeadPitch', [1]], ['LShoulderPitch', [1]], ['LShoulderRoll', [1]], ['LElbowYaw', [1]], ['LElbowRoll', [1]], ['LWristYaw', [1]], ['LHand', [1]], ['RShoulderPitch', [1]], ['RShoulderRoll', [1]], ['RElbowYaw', [1]], ['RElbowRoll', [1]], ['RWristYaw', [1]], ['RHand', [1]]]]
+        self.motion.post.angleInterpolation(motion_library.joint_names_list, joint_angles, time_points, True)
 
     def execute_motion(self, reverse, joint_angles, time_points, post=False):
         # print("{}'s reverse = {}".format(self.nao.name, reverse))

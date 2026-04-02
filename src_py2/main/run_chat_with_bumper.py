@@ -28,6 +28,9 @@ CURRENT_SESSION_FILENAME = "CURRENT_SESSION.txt"
 BRIDGE = get_nested(NAO_WORKER_CFG, ["bridge_url"], "http://127.0.0.1:5055")
 BRIDGE_START_TIMEOUT_SEC = float(get_nested(NAO_WORKER_CFG, ["bridge_start_timeout_sec"], 10.0))
 BRIDGE_STOP_TIMEOUT_SEC = float(get_nested(NAO_WORKER_CFG, ["bridge_stop_timeout_sec"], 120.0))
+BUMPER_RELEASE_TIMEOUT_SEC = float(
+    get_nested(NAO_WORKER_CFG, ["bumper_release_timeout_sec"], 15.0)
+)
 ROBOT_NAME = get_nested(NAO_WORKER_CFG, ["robot_name"], "clas")
 ROBOT_USERNAME = get_nested(NAO_WORKER_CFG, ["robot_username"], "nao")
 ROBOT_PASSWORD = get_nested(NAO_WORKER_CFG, ["robot_password"], "nao")
@@ -49,6 +52,10 @@ VERBOSE = os.getenv("NAO_WORKER_VERBOSE", "0") == "1"
 def vprint(msg):
     if VERBOSE:
         print(msg)
+
+def log_diag(message):
+    stamp = time.strftime("%Y-%m-%d %H:%M:%S")
+    print("[BUMPER {}] {}".format(stamp, message))
 
 def _one_line_text(s):
     txt = (s or "").strip()
@@ -98,12 +105,31 @@ def _release_turn_gate(convo, reason):
 
 def bumper_loop(robot, convo, consumer):
     while True:
+        log_diag("Awaiting next bumper press")
         robot.tm.wait_for_left_bumper_press()
+        hold_started_at = time.time()
+        log_diag("Bumper press accepted by worker loop")
 
         # Busy: consume press->release but do nothing
         if not convo.turn_gate.acquire(False):
             vprint("BUSY: ignoring bumper press (turn in progress)")
-            robot.tm.wait_for_left_bumper_release()
+            released = robot.tm.wait_for_left_bumper_release(BUMPER_RELEASE_TIMEOUT_SEC)
+            if not released:
+                log_diag(
+                    "WARN: Timed out waiting {:.1f}s for ignored bumper release; "
+                    "refreshing touch subscriptions.".format(BUMPER_RELEASE_TIMEOUT_SEC)
+                )
+                try:
+                    robot.tm.reset_hold_state()
+                    robot.tm.refresh_event_subscriptions()
+                except Exception as touch_error:
+                    log_diag("WARN: Failed to refresh touch subscriptions: {}".format(touch_error))
+            else:
+                log_diag(
+                    "Ignored bumper press released after {:.3f}s".format(
+                        max(0.0, time.time() - hold_started_at)
+                    )
+                )
             time.sleep(0.05)
             continue
 
@@ -116,10 +142,44 @@ def bumper_loop(robot, convo, consumer):
             except Exception as e:
                 vprint("WARN: set_listening_mode failed: {}".format(e))
 
+            log_diag("Starting bridge recording")
             post_json(BRIDGE + "/start", timeout=BRIDGE_START_TIMEOUT_SEC)
             consumer.note_input_attempt_started()
+            log_diag("Bridge recording started")
 
-            robot.tm.wait_for_left_bumper_release()
+            released = robot.tm.wait_for_left_bumper_release(BUMPER_RELEASE_TIMEOUT_SEC)
+            if not released:
+                log_diag(
+                    "ERROR: Timed out waiting {:.1f}s for left bumper release. "
+                    "Resetting listening state.".format(BUMPER_RELEASE_TIMEOUT_SEC)
+                )
+                try:
+                    log_diag("Attempting bridge stop after missing release")
+                    stop_resp = post_json(BRIDGE + "/stop", timeout=BRIDGE_STOP_TIMEOUT_SEC)
+                    log_diag(
+                        "Recovered after missing bumper release; hold_duration_sec={:.3f}; "
+                        "captured transcript: {}".format(
+                            max(0.0, time.time() - hold_started_at),
+                            _one_line_text(stop_resp.get("transcript", ""))
+                        )
+                    )
+                except Exception as stop_error:
+                    log_diag("WARN: Failed to stop bridge after bumper release timeout: {}".format(stop_error))
+                consumer.note_input_attempt_finished()
+                try:
+                    robot.tm.reset_hold_state()
+                    robot.tm.refresh_event_subscriptions()
+                except Exception as touch_error:
+                    log_diag("WARN: Failed to refresh touch subscriptions: {}".format(touch_error))
+                _release_turn_gate(convo, "bumper_release_timeout")
+                time.sleep(0.2)
+                continue
+
+            log_diag(
+                "Bumper release received after {:.3f}s; stopping bridge recording".format(
+                    max(0.0, time.time() - hold_started_at)
+                )
+            )
 
             # BUSY (processing/speaking)
             try:
@@ -127,17 +187,28 @@ def bumper_loop(robot, convo, consumer):
             except Exception as e:
                 vprint("WARN: set_busy_mode failed: {}".format(e))
 
+            bridge_stop_started_at = time.time()
             stop_resp = post_json(BRIDGE + "/stop", timeout=BRIDGE_STOP_TIMEOUT_SEC)
             consumer.note_input_attempt_finished()
+            log_diag(
+                "Bridge stop returned after {:.3f}s".format(
+                    max(0.0, time.time() - bridge_stop_started_at)
+                )
+            )
             turn_id = stop_resp.get("turn_id")
             raw_transcript = stop_resp.get("transcript", "")
             transcript = _one_line_text(raw_transcript)
             print("Turn {} | Participant: {}".format(turn_id, transcript))
+            log_diag(
+                "Turn {} transcript captured; nonempty={}".format(
+                    turn_id, bool(str(raw_transcript or "").strip())
+                )
+            )
 
             # If no usable speech was captured, no downstream robot reply may occur.
             # Release the turn gate here to avoid a deadlock waiting for speak_n_gest_next_level().
             if (not turn_id) or (not str(raw_transcript or "").strip()):
-                print("No valid user utterance captured; releasing turn gate.")
+                log_diag("No valid user utterance captured; releasing turn gate.")
                 _release_turn_gate(convo, "empty_or_missing_transcript")
                 time.sleep(0.05)
                 continue
@@ -149,7 +220,7 @@ def bumper_loop(robot, convo, consumer):
 
         except Exception as e:
             consumer.note_input_attempt_finished()
-            print("ERROR in bumper_loop: {}".format(e))
+            log_diag("ERROR in bumper_loop: {}".format(e))
             _release_turn_gate(convo, "bumper_loop_exception")
             time.sleep(0.2)
             continue

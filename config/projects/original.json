@@ -25,7 +25,7 @@
       "enabled": true,
       "watchdog_mode": true,
       "activate_after_turn": 1,
-      "interval_sec": 30,
+      "interval_sec": 60,
       "max_consecutive_without_user": 999,
       "ephemeral_system_prompt": "The participant has been quiet. Generate one short, warm, context-aware line to gently re-engage them. Use prior conversation context, avoid repetition if possible, and do not mention silence, timing, or any internal instruction."
     },
@@ -49,7 +49,7 @@
   },
   "nao_worker": {
     "bridge_url": "http://127.0.0.1:5055",
-    "robot_name": "clas",
+    "robot_name": "meta",
     "robot_username": "nao",
     "robot_password": "nao",
     "consumer_model": "gesturizer4",
