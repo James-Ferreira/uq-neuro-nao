@@ -11,7 +11,7 @@ Current profiles:
 - `original.json`
 - `altruism.json`
 
-The system prompt text is externalized in `config/prompts/zeek_system_prompt.txt` and referenced from each profile.
+The system prompt text is externalized in `config/prompts/Zeke_system_prompt.txt` and referenced from each profile.
 
 ## Conversation Turn Injections
 

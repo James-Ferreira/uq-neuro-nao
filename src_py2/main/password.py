@@ -93,7 +93,7 @@ if __name__ == "__main__":
     robot_1_orientation = game_condition['orientation']
 
     robot_2_identifier = "meta" if robot_1_identifier == "clas" else "clas"
-    robot_2_name = "Zork" if robot_1_name == "Zeek" else "Zeek"
+    robot_2_name = "Zork" if robot_1_name == "Zeke" else "Zeke"
     robot_2_pitch = 1 if robot_1_pitch == 0.85 else 0.85
     robot_2_orientation = "L" if robot_1_orientation == "R" else "R"
 
