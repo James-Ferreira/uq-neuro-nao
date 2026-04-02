@@ -88,7 +88,7 @@
   },
   "nao_worker": {
     "bridge_url": "http://127.0.0.1:5055",
-    "robot_name": "meta",
+    "robot_name": "clas",
     "robot_username": "nao",
     "robot_password": "nao",
     "consumer_model": "gesturizer2:latest",

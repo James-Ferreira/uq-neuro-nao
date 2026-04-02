@@ -121,6 +121,41 @@ class TestVoiceJob(unittest.TestCase):
         finally:
             shutil.rmtree(session_dir)
 
+    def test_language_metrics_include_robot_word_stats(self):
+        session_dir = tempfile.mkdtemp(prefix="voice_job_metrics_")
+        try:
+            inbox_dir = os.path.join(session_dir, "robot_inbox")
+            outbox_dir = os.path.join(session_dir, "robot_outbox")
+            os.makedirs(inbox_dir)
+            os.makedirs(outbox_dir)
+
+            with open(os.path.join(inbox_dir, "turn_0001_input.json"), "w") as f:
+                json.dump({"turn_id": 1, "user": "Hello there", "participant_duration_sec": 2.0}, f)
+            with open(os.path.join(outbox_dir, "turn_0001_output.json"), "w") as f:
+                json.dump({"turn_id": 1, "ai": "Hi there friend", "ai_duration_sec": 1.5, "latency_sec": 0.4}, f)
+
+            with open(os.path.join(inbox_dir, "turn_0002_input.json"), "w") as f:
+                json.dump({"turn_id": 2, "user": "How are you doing today", "participant_duration_sec": 4.0}, f)
+            with open(os.path.join(outbox_dir, "turn_0002_output.json"), "w") as f:
+                json.dump({"turn_id": 2, "ai": "I am doing well today thanks", "ai_duration_sec": 2.5, "latency_sec": 0.6}, f)
+
+            voice_job._write_language_metrics_summary(session_dir)
+
+            with open(os.path.join(session_dir, "session_language_metrics.json"), "r") as f:
+                summary = json.load(f)
+
+            self.assertEqual(summary["total_words"], 7)
+            self.assertEqual(summary["spoken_turn_count"], 2)
+            self.assertEqual(summary["robot_total_words"], 9)
+            self.assertEqual(summary["robot_spoken_turn_count"], 2)
+            self.assertEqual(summary["mean_words_per_turn"], 3.5)
+            self.assertEqual(summary["robot_mean_words_per_turn"], 4.5)
+            self.assertEqual(summary["word_rate_wps"], 7.0 / 6.0)
+            self.assertEqual(summary["robot_word_rate_wps"], 9.0 / 4.0)
+            self.assertEqual(summary["mean_latency_sec"], 0.5)
+        finally:
+            shutil.rmtree(session_dir)
+
 
 if __name__ == "__main__":
     unittest.main()

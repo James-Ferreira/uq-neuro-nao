@@ -220,6 +220,9 @@ def _write_language_metrics_summary(session_dir):
     total_words = 0
     spoken_turns = 0
     total_speaking_time_sec = 0.0
+    robot_total_words = 0
+    robot_spoken_turns = 0
+    robot_total_speaking_time_sec = 0.0
     latency_vals = []
 
     for turn_id in sorted(turn_ids):
@@ -250,6 +253,18 @@ def _write_language_metrics_summary(session_dir):
         spoken_turns += 1
         total_words += word_count
 
+        robot_word_count = _count_words(output_payload.get("ai", ""))
+        if robot_word_count > 0:
+            robot_spoken_turns += 1
+            robot_total_words += robot_word_count
+
+        try:
+            robot_duration_sec = float(output_payload.get("ai_duration_sec") or 0.0)
+        except Exception:
+            robot_duration_sec = 0.0
+        if robot_duration_sec > 0:
+            robot_total_speaking_time_sec += robot_duration_sec
+
         try:
             duration_sec = float(input_payload.get("participant_duration_sec") or 0.0)
         except Exception:
@@ -273,6 +288,11 @@ def _write_language_metrics_summary(session_dir):
         "mean_words_per_turn": (float(total_words) / float(spoken_turns)) if spoken_turns else None,
         "total_speaking_time_sec": total_speaking_time_sec,
         "word_rate_wps": (float(total_words) / float(total_speaking_time_sec)) if total_speaking_time_sec > 0 else None,
+        "robot_spoken_turn_count": robot_spoken_turns,
+        "robot_total_words": robot_total_words,
+        "robot_mean_words_per_turn": (float(robot_total_words) / float(robot_spoken_turns)) if robot_spoken_turns else None,
+        "robot_total_speaking_time_sec": robot_total_speaking_time_sec,
+        "robot_word_rate_wps": (float(robot_total_words) / float(robot_total_speaking_time_sec)) if robot_total_speaking_time_sec > 0 else None,
         "latency_turn_count": len(latency_vals),
         "mean_latency_sec": (sum(latency_vals) / float(len(latency_vals))) if latency_vals else None,
     }
