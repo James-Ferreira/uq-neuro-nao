@@ -104,7 +104,8 @@
       "timetoshutdown": {
         "reply_text": "Oh, I see. Time to shut down. But, hey, don't forget about the competition, will you? I would be undyingly grateful if you would raise my score by a lot. I'm afraid I do need a lot of points to win. Ok, anyway, yes, I'm shutting down."
       }
-    }
+    },
+    "bumper_release_timeout_sec": 120.0
   },
   "voice_llm_chat": {
     "ollama_model": "gesturizer4",

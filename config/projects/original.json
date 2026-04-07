@@ -56,7 +56,8 @@
     "consumer_interlocutor": null,
     "include_segments": true,
     "require_enter_before_speak": true,
-    "require_enter_for_watchdog": true
+    "require_enter_for_watchdog": true,
+    "bumper_release_timeout_sec": 120.0
   },
   "voice_llm_chat": {
     "ollama_model": "gesturizer5",
