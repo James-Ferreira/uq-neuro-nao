@@ -91,7 +91,7 @@
     "robot_name": "clas",
     "robot_username": "nao",
     "robot_password": "nao",
-    "consumer_model": "gesturizer2:latest",
+    "consumer_model": "gesturizer4",
     "consumer_interlocutor": null,
     "include_segments": false,
     "require_enter_before_speak": false,

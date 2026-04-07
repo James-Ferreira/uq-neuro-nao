@@ -897,7 +897,7 @@ class ConversationManager(object):
                 except Exception as e:
                     print("WARN: set_listening_mode failed: {}".format(e))
 
-    def converse(self, rounds=3, interlocutor="Dude", model="gesturizer2:latest", confirm=False):
+    def converse(self, rounds=3, interlocutor="Dude", model="gesturizer4", confirm=False):
             transcription = ""
 
             for i in range(rounds):
@@ -934,7 +934,7 @@ class ConversationManager(object):
                     continue
             return transcription
     
-    def converse_next_level(self, rounds=3, interlocutor="Dude", model="gesturizer2:latest", confirm=False):
+    def converse_next_level(self, rounds=3, interlocutor="Dude", model="gesturizer4", confirm=False):
             transcription = ""
 
             for i in range(rounds):

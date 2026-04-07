@@ -8,11 +8,11 @@
     "whisper_model": "small",
     "whisper_language": "en",
     "whisper_fp16": false,
-    "default_converse_model": "gesturizer4"
+    "default_converse_model": "gesturizer5"
   },
   "conversation": {
     "default_interlocutor": null,
-    "system_prompt_path": "prompts/zeek_system_prompt.txt",
+    "system_prompt_path": "prompts/zork_system_prompt.txt",
     "turn_injections": [
       {
         "id": "turn_1_dark_experience",
@@ -52,14 +52,14 @@
     "robot_name": "meta",
     "robot_username": "nao",
     "robot_password": "nao",
-    "consumer_model": "gesturizer4",
+    "consumer_model": "gesturizer5",
     "consumer_interlocutor": null,
     "include_segments": true,
     "require_enter_before_speak": true,
-    "require_enter_for_watchdog": false
+    "require_enter_for_watchdog": true
   },
   "voice_llm_chat": {
-    "ollama_model": "gesturizer4",
+    "ollama_model": "gesturizer5",
     "ollama_url": "http://localhost:11434",
     "whisper_model": "base.en",
     "sample_rate": 16000,

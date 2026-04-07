@@ -322,7 +322,7 @@ class NaoJobConsumer(object):
     def __init__(
         self,
         convo,
-        model="gesturizer2:latest",
+        model="gesturizer4",
         interlocutor=None,
         include_segments=False,
         special_commands=None,
@@ -433,9 +433,10 @@ class NaoJobConsumer(object):
             )
 
     def _wait_for_operator_enter(self, source_label):
-        if not self.require_enter_before_speak:
-            return
-        if source_label == "watchdog" and not self.require_enter_for_watchdog:
+        if source_label == "watchdog":
+            if not self.require_enter_for_watchdog:
+                return
+        elif not self.require_enter_before_speak:
             return
 
         prompt = (

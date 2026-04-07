@@ -41,6 +41,31 @@ class TestVoiceJob(unittest.TestCase):
 
     def tearDown(self):
         voice_job.transcribe.reply = self._orig_reply
+        if hasattr(voice_job, "raw_input"):
+            delattr(voice_job, "raw_input")
+
+    def test_watchdog_enter_gate_is_independent_from_turn_reply_gate(self):
+        convo = _DummyConvo()
+        consumer = voice_job.NaoJobConsumer(
+            convo,
+            require_enter_before_speak=False,
+            require_enter_for_watchdog=True,
+        )
+
+        prompts = []
+
+        def _fake_raw_input(prompt):
+            prompts.append(prompt)
+            return ""
+
+        voice_job.raw_input = _fake_raw_input
+
+        consumer._wait_for_operator_enter("turn_reply")
+        self.assertEqual(prompts, [])
+
+        consumer._wait_for_operator_enter("watchdog")
+        self.assertEqual(len(prompts), 1)
+        self.assertIn("watchdog", prompts[0])
 
     def test_empty_turn_does_not_advance_logical_turn_count(self):
         convo = _DummyConvo()
