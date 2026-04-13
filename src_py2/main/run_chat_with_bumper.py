@@ -44,6 +44,9 @@ CONSUMER_REQUIRE_ENTER_BEFORE_SPEAK = get_nested(
 CONSUMER_REQUIRE_ENTER_FOR_WATCHDOG = get_nested(
     NAO_WORKER_CFG, ["require_enter_for_watchdog"], False
 )
+CONSUMER_OPERATOR_REPLY_DELAY_CFG = get_nested(
+    NAO_WORKER_CFG, ["operator_reply_delay"], {}
+)
 WATCHDOG_CFG = get_nested(PROJECT_PROFILE, ["conversation", "watchdog"], {})
 SESSION_END_CFG = get_nested(PROJECT_PROFILE, ["conversation", "session_end"], {})
 VERBOSE = os.getenv("NAO_WORKER_VERBOSE", "0") == "1"
@@ -247,6 +250,7 @@ def main():
         session_end_cfg=SESSION_END_CFG,
         require_enter_before_speak=CONSUMER_REQUIRE_ENTER_BEFORE_SPEAK,
         require_enter_for_watchdog=CONSUMER_REQUIRE_ENTER_FOR_WATCHDOG,
+        operator_reply_delay_cfg=CONSUMER_OPERATOR_REPLY_DELAY_CFG,
     )
 
     t = threading.Thread(target=bumper_loop, args=(robot, convo, consumer))

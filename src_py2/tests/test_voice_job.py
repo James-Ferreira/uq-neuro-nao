@@ -38,11 +38,13 @@ class _DummyConvo(object):
 class TestVoiceJob(unittest.TestCase):
     def setUp(self):
         self._orig_reply = voice_job.transcribe.reply
+        self._orig_sleep = voice_job.time.sleep
 
     def tearDown(self):
-        voice_job.transcribe.reply = self._orig_reply
+        setattr(voice_job.transcribe, "reply", self._orig_reply)
+        setattr(voice_job.time, "sleep", self._orig_sleep)
         if hasattr(voice_job, "raw_input"):
-            delattr(voice_job, "raw_input")
+            delattr(voice_job, "raw_input")  # type: ignore[attr-defined]
 
     def test_watchdog_enter_gate_is_independent_from_turn_reply_gate(self):
         convo = _DummyConvo()
@@ -58,7 +60,7 @@ class TestVoiceJob(unittest.TestCase):
             prompts.append(prompt)
             return ""
 
-        voice_job.raw_input = _fake_raw_input
+        voice_job.raw_input = _fake_raw_input  # type: ignore[attr-defined]
 
         consumer._wait_for_operator_enter("turn_reply")
         self.assertEqual(prompts, [])
@@ -66,6 +68,42 @@ class TestVoiceJob(unittest.TestCase):
         consumer._wait_for_operator_enter("watchdog")
         self.assertEqual(len(prompts), 1)
         self.assertIn("watchdog", prompts[0])
+
+    def test_turn_reply_gate_can_auto_release_with_typing_delay(self):
+        convo = _DummyConvo()
+        consumer = voice_job.NaoJobConsumer(
+            convo,
+            require_enter_before_speak=True,
+            require_enter_for_watchdog=True,
+            operator_reply_delay_cfg={
+                "enabled": True,
+                "characters_per_minute": 120.0,
+                "min_sec": 1.0,
+                "max_sec": 10.0,
+            },
+        )
+
+        prompts = []
+        sleeps = []
+
+        def _fake_raw_input(prompt):
+            prompts.append(prompt)
+            return ""
+
+        def _fake_sleep(delay_sec):
+            sleeps.append(delay_sec)
+
+        voice_job.raw_input = _fake_raw_input  # type: ignore[attr-defined]
+        setattr(voice_job.time, "sleep", _fake_sleep)
+
+        consumer._wait_for_operator_enter("turn_reply", "hello")
+        self.assertEqual(prompts, [])
+        self.assertEqual(sleeps, [2.5])
+
+        consumer._wait_for_operator_enter("watchdog", "hello")
+        self.assertEqual(len(prompts), 1)
+        self.assertIn("watchdog", prompts[0])
+        self.assertEqual(sleeps, [2.5])
 
     def test_empty_turn_does_not_advance_logical_turn_count(self):
         convo = _DummyConvo()
@@ -84,7 +122,7 @@ class TestVoiceJob(unittest.TestCase):
             seen_turn_counts.append(turn_count)
             return [["Test reply", None, None, 1.0]]
 
-        voice_job.transcribe.reply = _fake_reply
+        setattr(voice_job.transcribe, "reply", _fake_reply)
 
         empty_result = consumer.handle_input_job({
             "turn_id": 1,

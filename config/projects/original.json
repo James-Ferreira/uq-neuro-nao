@@ -57,6 +57,12 @@
     "include_segments": true,
     "require_enter_before_speak": true,
     "require_enter_for_watchdog": true,
+    "operator_reply_delay": {
+      "enabled": true,
+      "characters_per_minute": 375.0,
+      "min_sec": 0.75,
+      "max_sec": 4.0
+    },
     "bumper_release_timeout_sec": 120.0
   },
   "voice_llm_chat": {
@@ -72,6 +78,12 @@
     "robot_inbox_dirname": "robot_inbox",
     "wait_for_nao_done": true,
     "nao_done_timeout_sec": 30.0,
-    "use_nao_backend": true
+    "use_nao_backend": true,
+    "operator_reply_delay": {
+      "enabled": true,
+      "characters_per_minute": 375.0,
+      "min_sec": 0.75,
+      "max_sec": 4.0
+    }
   }
 }

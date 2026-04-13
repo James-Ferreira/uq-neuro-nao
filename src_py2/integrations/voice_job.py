@@ -2,12 +2,14 @@ import os, time, json, re
 from datetime import datetime
 import src_py2.api.transcribe as transcribe
 
+try:
+    from time import monotonic as _watchdog_clock
+except ImportError:
+    _watchdog_clock = time.time
+
 
 def _now_watchdog_clock():
-    mono = getattr(time, "monotonic", None)
-    if callable(mono):
-        return mono()
-    return time.time()
+    return float(_watchdog_clock())
 
 
 def _list_input_jobs(inbox_dir):
@@ -318,6 +320,15 @@ def _as_bool(value, default=False):
     return default
 
 
+def _as_float(value, default=0.0):
+    try:
+        if isinstance(value, (int, float)):
+            return float(value)
+        return float(str(value).strip())
+    except Exception:
+        return float(default)
+
+
 class NaoJobConsumer(object):
     def __init__(
         self,
@@ -330,6 +341,7 @@ class NaoJobConsumer(object):
         session_end_cfg=None,
         require_enter_before_speak=False,
         require_enter_for_watchdog=False,
+        operator_reply_delay_cfg=None,
     ):
         """
         convo: your NAO-side ConversationManager (or equivalent) defining speak_n_gest_next_level(...)
@@ -421,6 +433,19 @@ class NaoJobConsumer(object):
 
         self.require_enter_before_speak = _as_bool(require_enter_before_speak, False)
         self.require_enter_for_watchdog = _as_bool(require_enter_for_watchdog, False)
+        operator_reply_delay_cfg = operator_reply_delay_cfg or {}
+        self.operator_reply_delay_enabled = _as_bool(
+            operator_reply_delay_cfg.get("enabled", False), False
+        )
+        self.operator_reply_delay_cpm = _as_float(
+            operator_reply_delay_cfg.get("characters_per_minute", 300), 300.0
+        )
+        self.operator_reply_delay_min_sec = _as_float(
+            operator_reply_delay_cfg.get("min_sec", 0.75), 0.75
+        )
+        self.operator_reply_delay_max_sec = _as_float(
+            operator_reply_delay_cfg.get("max_sec", 4.0), 4.0
+        )
 
         env_gate = os.getenv("NAO_REQUIRE_ENTER_BEFORE_SPEAK")
         if env_gate is not None:
@@ -432,12 +457,52 @@ class NaoJobConsumer(object):
                 env_watchdog_gate, self.require_enter_for_watchdog
             )
 
-    def _wait_for_operator_enter(self, source_label):
+        env_delay = os.getenv("NAO_OPERATOR_REPLY_DELAY_ENABLED")
+        if env_delay is not None:
+            self.operator_reply_delay_enabled = _as_bool(
+                env_delay, self.operator_reply_delay_enabled
+            )
+
+        env_cpm = os.getenv("NAO_OPERATOR_REPLY_DELAY_CPM")
+        if env_cpm is not None:
+            self.operator_reply_delay_cpm = _as_float(env_cpm, self.operator_reply_delay_cpm)
+
+    def _operator_reply_delay_sec(self, text):
+        if not self.operator_reply_delay_enabled:
+            return -1.0
+        cpm = _as_float(self.operator_reply_delay_cpm, 0.0)
+        min_sec = _as_float(self.operator_reply_delay_min_sec, 0.0)
+        max_sec = _as_float(self.operator_reply_delay_max_sec, 0.0)
+        if cpm <= 0:
+            return -1.0
+        char_count = len(str(text or "").strip())
+        if char_count <= 0:
+            return 0.0
+        delay = (float(char_count) / cpm) * 60.0
+        delay = max(min_sec, delay)
+        if max_sec > 0:
+            delay = min(max_sec, delay)
+        return max(0.0, delay)
+
+    def _wait_for_operator_enter(self, source_label, reply_text=None):
         if source_label == "watchdog":
             if not self.require_enter_for_watchdog:
                 return
         elif not self.require_enter_before_speak:
             return
+
+        if source_label == "turn_reply":
+            delay_sec = self._operator_reply_delay_sec(reply_text)
+            if delay_sec >= 0.0:
+                print(
+                    "\n[operator_gate] Reply is ready ({src}). "
+                    "Auto-releasing after {delay:.3f}s typing delay... ".format(
+                        src=source_label,
+                        delay=delay_sec,
+                    )
+                )
+                time.sleep(delay_sec)
+                return
 
         prompt = (
             "\n[operator_gate] Reply is ready ({src}). "
@@ -445,7 +510,7 @@ class NaoJobConsumer(object):
         ).format(src=source_label)
 
         try:
-            raw_input(prompt)
+            raw_input(prompt)  # type: ignore
         except EOFError:
             print("[operator_gate] stdin unavailable; continuing without Enter confirmation.")
         except Exception as e:
@@ -588,16 +653,18 @@ class NaoJobConsumer(object):
         raise RuntimeError("unknown special action: {}".format(action))
 
     def _session_elapsed_sec(self):
-        return max(0.0, _now_watchdog_clock() - self._session_started_mono)
+        started_mono = float(self._session_started_mono or _now_watchdog_clock())
+        return max(0.0, _now_watchdog_clock() - started_mono)
 
     def _is_session_end_due(self):
         if not self.session_end_enabled:
             return False
         if self._session_end_announced:
             return False
-        if self.session_end_after_sec <= 0:
+        after_sec = float(self.session_end_after_sec or 0.0)
+        if after_sec <= 0:
             return False
-        return self._session_elapsed_sec() >= self.session_end_after_sec
+        return self._session_elapsed_sec() >= after_sec
 
     def _append_session_final_line(self, segments_list):
         if (not self.session_end_append_final_line) or (not self.session_end_final_line):
@@ -658,7 +725,16 @@ class NaoJobConsumer(object):
         self._last_robot_finish_mono = _now_watchdog_clock()
         self._last_robot_finish_at = _now_iso_local()
         if self.watchdog_enabled and int(self.turn_count or 0) >= self.watchdog_activate_after_turn:
-            self._watchdog_due_mono = self._last_robot_finish_mono + self.watchdog_interval_sec
+            last_finish_mono = float(self._last_robot_finish_mono or _now_watchdog_clock())
+            self._watchdog_due_mono = last_finish_mono + self._watchdog_interval()
+
+    def _watchdog_interval(self):  # type: () -> float
+        return float(self.watchdog_interval_sec or 30.0)
+
+    def _set_watchdog_due_after_interval(self, start_mono=None):
+        if start_mono is None:
+            start_mono = _now_watchdog_clock()
+        self._watchdog_due_mono = float(start_mono) + self._watchdog_interval()
 
     def _note_input_job_seen(self):
         self._last_input_job_seen_mono = _now_watchdog_clock()
@@ -732,14 +808,15 @@ class NaoJobConsumer(object):
         if self._watchdog_consecutive_without_user >= self.watchdog_max_consecutive:
             return False
         if self._watchdog_due_mono is None:
-            self._watchdog_due_mono = self._last_robot_finish_mono + self.watchdog_interval_sec
-        if _now_watchdog_clock() < self._watchdog_due_mono:
+            self._set_watchdog_due_after_interval(self._last_robot_finish_mono)
+        due_mono = _as_float(self._watchdog_due_mono, 0.0)
+        if _now_watchdog_clock() < due_mono:
             return False
 
         try:
             segments_list = self._generate_watchdog_segments()
         except Exception as e:
-            self._watchdog_due_mono = _now_watchdog_clock() + self.watchdog_interval_sec
+            self._set_watchdog_due_after_interval()
             self._write_watchdog_event({
                 "ts": _now_iso_local(),
                 "event": "watchdog_generation_error",
@@ -750,7 +827,7 @@ class NaoJobConsumer(object):
             return False
 
         if not segments_list:
-            self._watchdog_due_mono = _now_watchdog_clock() + self.watchdog_interval_sec
+            self._set_watchdog_due_after_interval()
             self._write_watchdog_event({
                 "ts": _now_iso_local(),
                 "event": "watchdog_empty_generation",
@@ -763,7 +840,7 @@ class NaoJobConsumer(object):
             self._wait_for_operator_enter("watchdog")
             self.convo.speak_n_gest_next_level(segments_list, leds=True)
         except Exception as e:
-            self._watchdog_due_mono = _now_watchdog_clock() + self.watchdog_interval_sec
+            self._set_watchdog_due_after_interval()
             self._write_watchdog_event({
                 "ts": _now_iso_local(),
                 "event": "watchdog_speak_error",
@@ -908,7 +985,8 @@ class NaoJobConsumer(object):
 
         # Speak + gesture
         try:
-            self._wait_for_operator_enter("turn_reply")
+            robot_text = _segments_to_text(segments_list)
+            self._wait_for_operator_enter("turn_reply", robot_text)
             self.convo.speak_n_gest_next_level(segments_list, leds=True)
         except Exception as e:
             self._release_turn_gate_if_held("speak_n_gest_error")
@@ -916,7 +994,6 @@ class NaoJobConsumer(object):
             return result
 
         # Produce trimmed logging outputs
-        robot_text = _segments_to_text(segments_list)
         dur_sec = _segments_to_duration_sec(segments_list)
 
         result["ai"] = robot_text
