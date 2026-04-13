@@ -90,7 +90,7 @@
     "hint_model": "llama3.1:8b",
     "hobby_model": "llama3.1:8b"
   },
-  "nao_worker": {
+  "robot_chat": {
     "bridge_url": "http://127.0.0.1:5055",
     "robot_name": "clas",
     "robot_username": "nao",
@@ -110,19 +110,21 @@
       }
     }
   },
-  "voice_llm_chat": {
-    "ollama_model": "gesturizer4",
-    "ollama_url": "http://localhost:11434",
+  "voice_client": {
     "whisper_model": "base.en",
     "sample_rate": 16000,
-    "connect_timeout_sec": 3.0,
-    "read_timeout_sec": 120.0,
     "min_utterance_sec": 0.5,
     "silence_rms_threshold": 0.005,
     "robot_outbox_dirname": "robot_outbox",
     "robot_inbox_dirname": "robot_inbox",
-    "wait_for_nao_done": true,
-    "nao_done_timeout_sec": 30.0,
-    "use_nao_backend": true
+    "wait_for_robot_done": true,
+    "robot_done_timeout_sec": 30.0,
+    "chat_pipeline": "robot_chat"
+  },
+  "computer_chat": {
+    "ollama_model": "gesturizer4",
+    "ollama_url": "http://localhost:11434",
+    "connect_timeout_sec": 3.0,
+    "read_timeout_sec": 120.0
   }
 }

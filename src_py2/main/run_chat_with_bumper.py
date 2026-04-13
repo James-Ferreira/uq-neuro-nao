@@ -20,36 +20,36 @@ def default_sessions_root():
     return os.path.join(repos_parent, "voice-llm-chat", "sessions")
 
 PROJECT_PROFILE = load_active_project_profile()
-NAO_WORKER_CFG = PROJECT_PROFILE.get("nao_worker", {})
-SESSIONS_ROOT = get_nested(NAO_WORKER_CFG, ["sessions_root"], default_sessions_root())
+ROBOT_CHAT_CFG = PROJECT_PROFILE.get("robot_chat", {})
+SESSIONS_ROOT = get_nested(ROBOT_CHAT_CFG, ["sessions_root"], default_sessions_root())
 
 CURRENT_SESSION_FILENAME = "CURRENT_SESSION.txt"
 
-BRIDGE = get_nested(NAO_WORKER_CFG, ["bridge_url"], "http://127.0.0.1:5055")
-BRIDGE_START_TIMEOUT_SEC = float(get_nested(NAO_WORKER_CFG, ["bridge_start_timeout_sec"], 10.0))
-BRIDGE_STOP_TIMEOUT_SEC = float(get_nested(NAO_WORKER_CFG, ["bridge_stop_timeout_sec"], 120.0))
+BRIDGE = get_nested(ROBOT_CHAT_CFG, ["bridge_url"], "http://127.0.0.1:5055")
+BRIDGE_START_TIMEOUT_SEC = float(get_nested(ROBOT_CHAT_CFG, ["bridge_start_timeout_sec"], 10.0))
+BRIDGE_STOP_TIMEOUT_SEC = float(get_nested(ROBOT_CHAT_CFG, ["bridge_stop_timeout_sec"], 120.0))
 BUMPER_RELEASE_TIMEOUT_SEC = float(
-    get_nested(NAO_WORKER_CFG, ["bumper_release_timeout_sec"], 15.0)
+    get_nested(ROBOT_CHAT_CFG, ["bumper_release_timeout_sec"], 15.0)
 )
-ROBOT_NAME = get_nested(NAO_WORKER_CFG, ["robot_name"], "clas")
-ROBOT_USERNAME = get_nested(NAO_WORKER_CFG, ["robot_username"], "nao")
-ROBOT_PASSWORD = get_nested(NAO_WORKER_CFG, ["robot_password"], "nao")
-CONSUMER_MODEL = get_nested(NAO_WORKER_CFG, ["consumer_model"], "gesturizer4")
-CONSUMER_INTERLOCUTOR = get_nested(NAO_WORKER_CFG, ["consumer_interlocutor"], None)
-CONSUMER_INCLUDE_SEGMENTS = bool(get_nested(NAO_WORKER_CFG, ["include_segments"], False))
-CONSUMER_SPECIAL_COMMANDS = get_nested(NAO_WORKER_CFG, ["special_commands"], None)
+ROBOT_NAME = get_nested(ROBOT_CHAT_CFG, ["robot_name"], "clas")
+ROBOT_USERNAME = get_nested(ROBOT_CHAT_CFG, ["robot_username"], "nao")
+ROBOT_PASSWORD = get_nested(ROBOT_CHAT_CFG, ["robot_password"], "nao")
+CONSUMER_MODEL = get_nested(ROBOT_CHAT_CFG, ["consumer_model"], "gesturizer4")
+CONSUMER_INTERLOCUTOR = get_nested(ROBOT_CHAT_CFG, ["consumer_interlocutor"], None)
+CONSUMER_INCLUDE_SEGMENTS = bool(get_nested(ROBOT_CHAT_CFG, ["include_segments"], False))
+CONSUMER_SPECIAL_COMMANDS = get_nested(ROBOT_CHAT_CFG, ["special_commands"], None)
 CONSUMER_REQUIRE_ENTER_BEFORE_SPEAK = get_nested(
-    NAO_WORKER_CFG, ["require_enter_before_speak"], False
+    ROBOT_CHAT_CFG, ["require_enter_before_speak"], False
 )
 CONSUMER_REQUIRE_ENTER_FOR_WATCHDOG = get_nested(
-    NAO_WORKER_CFG, ["require_enter_for_watchdog"], False
+    ROBOT_CHAT_CFG, ["require_enter_for_watchdog"], False
 )
 CONSUMER_OPERATOR_REPLY_DELAY_CFG = get_nested(
-    NAO_WORKER_CFG, ["operator_reply_delay"], {}
+    ROBOT_CHAT_CFG, ["operator_reply_delay"], {}
 )
 WATCHDOG_CFG = get_nested(PROJECT_PROFILE, ["conversation", "watchdog"], {})
 SESSION_END_CFG = get_nested(PROJECT_PROFILE, ["conversation", "session_end"], {})
-VERBOSE = os.getenv("NAO_WORKER_VERBOSE", "0") == "1"
+VERBOSE = os.getenv("ROBOT_CHAT_VERBOSE", "0") == "1"
 
 
 def vprint(msg):
