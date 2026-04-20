@@ -237,6 +237,8 @@ def main():
     robot = NAORobot(ROBOT_NAME, usrnme=ROBOT_USERNAME, pword=ROBOT_PASSWORD)
     robot.mm.sit()
     robot.mm.repose(False)
+    time.sleep(1.2)
+    robot.mm.loose()
 
     convo = ConversationManager(robot)
 

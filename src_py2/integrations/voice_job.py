@@ -356,6 +356,7 @@ class NaoJobConsumer(object):
         self.history = []   # [{"role":"user"/"assistant", "content": "..."}]
         self.turn_count = 0
         self.current_turn_id = None
+        self._robot_stiffened_for_speech = False
         self.special_commands = {
             "gotosleeplittlerobot": {
                 "reply_text": "Going to sleep now.",
@@ -542,6 +543,18 @@ class NaoJobConsumer(object):
         words = [w for w in (text or "").strip().split() if w]
         return max(2.5, 0.45 * len(words))
 
+    def _ensure_robot_stiff_for_speech(self):
+        if self._robot_stiffened_for_speech:
+            return
+        if self.robot is None or getattr(self.robot, "mm", None) is None:
+            raise RuntimeError("robot motion manager unavailable")
+        self.robot.mm.stiff()
+        self._robot_stiffened_for_speech = True
+
+    def _speak_segments(self, segments_list, leds=True):
+        self._ensure_robot_stiff_for_speech()
+        return self.convo.speak_n_gest_next_level(segments_list, leds=leds)
+
     def _handle_system_say_job(self, job):
         text = (job.get("text") or "").strip()
         result = {
@@ -566,7 +579,7 @@ class NaoJobConsumer(object):
         segments_list = [[text, None, None, self._estimate_script_duration(text)]]
         try:
             self._wait_for_operator_enter("system_say")
-            self.convo.speak_n_gest_next_level(segments_list, leds=True)
+            self._speak_segments(segments_list, leds=True)
             self._note_robot_utterance_finished()
             result["ok"] = True
             result["robot_finish_at"] = self._last_robot_finish_at
@@ -616,7 +629,7 @@ class NaoJobConsumer(object):
 
         t0 = time.time()
         self._wait_for_operator_enter("special_command")
-        self.convo.speak_n_gest_next_level(scripted_segments, leds=True)
+        self._speak_segments(scripted_segments, leds=True)
         try:
             self._perform_robot_action(action)
 
@@ -838,7 +851,7 @@ class NaoJobConsumer(object):
 
         try:
             self._wait_for_operator_enter("watchdog")
-            self.convo.speak_n_gest_next_level(segments_list, leds=True)
+            self._speak_segments(segments_list, leds=True)
         except Exception as e:
             self._set_watchdog_due_after_interval()
             self._write_watchdog_event({
@@ -987,7 +1000,7 @@ class NaoJobConsumer(object):
         try:
             robot_text = _segments_to_text(segments_list)
             self._wait_for_operator_enter("turn_reply", robot_text)
-            self.convo.speak_n_gest_next_level(segments_list, leds=True)
+            self._speak_segments(segments_list, leds=True)
         except Exception as e:
             self._release_turn_gate_if_held("speak_n_gest_error")
             result["error"] = "speak_n_gest_next_level raised: {}".format(e)
