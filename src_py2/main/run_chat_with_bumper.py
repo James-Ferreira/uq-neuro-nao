@@ -236,6 +236,8 @@ def main():
 
     robot = NAORobot(ROBOT_NAME, usrnme=ROBOT_USERNAME, pword=ROBOT_PASSWORD)
     robot.mm.sit()
+    if ROBOT_NAME.lower() == "clas":
+        robot.mm.loose_rarm()
     robot.mm.repose(False)
 
     convo = ConversationManager(robot)

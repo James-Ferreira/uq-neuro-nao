@@ -148,6 +148,18 @@ class MotionManager:
         # Set looseness to full body
         for part in body_parts:
             self.motion.setStiffnesses(part, 0.0)
+
+    def loose_rarm(self):
+        try:
+            # Kill any active tasks using the right arm first
+            self.motion.killTasksUsingResources([
+                "RShoulderPitch", "RShoulderRoll", "RElbowYaw",
+                "RElbowRoll", "RWristYaw", "RHand"
+            ])
+        except Exception:
+            pass
+        # Then relax the arm
+        self.motion.setStiffnesses("RArm", 0.0)
            
     def stiff(self):
         # Body parts to keep stiff (hips and legs)
