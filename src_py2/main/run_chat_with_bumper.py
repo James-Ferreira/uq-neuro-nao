@@ -239,6 +239,8 @@ def main():
     if ROBOT_NAME.lower() == "clas":
         robot.mm.loose_rarm()
     robot.mm.repose(False)
+    time.sleep(1.2)
+    robot.mm.loose()
 
     convo = ConversationManager(robot)
 
