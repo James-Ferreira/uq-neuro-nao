@@ -236,11 +236,13 @@ def main():
     session_dir = wait_for_current_session(SESSIONS_ROOT)
 
     robot = NAORobot(ROBOT_NAME, usrnme=ROBOT_USERNAME, pword=ROBOT_PASSWORD)
-    robot.mm.sit()
-    if ROBOT_NAME.lower() == "clas":
-        robot.mm.loose_rarm()
+
+    if ROBOT_NAME.lower() == "meta":
+        robot.mm.sit()
+        robot.mm.repose(False)
+    else:
+        #robot.mm.loose_rarm()
         dismiss_arm_warning(robot.ip, robot.port)
-    robot.mm.repose(False)
 
     convo = ConversationManager(robot)
 
