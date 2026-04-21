@@ -3,6 +3,7 @@ import os, time, json, urllib2, threading
 from src_py2.integrations.voice_job import NaoJobConsumer
 from src_py2.robot.nao_robot import NAORobot
 from src_py2.robot.conversation_manager import ConversationManager
+from src_py2.robot.notification_manager import dismiss_arm_warning
 from config.project_loader import load_active_project_profile, get_nested
 
 # --- Machine-agnostic sessions root (derive from repo structure) ---
@@ -238,9 +239,8 @@ def main():
     robot.mm.sit()
     if ROBOT_NAME.lower() == "clas":
         robot.mm.loose_rarm()
+        dismiss_arm_warning(robot.ip, robot.port)
     robot.mm.repose(False)
-    time.sleep(1.2)
-    robot.mm.loose()
 
     convo = ConversationManager(robot)
 
