@@ -239,7 +239,10 @@ def main():
 
     if ROBOT_NAME.lower() == "meta":
         robot.mm.sit()
+        time.sleep(1)
         robot.mm.repose(False)
+        time.sleep(1)
+        robot.mm.loose()
     else:
         #robot.mm.loose_rarm()
         dismiss_arm_warning(robot.ip, robot.port)
