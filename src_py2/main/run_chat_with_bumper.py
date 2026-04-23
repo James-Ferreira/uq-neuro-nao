@@ -50,6 +50,9 @@ CONSUMER_OPERATOR_REPLY_DELAY_CFG = get_nested(
 )
 WATCHDOG_CFG = get_nested(PROJECT_PROFILE, ["conversation", "watchdog"], {})
 SESSION_END_CFG = get_nested(PROJECT_PROFILE, ["conversation", "session_end"], {})
+NON_CONTINGENT_FIXED_REPLIES_PATH = get_nested(
+    PROJECT_PROFILE, ["conversation", "non_contingent_fixed_replies_path"], None
+)
 VERBOSE = os.getenv("ROBOT_CHAT_VERBOSE", "0") == "1"
 
 
@@ -60,6 +63,49 @@ def vprint(msg):
 def log_diag(message):
     stamp = time.strftime("%Y-%m-%d %H:%M:%S")
     print("[BUMPER {}] {}".format(stamp, message))
+
+
+def _prompt_contingency_condition():
+    project_id = str(PROJECT_PROFILE.get("_project_id") or "").strip().lower()
+    if project_id != "contingency":
+        return None
+
+    while True:
+        choice = raw_input(
+            "Enter condition (`contingent`/`non-contingent`): "
+        ).strip().lower()  # type: ignore
+        if choice in ("contingent", "c"):
+            return "contingent"
+        if choice in ("non-contingent", "noncontingent", "n"):
+            return "non-contingent"
+        print("Please enter `contingent` or `non-contingent`.")
+
+
+def _load_non_contingent_fixed_replies():
+    rel_path = str(NON_CONTINGENT_FIXED_REPLIES_PATH or "").strip()
+    if not rel_path:
+        return {}
+
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    path = os.path.join(repo_root, "config", rel_path)
+    if not os.path.isfile(path):
+        raise RuntimeError("Fixed replies file not found: {}".format(path))
+
+    with open(path, "r") as f:
+        payload = json.load(f)
+
+    if not isinstance(payload, dict):
+        raise RuntimeError("Fixed replies file must contain a JSON object: {}".format(path))
+
+    fixed_replies = {}
+    for key, value in payload.items():
+        try:
+            turn_num = int(key)
+        except Exception:
+            raise RuntimeError("Invalid fixed reply turn key '{}': {}".format(key, path))
+        fixed_replies[turn_num] = str(value)
+
+    return fixed_replies
 
 def _one_line_text(s):
     txt = (s or "").strip()
@@ -234,6 +280,10 @@ def bumper_loop(robot, convo, consumer):
 def main():
     print("Active project profile: {}".format(PROJECT_PROFILE.get("_project_id")))
     session_dir = wait_for_current_session(SESSIONS_ROOT)
+    condition = _prompt_contingency_condition()
+    non_contingent_fixed_replies = {}
+    if condition == "non-contingent":
+        non_contingent_fixed_replies = _load_non_contingent_fixed_replies()
 
     robot = NAORobot(ROBOT_NAME, usrnme=ROBOT_USERNAME, pword=ROBOT_PASSWORD)
 
@@ -260,6 +310,8 @@ def main():
         require_enter_before_speak=CONSUMER_REQUIRE_ENTER_BEFORE_SPEAK,
         require_enter_for_watchdog=CONSUMER_REQUIRE_ENTER_FOR_WATCHDOG,
         operator_reply_delay_cfg=CONSUMER_OPERATOR_REPLY_DELAY_CFG,
+        contingency_condition=condition,
+        non_contingent_fixed_replies=non_contingent_fixed_replies,
     )
 
     t = threading.Thread(target=bumper_loop, args=(robot, convo, consumer))

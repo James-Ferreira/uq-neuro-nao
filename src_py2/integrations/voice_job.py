@@ -342,6 +342,8 @@ class NaoJobConsumer(object):
         require_enter_before_speak=False,
         require_enter_for_watchdog=False,
         operator_reply_delay_cfg=None,
+        contingency_condition=None,
+        non_contingent_fixed_replies=None,
     ):
         """
         convo: your NAO-side ConversationManager (or equivalent) defining speak_n_gest_next_level(...)
@@ -447,6 +449,8 @@ class NaoJobConsumer(object):
         self.operator_reply_delay_max_sec = _as_float(
             operator_reply_delay_cfg.get("max_sec", 4.0), 4.0
         )
+        self.contingency_condition = str(contingency_condition or "").strip().lower() or None
+        self.non_contingent_fixed_replies = dict(non_contingent_fixed_replies or {})
 
         env_gate = os.getenv("NAO_REQUIRE_ENTER_BEFORE_SPEAK")
         if env_gate is not None:
@@ -542,6 +546,18 @@ class NaoJobConsumer(object):
     def _estimate_script_duration(self, text):
         words = [w for w in (text or "").strip().split() if w]
         return max(2.5, 0.45 * len(words))
+
+    def _fixed_reply_for_turn(self, turn_num):
+        if self.contingency_condition != "non-contingent":
+            return None
+        try:
+            turn_num = int(turn_num)
+        except Exception:
+            return None
+        reply = self.non_contingent_fixed_replies.get(turn_num)
+        if reply is None:
+            return None
+        return str(reply).strip() or None
 
     def _ensure_robot_stiff_for_speech(self):
         if self._robot_stiffened_for_speech:
@@ -966,22 +982,33 @@ class NaoJobConsumer(object):
             session_end_ephemeral_system = self.session_end_model_closing_instruction
             result["session_end_model_closing_instruction_applied"] = True
 
+        fixed_reply_text = self._fixed_reply_for_turn(int(self.turn_count or 0) + 1)
+
         # Get gesturized segments list from local Py3 API
-        try:
-            segments_list = transcribe.reply(
-                "",
-                self.model,
-                self.interlocutor,
-                list,
-                int(self.turn_count or 0) + 1,
-                prompt=user_text,
-                history=self.history,
-                ephemeral_system=session_end_ephemeral_system,
-            )
-        except Exception as e:
-            self._release_turn_gate_if_held("transcribe_reply_error")
-            result["error"] = "transcribe.reply raised: {}".format(e)
-            return result
+        if fixed_reply_text is not None:
+            segments_list = [[
+                fixed_reply_text,
+                None,
+                None,
+                self._estimate_script_duration(fixed_reply_text),
+            ]]
+            result["fixed_reply_applied"] = True
+        else:
+            try:
+                segments_list = transcribe.reply(
+                    "",
+                    self.model,
+                    self.interlocutor,
+                    list,
+                    int(self.turn_count or 0) + 1,
+                    prompt=user_text,
+                    history=self.history,
+                    ephemeral_system=session_end_ephemeral_system,
+                )
+            except Exception as e:
+                self._release_turn_gate_if_held("transcribe_reply_error")
+                result["error"] = "transcribe.reply raised: {}".format(e)
+                return result
 
         if not segments_list:
             self._release_turn_gate_if_held("empty_segments_list")
