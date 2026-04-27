@@ -35,6 +35,11 @@ BUMPER_RELEASE_TIMEOUT_SEC = float(
 ROBOT_NAME = get_nested(ROBOT_CHAT_CFG, ["robot_name"], "clas")
 ROBOT_USERNAME = get_nested(ROBOT_CHAT_CFG, ["robot_username"], "nao")
 ROBOT_PASSWORD = get_nested(ROBOT_CHAT_CFG, ["robot_password"], "nao")
+ROBOT_DISABLE_MOTION = bool(get_nested(
+    ROBOT_CHAT_CFG,
+    ["disable_motion"],
+    ROBOT_NAME.lower() == "clas"
+))
 CONSUMER_MODEL = get_nested(ROBOT_CHAT_CFG, ["consumer_model"], "gesturizer4")
 CONSUMER_INTERLOCUTOR = get_nested(ROBOT_CHAT_CFG, ["consumer_interlocutor"], None)
 CONSUMER_INCLUDE_SEGMENTS = bool(get_nested(ROBOT_CHAT_CFG, ["include_segments"], False))
@@ -47,6 +52,9 @@ CONSUMER_REQUIRE_ENTER_FOR_WATCHDOG = get_nested(
 )
 CONSUMER_OPERATOR_REPLY_DELAY_CFG = get_nested(
     ROBOT_CHAT_CFG, ["operator_reply_delay"], {}
+)
+CONSUMER_FIXED_REPLY_DELAY_CFG = get_nested(
+    ROBOT_CHAT_CFG, ["fixed_reply_delay"], {}
 )
 WATCHDOG_CFG = get_nested(PROJECT_PROFILE, ["conversation", "watchdog"], {})
 SESSION_END_CFG = get_nested(PROJECT_PROFILE, ["conversation", "session_end"], {})
@@ -286,8 +294,9 @@ def main():
         non_contingent_fixed_replies = _load_non_contingent_fixed_replies()
 
     robot = NAORobot(ROBOT_NAME, usrnme=ROBOT_USERNAME, pword=ROBOT_PASSWORD)
+    robot.disable_motion_for_chat = ROBOT_DISABLE_MOTION
 
-    if ROBOT_NAME.lower() == "meta":
+    if ROBOT_NAME.lower() == "meta" and not ROBOT_DISABLE_MOTION:
         robot.mm.sit()
         time.sleep(1)
         robot.mm.repose(False)
@@ -310,6 +319,7 @@ def main():
         require_enter_before_speak=CONSUMER_REQUIRE_ENTER_BEFORE_SPEAK,
         require_enter_for_watchdog=CONSUMER_REQUIRE_ENTER_FOR_WATCHDOG,
         operator_reply_delay_cfg=CONSUMER_OPERATOR_REPLY_DELAY_CFG,
+        fixed_reply_delay_cfg=CONSUMER_FIXED_REPLY_DELAY_CFG,
         contingency_condition=condition,
         non_contingent_fixed_replies=non_contingent_fixed_replies,
     )

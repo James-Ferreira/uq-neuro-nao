@@ -11,6 +11,9 @@ class MotionManager:
         self.motion = robot.motion
         self.reversed = robot.reversed
 
+    def motion_disabled_for_chat(self):
+        return bool(getattr(self.nao, "disable_motion_for_chat", False))
+
     def crouch(self, post=None):
         speed = 0.75
         if post == 1:
@@ -33,6 +36,8 @@ class MotionManager:
             self.nao.posture.goToPosture('LyingBelly', speed)
 
     def sit(self, post=False):
+        if self.motion_disabled_for_chat():
+            return
         speed = 0.75
         if post == True:
             self.nao.posture.post.goToPosture('Sit', speed)
@@ -48,6 +53,8 @@ class MotionManager:
             self.use_motion_library('sit_gently', post=post)
    
     def sit_relax(self, post=None):
+        if self.motion_disabled_for_chat():
+            return
         speed = 0.75
         if post == 1:
             self.nao.posture.post.goToPosture('SitRelax', speed)
@@ -84,6 +91,8 @@ class MotionManager:
         self.motion.post.angleInterpolation(motion_library.joint_names_list, joint_angles, time_points, True)
 
     def execute_motion(self, reverse, joint_angles, time_points, post=False):
+        if self.motion_disabled_for_chat():
+            return
         # print("{}'s reverse = {}".format(self.nao.name, reverse))
 
         joints = mirror_joint_names(motion_library.joint_names_list) if reverse else motion_library.joint_names_list
@@ -162,6 +171,8 @@ class MotionManager:
         self.motion.setStiffnesses("RArm", 0.0)
            
     def stiff(self):
+        if self.motion_disabled_for_chat():
+            return
         # Body parts to keep stiff (hips and legs)
         body_parts = [
             "Head", "LArm", "RArm",
@@ -279,7 +290,7 @@ class MotionManager:
             time.sleep(3)
             
             # Ensure the robot is in the sitting posture
-            self.nao.posture.goToPosture("Sit", 0.5)  
+            self.nao.posture.goToPosture("Sit", 0.5)
     
         else:
             print('Current posture, {}, is incompatible with requested animation.'.format(current_posture))

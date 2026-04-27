@@ -342,6 +342,7 @@ class NaoJobConsumer(object):
         require_enter_before_speak=False,
         require_enter_for_watchdog=False,
         operator_reply_delay_cfg=None,
+        fixed_reply_delay_cfg=None,
         contingency_condition=None,
         non_contingent_fixed_replies=None,
     ):
@@ -449,6 +450,22 @@ class NaoJobConsumer(object):
         self.operator_reply_delay_max_sec = _as_float(
             operator_reply_delay_cfg.get("max_sec", 4.0), 4.0
         )
+        fixed_reply_delay_cfg = fixed_reply_delay_cfg or {}
+        self.fixed_reply_delay_enabled = _as_bool(
+            fixed_reply_delay_cfg.get("enabled", False), False
+        )
+        self.fixed_reply_delay_base_sec = _as_float(
+            fixed_reply_delay_cfg.get("base_sec", 0.0), 0.0
+        )
+        self.fixed_reply_delay_characters_per_minute = _as_float(
+            fixed_reply_delay_cfg.get("characters_per_minute", 0.0), 0.0
+        )
+        self.fixed_reply_delay_min_sec = _as_float(
+            fixed_reply_delay_cfg.get("min_sec", 0.0), 0.0
+        )
+        self.fixed_reply_delay_max_sec = _as_float(
+            fixed_reply_delay_cfg.get("max_sec", 0.0), 0.0
+        )
         self.contingency_condition = str(contingency_condition or "").strip().lower() or None
         self.non_contingent_fixed_replies = dict(non_contingent_fixed_replies or {})
 
@@ -488,6 +505,28 @@ class NaoJobConsumer(object):
         if max_sec > 0:
             delay = min(max_sec, delay)
         return max(0.0, delay)
+
+    def _fixed_reply_delay_sec(self, text):
+        if not self.fixed_reply_delay_enabled:
+            return 0.0
+        delay = max(0.0, _as_float(self.fixed_reply_delay_base_sec, 0.0))
+        cpm = _as_float(self.fixed_reply_delay_characters_per_minute, 0.0)
+        if cpm > 0:
+            char_count = len(str(text or "").strip())
+            delay += (float(char_count) / cpm) * 60.0
+        min_sec = _as_float(self.fixed_reply_delay_min_sec, 0.0)
+        max_sec = _as_float(self.fixed_reply_delay_max_sec, 0.0)
+        delay = max(min_sec, delay)
+        if max_sec > 0:
+            delay = min(max_sec, delay)
+        return max(0.0, delay)
+
+    def _wait_for_fixed_reply_delay(self, text):
+        delay_sec = self._fixed_reply_delay_sec(text)
+        if delay_sec <= 0:
+            return
+        print("[fixed_reply_delay] Waiting {:.3f}s before fixed reply.".format(delay_sec))
+        time.sleep(delay_sec)
 
     def _wait_for_operator_enter(self, source_label, reply_text=None):
         if source_label == "watchdog":
@@ -561,6 +600,8 @@ class NaoJobConsumer(object):
 
     def _ensure_robot_stiff_for_speech(self):
         if self._robot_stiffened_for_speech:
+            return
+        if bool(getattr(self.robot, "disable_motion_for_chat", False)):
             return
         if self.robot is None or getattr(self.robot, "mm", None) is None:
             raise RuntimeError("robot motion manager unavailable")
@@ -993,6 +1034,7 @@ class NaoJobConsumer(object):
                 self._estimate_script_duration(fixed_reply_text),
             ]]
             result["fixed_reply_applied"] = True
+            self._wait_for_fixed_reply_delay(fixed_reply_text)
         else:
             try:
                 segments_list = transcribe.reply(
