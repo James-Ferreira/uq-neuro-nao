@@ -228,6 +228,7 @@ def _rewrite_session_dialogue(session_dir):
 
         user_text = ""
         ai_text = ""
+        robot_speaker = "robot"
 
         if os.path.isfile(input_path):
             with open(input_path, "r") as f:
@@ -238,12 +239,18 @@ def _rewrite_session_dialogue(session_dir):
             with open(output_path, "r") as f:
                 output_payload = json.load(f)
             ai_text = output_payload.get("ai", "")
+            if output_payload.get("fixed_reply_applied"):
+                fixed_turn = output_payload.get("fixed_reply_turn")
+                if fixed_turn is not None:
+                    robot_speaker = "robot [fixed reply {}]".format(fixed_turn)
+                else:
+                    robot_speaker = "robot [fixed reply]"
 
         if not str(user_text or "").strip() and not str(ai_text or "").strip():
             continue
 
         lines.append(_dialogue_line(turn_id, "user", user_text))
-        lines.append(_dialogue_line(turn_id, "robot", ai_text))
+        lines.append(_dialogue_line(turn_id, robot_speaker, ai_text))
 
         for idx, watchdog_text in enumerate(watchdog_prompts.get(turn_id, []), start=1):
             lines.append(_dialogue_line("{}_{}".format(turn_id, idx), "watchdog", watchdog_text))
@@ -1021,6 +1028,8 @@ class NaoJobConsumer(object):
             "ai": "",
             "ai_duration_sec": 0.0,
             "latency_sec": latency_sec,
+            "logical_turn": None,
+            "logical_turn_advanced": False,
         }
         if self.session_end_enabled:
             result["session_elapsed_sec"] = self._session_elapsed_sec()
@@ -1031,6 +1040,9 @@ class NaoJobConsumer(object):
             result["watchdog_total_so_far"] = self._watchdog_total
             result["watchdog_consecutive_without_user"] = self._watchdog_consecutive_without_user
             return result
+
+        logical_turn_num = int(self.turn_count or 0) + 1
+        result["logical_turn"] = logical_turn_num
 
         matched_command = self._match_special_command(user_text)
         if matched_command:
@@ -1055,6 +1067,7 @@ class NaoJobConsumer(object):
             if result.get("ai"):
                 self.history.append({"role": "assistant", "content": result["ai"]})
             self._on_nonempty_user_turn()
+            result["logical_turn_advanced"] = True
             result["watchdog_total_so_far"] = self._watchdog_total
             result["watchdog_consecutive_without_user"] = self._watchdog_consecutive_without_user
             return result
@@ -1075,7 +1088,7 @@ class NaoJobConsumer(object):
             session_end_ephemeral_system = self.session_end_model_closing_instruction
             result["session_end_model_closing_instruction_applied"] = True
 
-        fixed_reply_text = self._fixed_reply_for_turn(int(self.turn_count or 0) + 1)
+        fixed_reply_text = self._fixed_reply_for_turn(logical_turn_num)
 
         # Get gesturized segments list from local Py3 API
         if fixed_reply_text is not None:
@@ -1086,6 +1099,7 @@ class NaoJobConsumer(object):
                 self._estimate_script_duration(fixed_reply_text),
             ]]
             result["fixed_reply_applied"] = True
+            result["fixed_reply_turn"] = logical_turn_num
             self._wait_for_fixed_reply_delay(fixed_reply_text)
         else:
             try:
@@ -1094,7 +1108,7 @@ class NaoJobConsumer(object):
                     self.model,
                     self.interlocutor,
                     list,
-                    int(self.turn_count or 0) + 1,
+                    logical_turn_num,
                     prompt=user_text,
                     history=self.history,
                     ephemeral_system=session_end_ephemeral_system,
@@ -1139,6 +1153,7 @@ class NaoJobConsumer(object):
         if robot_text:
             self.history.append({"role": "assistant", "content": robot_text})
         self._on_nonempty_user_turn()
+        result["logical_turn_advanced"] = True
         self._note_robot_utterance_finished()
         result["robot_finish_at"] = self._last_robot_finish_at
         result["watchdog_total_so_far"] = self._watchdog_total
@@ -1255,7 +1270,13 @@ class NaoJobConsumer(object):
 
                     user_text = _single_line(job.get("user", ""))
                     ai_text = _single_line(result.get("ai", ""))
-                    print("Turn {} | Participant: {} | Robot: {}".format(turn_id, user_text, ai_text))
+                    logical_turn = result.get("logical_turn")
+                    turn_label = "Turn {}".format(turn_id)
+                    if logical_turn is not None:
+                        turn_label += " | Logical turn {}".format(logical_turn)
+                    if result.get("fixed_reply_applied"):
+                        turn_label += " | fixed reply {}".format(result.get("fixed_reply_turn"))
+                    print("{} | Participant: {} | Robot: {}".format(turn_label, user_text, ai_text))
 
                     processed.add(name)
                     if result.get("session_end_triggered") and self._session_should_stop_worker:
