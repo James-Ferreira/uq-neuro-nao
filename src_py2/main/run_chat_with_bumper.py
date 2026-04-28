@@ -40,7 +40,7 @@ ROBOT_DISABLE_MOTION = bool(get_nested(
     ["disable_motion"],
     ROBOT_NAME.lower() == "clas"
 ))
-CONSUMER_MODEL = get_nested(ROBOT_CHAT_CFG, ["consumer_model"], "gesturizer4")
+CONSUMER_MODEL = get_nested(PROJECT_PROFILE, ["runtime", "default_converse_model"], "gesturizer4")
 CONSUMER_INTERLOCUTOR = get_nested(ROBOT_CHAT_CFG, ["consumer_interlocutor"], None)
 CONSUMER_INCLUDE_SEGMENTS = bool(get_nested(ROBOT_CHAT_CFG, ["include_segments"], False))
 CONSUMER_SPECIAL_COMMANDS = get_nested(ROBOT_CHAT_CFG, ["special_commands"], None)

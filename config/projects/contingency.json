@@ -49,7 +49,6 @@
     "robot_username": "nao",
     "robot_password": "nao",
     "disable_motion": true,
-    "consumer_model": "gesturizer5",
     "consumer_interlocutor": null,
     "include_segments": true,
     "require_enter_before_speak": false,

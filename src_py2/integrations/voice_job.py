@@ -1,4 +1,4 @@
-import os, time, json, re
+import os, time, json, re, shutil
 from datetime import datetime
 import src_py2.api.transcribe as transcribe
 
@@ -38,6 +38,58 @@ def _write_text_atomic(path, text):
     with open(tmp, "w") as f:
         f.write(text)
     os.rename(tmp, path)
+
+
+def _session_archive_root():
+    env_path = os.environ.get("VOICE_LLM_CHAT_SESSION_ARCHIVE_DIR")
+    if env_path:
+        return os.path.abspath(os.path.expanduser(env_path))
+
+    here = os.path.dirname(os.path.abspath(__file__))
+    repos_root = os.path.abspath(os.path.join(here, "..", "..", ".."))
+    config_path = os.environ.get("VOICE_LLM_CHAT_CONFIG") or os.path.join(
+        repos_root, "voice-llm-chat", "local_config.json"
+    )
+    try:
+        with open(config_path, "r") as f:
+            cfg = json.load(f)
+        configured_path = cfg.get("session_archive_dir")
+    except Exception:
+        configured_path = None
+
+    if not configured_path:
+        return None
+
+    return os.path.abspath(os.path.expanduser(configured_path))
+
+
+def _archive_session_copy_best_effort(session_dir):
+    try:
+        archive_root = _session_archive_root()
+        if not archive_root:
+            return
+
+        destination = os.path.join(archive_root, os.path.basename(os.path.abspath(session_dir)))
+        if not os.path.isdir(archive_root):
+            os.makedirs(archive_root)
+
+        for root, dirs, files in os.walk(session_dir):
+            rel_root = os.path.relpath(root, session_dir)
+            dest_root = destination if rel_root == "." else os.path.join(destination, rel_root)
+            if not os.path.isdir(dest_root):
+                os.makedirs(dest_root)
+            for dirname in dirs:
+                dest_dir = os.path.join(dest_root, dirname)
+                if not os.path.isdir(dest_dir):
+                    os.makedirs(dest_dir)
+            for filename in files:
+                if filename.endswith(".tmp"):
+                    continue
+                shutil.copy2(os.path.join(root, filename), os.path.join(dest_root, filename))
+
+        print("Session copied to Kyra: {}".format(destination))
+    except Exception as e:
+        print("WARN: Failed copying session to Kyra: {}".format(e))
 
 
 def _now_iso_local():
@@ -1144,6 +1196,7 @@ class NaoJobConsumer(object):
         self._write_watchdog_summary()
         self._write_session_end_summary()
         _write_language_metrics_summary(session_dir)
+        _archive_session_copy_best_effort(session_dir)
 
         print("NAO job worker started")
 
@@ -1198,6 +1251,7 @@ class NaoJobConsumer(object):
                     _write_json_atomic(done_path, result)
                     _rewrite_session_dialogue(session_dir)
                     _write_language_metrics_summary(session_dir)
+                    _archive_session_copy_best_effort(session_dir)
 
                     user_text = _single_line(job.get("user", ""))
                     ai_text = _single_line(result.get("ai", ""))
@@ -1210,6 +1264,7 @@ class NaoJobConsumer(object):
 
                 if self._maybe_fire_watchdog():
                     _write_language_metrics_summary(session_dir)
+                    _archive_session_copy_best_effort(session_dir)
                 time.sleep(poll_sec)
 
             except KeyboardInterrupt:

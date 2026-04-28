@@ -52,7 +52,6 @@
     "robot_name": "meta",
     "robot_username": "nao",
     "robot_password": "nao",
-    "consumer_model": "gesturizer5",
     "consumer_interlocutor": null,
     "include_segments": true,
     "require_enter_before_speak": true,
@@ -77,7 +76,6 @@
     "chat_pipeline": "robot_chat"
   },
   "computer_chat": {
-    "ollama_model": "gesturizer5",
     "ollama_url": "http://localhost:11434",
     "connect_timeout_sec": 3.0,
     "read_timeout_sec": 120.0,
