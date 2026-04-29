@@ -79,14 +79,14 @@ def _prompt_contingency_condition():
         return None
 
     while True:
-        choice = raw_input(
-            "Enter condition (`contingent`/`non-contingent`): "
-        ).strip().lower()  # type: ignore
+        choice = raw_input(  # type: ignore
+            "Enter condition [c=contingent, n=non-contingent]: "
+        ).strip().lower()
         if choice in ("contingent", "c"):
             return "contingent"
         if choice in ("non-contingent", "noncontingent", "n"):
             return "non-contingent"
-        print("Please enter `contingent` or `non-contingent`.")
+        print("Please enter c/contingent or n/non-contingent.")
 
 
 def _load_non_contingent_fixed_replies():
