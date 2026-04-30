@@ -60,6 +60,53 @@ def log_diag(message):
     stamp = time.strftime("%Y-%m-%d %H:%M:%S")
     print("[BUMPER {}] {}".format(stamp, message))
 
+
+def _now_iso_local():
+    return time.strftime("%Y-%m-%dT%H:%M:%S")
+
+
+def _write_session_event(session_dir, filename, payload):
+    if not session_dir:
+        return
+    try:
+        event = dict(payload or {})
+        event.setdefault("ts", _now_iso_local())
+        path = os.path.join(session_dir, filename)
+        with open(path, "a") as f:
+            f.write(json.dumps(event, sort_keys=True) + "\n")
+    except Exception as e:
+        log_diag("WARN: failed writing {}: {}".format(filename, e))
+
+
+def _safe_robot_health(robot):
+    health = {
+        "connected": bool(getattr(robot, "is_connected", False)),
+        "ip": getattr(robot, "ip", None),
+        "ip_used": getattr(robot, "ip_used", None),
+    }
+    probes = [
+        ("battery_charge", "battery", "getBatteryCharge", ()),
+        ("life_state", "life", "getState", ()),
+        ("output_volume", "audio_device", "getOutputVolume", ()),
+    ]
+    for key, attr, method, args in probes:
+        try:
+            proxy = getattr(robot, attr, None)
+            if proxy is not None:
+                health[key] = getattr(proxy, method)(*args)
+        except Exception as e:
+            health[key + "_error"] = str(e)
+    try:
+        if getattr(robot, "motion", None) is not None:
+            stiffnesses = robot.motion.getStiffnesses("Body")
+            if stiffnesses:
+                health["body_stiffness_min"] = min(stiffnesses)
+                health["body_stiffness_max"] = max(stiffnesses)
+    except Exception as e:
+        health["body_stiffness_error"] = str(e)
+    return health
+
+
 def _one_line_text(s):
     txt = (s or "").strip()
     if not txt:
@@ -106,12 +153,20 @@ def _release_turn_gate(convo, reason):
     except Exception as e:
         vprint("WARN: set_ready_mode failed ({}): {}".format(reason, e))
 
-def bumper_loop(robot, convo, consumer):
+def bumper_loop(robot, convo, consumer, session_dir):
     while True:
         log_diag("Awaiting next bumper press")
+        _write_session_event(session_dir, "bumper_events.jsonl", {
+            "event": "awaiting_bumper_press",
+            "turn_in_progress": bool(getattr(convo, "turn_in_progress", False)),
+        })
         robot.tm.wait_for_left_bumper_press()
         hold_started_at = time.time()
         log_diag("Bumper press accepted by worker loop")
+        _write_session_event(session_dir, "bumper_events.jsonl", {
+            "event": "bumper_press",
+            "robot_health": _safe_robot_health(robot),
+        })
 
         # Busy: consume press->release but do nothing
         if not convo.turn_gate.acquire(False):
@@ -122,6 +177,11 @@ def bumper_loop(robot, convo, consumer):
                     "WARN: Timed out waiting {:.1f}s for ignored bumper release; "
                     "refreshing touch subscriptions.".format(BUMPER_RELEASE_TIMEOUT_SEC)
                 )
+                _write_session_event(session_dir, "bumper_events.jsonl", {
+                    "event": "ignored_press_release_timeout",
+                    "timeout_sec": BUMPER_RELEASE_TIMEOUT_SEC,
+                    "held_sec": max(0.0, time.time() - hold_started_at),
+                })
                 try:
                     robot.tm.reset_hold_state()
                     robot.tm.refresh_event_subscriptions()
@@ -133,6 +193,10 @@ def bumper_loop(robot, convo, consumer):
                         max(0.0, time.time() - hold_started_at)
                     )
                 )
+                _write_session_event(session_dir, "bumper_events.jsonl", {
+                    "event": "ignored_press_released",
+                    "held_sec": max(0.0, time.time() - hold_started_at),
+                })
             time.sleep(0.05)
             continue
 
@@ -149,6 +213,10 @@ def bumper_loop(robot, convo, consumer):
             post_json(BRIDGE + "/start", timeout=BRIDGE_START_TIMEOUT_SEC)
             consumer.note_input_attempt_started()
             log_diag("Bridge recording started")
+            _write_session_event(session_dir, "bumper_events.jsonl", {
+                "event": "bridge_recording_started",
+                "bridge_url": BRIDGE,
+            })
 
             released = robot.tm.wait_for_left_bumper_release(BUMPER_RELEASE_TIMEOUT_SEC)
             if not released:
@@ -156,6 +224,11 @@ def bumper_loop(robot, convo, consumer):
                     "ERROR: Timed out waiting {:.1f}s for left bumper release. "
                     "Resetting listening state.".format(BUMPER_RELEASE_TIMEOUT_SEC)
                 )
+                _write_session_event(session_dir, "bumper_events.jsonl", {
+                    "event": "bumper_release_timeout",
+                    "timeout_sec": BUMPER_RELEASE_TIMEOUT_SEC,
+                    "held_sec": max(0.0, time.time() - hold_started_at),
+                })
                 try:
                     log_diag("Attempting bridge stop after missing release")
                     stop_resp = post_json(BRIDGE + "/stop", timeout=BRIDGE_STOP_TIMEOUT_SEC)
@@ -207,11 +280,23 @@ def bumper_loop(robot, convo, consumer):
                     turn_id, bool(str(raw_transcript or "").strip())
                 )
             )
+            _write_session_event(session_dir, "bumper_events.jsonl", {
+                "event": "bridge_recording_stopped",
+                "bridge_stop_elapsed_sec": max(0.0, time.time() - bridge_stop_started_at),
+                "held_sec": max(0.0, time.time() - hold_started_at),
+                "turn_id": turn_id,
+                "transcript_nonempty": bool(str(raw_transcript or "").strip()),
+                "transcript": raw_transcript or "",
+            })
 
             # If no usable speech was captured, no downstream robot reply may occur.
             # Release the turn gate here to avoid a deadlock waiting for speak_n_gest_next_level().
             if (not turn_id) or (not str(raw_transcript or "").strip()):
                 log_diag("No valid user utterance captured; releasing turn gate.")
+                _write_session_event(session_dir, "bumper_events.jsonl", {
+                    "event": "empty_or_missing_transcript",
+                    "turn_id": turn_id,
+                })
                 _release_turn_gate(convo, "empty_or_missing_transcript")
                 time.sleep(0.05)
                 continue
@@ -224,6 +309,11 @@ def bumper_loop(robot, convo, consumer):
         except Exception as e:
             consumer.note_input_attempt_finished()
             log_diag("ERROR in bumper_loop: {}".format(e))
+            _write_session_event(session_dir, "bumper_events.jsonl", {
+                "event": "bumper_loop_error",
+                "error": str(e),
+                "robot_health": _safe_robot_health(robot),
+            })
             _release_turn_gate(convo, "bumper_loop_exception")
             time.sleep(0.2)
             continue
@@ -233,12 +323,26 @@ def bumper_loop(robot, convo, consumer):
 def main():
     print("Active project profile: {}".format(PROJECT_PROFILE.get("_project_id")))
     session_dir = wait_for_current_session(SESSIONS_ROOT)
+    _write_session_event(session_dir, "bumper_events.jsonl", {
+        "event": "worker_attached_to_session",
+        "session_dir": session_dir,
+        "bridge_url": BRIDGE,
+    })
 
     robot = NAORobot(ROBOT_NAME, usrnme=ROBOT_USERNAME, pword=ROBOT_PASSWORD)
+    _write_session_event(session_dir, "bumper_events.jsonl", {
+        "event": "robot_connected",
+        "robot_health": _safe_robot_health(robot),
+    })
     robot.mm.sit()
+    time.sleep(3.0)
     robot.mm.repose(False)
-    time.sleep(1.2)
+    time.sleep(3.0)
     robot.mm.loose()
+    _write_session_event(session_dir, "bumper_events.jsonl", {
+        "event": "robot_initialized_motion_state",
+        "robot_health": _safe_robot_health(robot),
+    })
 
     convo = ConversationManager(robot)
 
@@ -255,7 +359,7 @@ def main():
         operator_reply_delay_cfg=CONSUMER_OPERATOR_REPLY_DELAY_CFG,
     )
 
-    t = threading.Thread(target=bumper_loop, args=(robot, convo, consumer))
+    t = threading.Thread(target=bumper_loop, args=(robot, convo, consumer, session_dir))
     t.daemon = True
     t.start()
 

@@ -115,6 +115,7 @@ class TestVoiceJob(unittest.TestCase):
                 "interval_sec": 13.0,
             },
         )
+        consumer._robot_stiffened_for_speech = True
 
         seen_turn_counts = []
 
@@ -135,7 +136,7 @@ class TestVoiceJob(unittest.TestCase):
 
         first_real_result = consumer.handle_input_job({
             "turn_id": 2,
-            "user": "Hi, Zeke. No, we're not ready yet. Go back to sleep.",
+            "user": "Hi Zeke, I am ready now.",
             "recording_started_at": "2026-04-01T10:00:05",
         })
         self.assertEqual(seen_turn_counts, [1])
@@ -145,7 +146,7 @@ class TestVoiceJob(unittest.TestCase):
 
         second_real_result = consumer.handle_input_job({
             "turn_id": 3,
-            "user": "Go back to sleep",
+            "user": "Tell me about the lab",
             "recording_started_at": "2026-04-01T10:00:10",
         })
         self.assertEqual(seen_turn_counts, [1, 2])
@@ -201,6 +202,17 @@ class TestVoiceJob(unittest.TestCase):
                 json.dump({"turn_id": 2, "user": "How are you doing today", "participant_duration_sec": 4.0}, f)
             with open(os.path.join(outbox_dir, "turn_0002_output.json"), "w") as f:
                 json.dump({"turn_id": 2, "ai": "I am doing well today thanks", "ai_duration_sec": 2.5, "latency_sec": 0.6}, f)
+
+            with open(os.path.join(inbox_dir, "turn_0003_input.json"), "w") as f:
+                json.dump({"turn_id": 3, "user": "Go back to sleep", "participant_duration_sec": 2.0}, f)
+            with open(os.path.join(outbox_dir, "turn_0003_output.json"), "w") as f:
+                json.dump({
+                    "turn_id": 3,
+                    "ai": "Going to sleep now",
+                    "ai_duration_sec": 1.5,
+                    "latency_sec": 0.2,
+                    "special_command": "gotosleeplittlerobot",
+                }, f)
 
             voice_job._write_language_metrics_summary(session_dir)
 

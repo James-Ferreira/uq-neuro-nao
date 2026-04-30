@@ -18,7 +18,7 @@
         "id": "turn_1_dark_experience",
         "mode": "temporary",
         "at_turn": 1,
-        "text": "Introduce yourself, ask the participant their name, and ask them about their hobbies or interests."
+        "text": "Briefly introduce yourself, ask the participant their name, and ask them about their hobbies or interests. Don't bring up the experiment."
       }
     ],
     "watchdog": {
