@@ -12,7 +12,7 @@
   },
   "conversation": {
     "default_interlocutor": null,
-    "system_prompt_path": "prompts/zork_no_gestures.txt",
+    "system_prompt_path": "prompts/zork_robot_no_gestures.txt",
     "non_contingent_fixed_replies_path": "fixed_replies/non_contingent.json",
     "turn_injections": [
       {
