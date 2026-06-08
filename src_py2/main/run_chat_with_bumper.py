@@ -24,6 +24,7 @@ ROBOT_CHAT_CFG = PROJECT_PROFILE.get("robot_chat", {})
 SESSIONS_ROOT = get_nested(ROBOT_CHAT_CFG, ["sessions_root"], default_sessions_root())
 
 CURRENT_SESSION_FILENAME = "CURRENT_SESSION.txt"
+ROBOT_STATUS_FILENAME = "ROBOT_STATUS.json"
 
 BRIDGE = get_nested(ROBOT_CHAT_CFG, ["bridge_url"], "http://127.0.0.1:5055")
 BRIDGE_START_TIMEOUT_SEC = float(get_nested(ROBOT_CHAT_CFG, ["bridge_start_timeout_sec"], 10.0))
@@ -38,6 +39,7 @@ CONSUMER_MODEL = get_nested(ROBOT_CHAT_CFG, ["consumer_model"], "gesturizer4")
 CONSUMER_INTERLOCUTOR = get_nested(ROBOT_CHAT_CFG, ["consumer_interlocutor"], None)
 CONSUMER_INCLUDE_SEGMENTS = bool(get_nested(ROBOT_CHAT_CFG, ["include_segments"], False))
 CONSUMER_SPECIAL_COMMANDS = get_nested(ROBOT_CHAT_CFG, ["special_commands"], None)
+BATTERY_LOG_PATH = get_nested(ROBOT_CHAT_CFG, ["battery_log_path"], None)
 CONSUMER_REQUIRE_ENTER_BEFORE_SPEAK = get_nested(
     ROBOT_CHAT_CFG, ["require_enter_before_speak"], False
 )
@@ -78,6 +80,24 @@ def _write_session_event(session_dir, filename, payload):
         log_diag("WARN: failed writing {}: {}".format(filename, e))
 
 
+def _write_robot_status(session_dir, robot_name, health, source_event):
+    try:
+        payload = {
+            "updated_at": _now_iso_local(),
+            "source_event": source_event,
+            "session_dir": session_dir,
+            "robot_name": robot_name,
+            "robot_health": health or {},
+        }
+        path = os.path.join(SESSIONS_ROOT, ROBOT_STATUS_FILENAME)
+        tmp_path = path + ".tmp"
+        with open(tmp_path, "w") as f:
+            json.dump(payload, f, sort_keys=True, indent=2)
+        os.rename(tmp_path, path)
+    except Exception as e:
+        log_diag("WARN: failed writing robot status: {}".format(e))
+
+
 def _safe_robot_health(robot):
     health = {
         "connected": bool(getattr(robot, "is_connected", False)),
@@ -105,6 +125,17 @@ def _safe_robot_health(robot):
     except Exception as e:
         health["body_stiffness_error"] = str(e)
     return health
+
+
+def _robot_status_loop(robot, session_dir, interval_sec=10.0):
+    while True:
+        _write_robot_status(
+            session_dir,
+            ROBOT_NAME,
+            _safe_robot_health(robot),
+            "robot_status_heartbeat",
+        )
+        time.sleep(interval_sec)
 
 
 def _one_line_text(s):
@@ -330,10 +361,15 @@ def main():
     })
 
     robot = NAORobot(ROBOT_NAME, usrnme=ROBOT_USERNAME, pword=ROBOT_PASSWORD)
+    health = _safe_robot_health(robot)
+    _write_robot_status(session_dir, ROBOT_NAME, health, "robot_connected")
     _write_session_event(session_dir, "bumper_events.jsonl", {
         "event": "robot_connected",
-        "robot_health": _safe_robot_health(robot),
+        "robot_health": health,
     })
+    status_thread = threading.Thread(target=_robot_status_loop, args=(robot, session_dir))
+    status_thread.daemon = True
+    status_thread.start()
     robot.mm.sit()
     time.sleep(3.0)
     robot.mm.repose(False)
@@ -357,6 +393,7 @@ def main():
         require_enter_before_speak=CONSUMER_REQUIRE_ENTER_BEFORE_SPEAK,
         require_enter_for_watchdog=CONSUMER_REQUIRE_ENTER_FOR_WATCHDOG,
         operator_reply_delay_cfg=CONSUMER_OPERATOR_REPLY_DELAY_CFG,
+        battery_log_path=BATTERY_LOG_PATH,
     )
 
     t = threading.Thread(target=bumper_loop, args=(robot, convo, consumer, session_dir))

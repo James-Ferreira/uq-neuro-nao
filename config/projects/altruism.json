@@ -94,6 +94,7 @@
     "consumer_model": "gesturizer4",
     "consumer_interlocutor": null,
     "include_segments": false,
+    "battery_log_path": "battery_log.csv",
     "require_enter_before_speak": false,
     "require_enter_for_watchdog": false,
     "special_commands": {

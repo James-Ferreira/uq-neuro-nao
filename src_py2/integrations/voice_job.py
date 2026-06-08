@@ -363,6 +363,7 @@ class NaoJobConsumer(object):
         require_enter_before_speak=False,
         require_enter_for_watchdog=False,
         operator_reply_delay_cfg=None,
+        battery_log_path=None,
     ):
         """
         convo: your NAO-side ConversationManager (or equivalent) defining speak_n_gest_next_level(...)
@@ -428,6 +429,7 @@ class NaoJobConsumer(object):
         self._watchdog_summary_path = None
         self._diagnostics_event_path = None
         self._battery_log_path = None
+        self._battery_log_path_cfg = battery_log_path
         self._battery_log_session_dir = None
         self._battery_start_charge = None
         self._battery_start_error = None
@@ -615,10 +617,18 @@ class NaoJobConsumer(object):
             except Exception:
                 pass
 
+    def _resolve_battery_log_path(self, voice_repo_dir):
+        configured = self._battery_log_path_cfg
+        if configured:
+            if os.path.isabs(configured):
+                return configured
+            return os.path.abspath(os.path.join(voice_repo_dir, configured))
+        return os.path.join(voice_repo_dir, "battery_log.csv")
+
     def _start_battery_log(self, session_dir):
         sessions_dir = os.path.dirname(session_dir.rstrip(os.sep))
         voice_repo_dir = os.path.dirname(sessions_dir)
-        self._battery_log_path = os.path.join(voice_repo_dir, "battery_log.csv")
+        self._battery_log_path = self._resolve_battery_log_path(voice_repo_dir)
         self._battery_log_session_dir = session_dir
         self._battery_start_charge, self._battery_start_error = self._battery_charge_snapshot()
         self._remember_battery_charge(self._battery_start_charge)

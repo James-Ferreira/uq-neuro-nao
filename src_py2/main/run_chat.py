@@ -69,6 +69,7 @@ def main():
     consumer_interlocutor = get_nested(ROBOT_CHAT_CFG, ["consumer_interlocutor"], None)
     consumer_include_segments = bool(get_nested(ROBOT_CHAT_CFG, ["include_segments"], False))
     consumer_special_commands = get_nested(ROBOT_CHAT_CFG, ["special_commands"], None)
+    battery_log_path = get_nested(ROBOT_CHAT_CFG, ["battery_log_path"], None)
     session_end_cfg = get_nested(PROJECT_PROFILE, ["conversation", "session_end"], {})
     consumer = NaoJobConsumer(
         convo,
@@ -76,7 +77,8 @@ def main():
         interlocutor=consumer_interlocutor,
         include_segments=consumer_include_segments,
         special_commands=consumer_special_commands,
-        session_end_cfg=session_end_cfg
+        session_end_cfg=session_end_cfg,
+        battery_log_path=battery_log_path
     )
 
     consumer.run_job_worker(session_dir)

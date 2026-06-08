@@ -55,6 +55,7 @@
     "consumer_model": "gesturizer5",
     "consumer_interlocutor": null,
     "include_segments": true,
+    "battery_log_path": "battery_log.csv",
     "require_enter_before_speak": true,
     "require_enter_for_watchdog": true,
     "operator_reply_delay": {
