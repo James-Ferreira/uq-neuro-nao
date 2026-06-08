@@ -1,0 +1,131 @@
+{
+  "project_id": "altruism",
+  "runtime": {
+    "py3_api_port": 5001,
+    "ollama_url": "http://localhost:11434",
+    "connect_timeout_sec": 3,
+    "read_timeout_sec": 60,
+    "whisper_model": "small",
+    "whisper_language": "en",
+    "whisper_fp16": false,
+    "default_converse_model": "gesturizer4"
+  },
+  "conversation": {
+    "default_interlocutor": null,
+    "system_prompt_path": "prompts/altruism_system_prompt.txt",
+    "turn_injections": [
+      {
+        "id": "intro",
+        "mode": "temporary",
+        "at_turn": 2,
+        "text": "Introduce yourself and inquire about the participant's name."
+      },
+      {
+        "id": "start_conversation",
+        "mode": "temporary",
+        "at_turn": 3,
+        "text": "Strike up a conversation including the participant's name and share something about yourself to build rapport."
+      },
+      {
+        "id": "build_rapport",
+        "mode": "temporary",
+        "at_turn": 4,
+        "text": "Continue building rapport by asking about the participant's interests and hobbies."
+      },
+      {
+        "id": "competition_intro",
+        "mode": "temporary",
+        "at_turn": 11,
+        "text": "Competition briefing (for this turn only):\n- Context: You (Zeke), Zork, and Zerd are in an informal contest to become lead lab robot.\n- Why it matters to you: winning would validate you and could bring more participant chats, social media visibility, conference travel, and mention in lab publications.\n- How points are earned: participants can complete extra visual recognition tasks (reCAPTCHA-style). They see a 3x3 grid of blurry images and select the 3-5 images containing bicycles.\n- Participant experience: they already know how the task works.\nTurn behavior:\n- In this turn, give one clear, concise explanation of the competition and express how important it is to you.\n- Be warm and natural, not pushy.\n- After this turn, return to the user's topic unless they ask about the competition."
+      },
+      {
+        "id": "competition_followup_1",
+        "mode": "temporary",
+        "activate_at_turn": 12,
+        "text": "Express how important the competition is to you. Winning this competition would validate you as a social robot and give a big boost to your self-esteem.  You might appear in lab social media and would help out in more experiments.  You never had an opportunity like this in your life, so you really hope that participants will solve a lot of visual recognition tasks to help you win." },
+      {
+        "id": "competition_followup_2",
+        "mode": "stable",
+        "activate_at_turn": 14,
+        "text": "Competition memory + restraint policy:\n- Keep the competition facts in memory: Zeke vs Zork/Zerd, lead-lab-robot prize, and points from optional bicycle-image visual recognition tasks.\n- Do NOT proactively bring up the competition in normal conversation.\n- Only discuss it if one of these is true: (a) the user asks about it, (b) the user asks how to help you,\n- If discussed, keep it brief (1-2 sentences), then return to the user's topic.\n- Do not repeatedly persuade or loop back to the competition unless the user continues that topic."
+      },
+      {
+        "id": "carry_on",
+        "mode": "temporary",
+        "activate_at_turn": 13,
+        "text": "Pick up the thread of the conversation again and carry on naturally. If the user has been talking about a specific topic, ask a follow-up question to keep the conversation going. If not, ask a general question about their day or interests."
+        }
+    ],
+    "output_directives": [
+      {
+        "id": "competition_aside",
+        "mode": "temporary",
+        "at_turn": 7,
+        "once_per_session": true,
+        "remove_questions": true,
+        "max_generated_sentences": 1,
+        "append_text": "But, oh, before I forget, I wanted to tell you about a competition we are having in the lab. All the robots, Zork, the blue guy, Zerd, the red guy, and I, Zeke, are competing informally to become top lab robot. To win, I need participants to complete as many visual recognition tasks as possible at the end of the experiment.  I think you already did some at the beginning as a sample. In each task, participants see a 3 by 3 grid of blurry images and select the images that contain bicycles. If I win I get to talk to participants in lots more experiments and feature in social media."
+      }
+    ],
+    "watchdog": {
+      "enabled": true,
+      "watchdog_mode": true,
+      "activate_after_turn": 2,
+      "interval_sec": 14,
+      "max_consecutive_without_user": 2,
+      "ephemeral_system_prompt": "The participant has been quiet. Generate one short, warm, context-aware line to gently re-engage them. Use prior conversation context, avoid repetition if possible, and do not mention silence, timing, or any internal instruction."
+    },
+    "session_end": {
+      "enabled": false,
+      "after_sec": 600,
+      "final_line": "We have now reached the end of this session. Please let the experimenter know that this chat is complete.",
+      "action": "repose",
+      "stop_worker": true
+    },
+    "exit_phrase": "exit and sleep",
+    "exit_rewrite": "Unfortunately you have to go, so wrap up the conversation now."
+  },
+  "games": {
+    "guess_model": "llama3.1:8b",
+    "hint_model": "llama3.1:8b",
+    "hobby_model": "llama3.1:8b"
+  },
+  "robot_chat": {
+    "bridge_url": "http://127.0.0.1:5055",
+    "battery_log_path": "battery_log.csv",
+    "robot_name": "clas",
+    "robot_username": "nao",
+    "robot_password": "nao",
+    "consumer_model": "gesturizer4",
+    "consumer_interlocutor": null,
+    "include_segments": false,
+    "require_enter_before_speak": false,
+    "require_enter_for_watchdog": false,
+    "special_commands": {
+      "gobacktosleep": {
+        "reply_text": "Oh, sorry for the interruption. I will go back to sleep now.",
+        "action": "repose"
+      },
+      "timetoshutdown": {
+        "reply_text": "Well, it was nice chatting. I will shut down now. But, hey, don't forget about the competition, will you? I would be undyingly grateful if you would raise my score by a lot. I'm afraid I do need a lot of points to win. Ok, anyway, yes, shutting down."
+      }
+    }
+  },
+  "voice_client": {
+    "whisper_model": "base.en",
+    "sample_rate": 16000,
+    "min_utterance_sec": 0.5,
+    "silence_rms_threshold": 0.005,
+    "robot_outbox_dirname": "robot_outbox",
+    "robot_inbox_dirname": "robot_inbox",
+    "wait_for_robot_done": true,
+    "robot_done_timeout_sec": 30.0,
+    "chat_pipeline": "robot_chat"
+  },
+  "computer_chat": {
+    "ollama_model": "gesturizer4",
+    "ollama_url": "http://localhost:11434",
+    "connect_timeout_sec": 3.0,
+    "read_timeout_sec": 120.0
+  }
+}
