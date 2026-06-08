@@ -627,6 +627,10 @@ class ConversationManager(object):
     
     def execute_random_gests(self, segment, duration):
 
+            if bool(getattr(self.robot, "disable_motion_for_chat", False)):
+                self.robot.tts.say(segment)
+                return
+
             joints, angles, timepoints = self.set_random_gest(duration)
             #print("SEGMENT INSIDE execute_random_gests {}".format(segment))
             #print(type(segment))

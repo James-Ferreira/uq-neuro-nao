@@ -122,6 +122,17 @@ def reply(
         else:
             print("Error: API returned empty reply.")
             return None
+    except requests.exceptions.HTTPError as e:
+        body = ""
+        try:
+            body = response.text
+        except Exception:
+            body = ""
+        if body:
+            print("Error calling reply API: {} | response body: {}".format(e, body))
+        else:
+            print("Error calling reply API: {}".format(e))
+        return None
     except Exception as e:
         print("Error calling reply API: {}".format(e))
         return None

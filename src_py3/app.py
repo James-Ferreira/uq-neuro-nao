@@ -356,7 +356,7 @@ def converse():
     if not data:
         return jsonify({'error': 'No JSON provided'}), 400
 
-    model        = data.get('model') or DEFAULT_CONVERSE_MODEL
+    model        = DEFAULT_CONVERSE_MODEL
     _vprint("MODEL: {}".format(model))
     interlocutor = data.get('interlocutor', DEFAULT_INTERLOCUTOR)
     if interlocutor is not None:

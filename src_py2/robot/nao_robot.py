@@ -70,7 +70,7 @@ class NAORobot(object):
         if name == "meta":
             return ["192.168.0.78", "192.168.0.79"]
         elif name == "clas":
-            return ["192.168.0.183"]
+            return ["192.168.1.2", "192.168.1.3", "192.168.1.6", "192.168.0.183"]
         # If the "name" looks like an IP, treat it as the only candidate.
         if re.match(r"^\d{1,3}(\.\d{1,3}){3}$", name):
             return [name]
@@ -164,7 +164,7 @@ class NAORobot(object):
 
         # Example audio defaults
         try:
-            self.audio_device.setOutputVolume(65)
+            self.audio_device.setOutputVolume(50)
         except Exception:
             pass
         try:

@@ -1,5 +1,5 @@
 {
-  "project_id": "original",
+  "project_id": "contingency",
   "runtime": {
     "py3_api_port": 5001,
     "ollama_url": "http://localhost:11434",
@@ -8,17 +8,18 @@
     "whisper_model": "small",
     "whisper_language": "en",
     "whisper_fp16": false,
-    "default_converse_model": "gesturizer5"
+    "default_converse_model": "zork"
   },
   "conversation": {
     "default_interlocutor": null,
-    "system_prompt_path": "prompts/zork_system_prompt.txt",
+    "system_prompt_path": "prompts/zork_robot_no_gestures.txt",
+    "non_contingent_fixed_replies_path": "fixed_replies/non_contingent.json",
     "turn_injections": [
       {
         "id": "turn_1_dark_experience",
         "mode": "temporary",
         "at_turn": 1,
-        "text": "Briefly introduce yourself, ask the participant their name, and ask them about their hobbies or interests. Don't bring up the experiment."
+        "text": "Introduce yourself, ask the participant their name, and ask them about their hobbies or interests."
       }
     ],
     "watchdog": {
@@ -42,26 +43,29 @@
     "exit_phrase": "exit and sleep",
     "exit_rewrite": "Unfortunately you have to go, so wrap up the conversation now."
   },
-  "games": {
-    "guess_model": "llama3.1:8b",
-    "hint_model": "llama3.1:8b",
-    "hobby_model": "llama3.1:8b"
-  },
   "robot_chat": {
     "bridge_url": "http://127.0.0.1:5055",
-    "robot_name": "meta",
+    "battery_log_path": "battery_log.csv",
+    "robot_name": "clas",
     "robot_username": "nao",
     "robot_password": "nao",
+    "disable_motion": true,
     "consumer_interlocutor": null,
     "include_segments": true,
-    "battery_log_path": "battery_log.csv",
-    "require_enter_before_speak": true,
-    "require_enter_for_watchdog": true,
+    "require_enter_before_speak": false,
+    "require_enter_for_watchdog": false,
     "operator_reply_delay": {
-      "enabled": true,
+      "enabled": false,
       "characters_per_minute": 375.0,
-      "min_sec": 0.75,
-      "max_sec": 4.0
+      "min_sec": 0.0,
+      "max_sec": 0.0
+    },
+    "fixed_reply_delay": {
+      "enabled": true,
+      "base_sec": 1.5,
+      "characters_per_minute": 900.0,
+      "min_sec": 2.0,
+      "max_sec": 6.0
     },
     "bumper_release_timeout_sec": 120.0
   },
@@ -75,18 +79,5 @@
     "wait_for_robot_done": true,
     "robot_done_timeout_sec": 30.0,
     "chat_pipeline": "robot_chat"
-  },
-  "computer_chat": {
-    "ollama_url": "http://localhost:11434",
-    "connect_timeout_sec": 3.0,
-    "read_timeout_sec": 120.0,
-    "require_enter_before_speak": true,
-    "require_enter_for_watchdog": true,
-    "operator_reply_delay": {
-      "enabled": true,
-      "characters_per_minute": 375.0,
-      "min_sec": 0.75,
-      "max_sec": 4.0
-    }
   }
 }

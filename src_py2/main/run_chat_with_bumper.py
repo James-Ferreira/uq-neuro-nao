@@ -3,6 +3,7 @@ import os, time, json, urllib2, threading
 from src_py2.integrations.voice_job import NaoJobConsumer
 from src_py2.robot.nao_robot import NAORobot
 from src_py2.robot.conversation_manager import ConversationManager
+from src_py2.robot.notification_manager import dismiss_arm_warning
 from config.project_loader import load_active_project_profile, get_nested
 
 # --- Machine-agnostic sessions root (derive from repo structure) ---
@@ -35,7 +36,12 @@ BUMPER_RELEASE_TIMEOUT_SEC = float(
 ROBOT_NAME = get_nested(ROBOT_CHAT_CFG, ["robot_name"], "clas")
 ROBOT_USERNAME = get_nested(ROBOT_CHAT_CFG, ["robot_username"], "nao")
 ROBOT_PASSWORD = get_nested(ROBOT_CHAT_CFG, ["robot_password"], "nao")
-CONSUMER_MODEL = get_nested(ROBOT_CHAT_CFG, ["consumer_model"], "gesturizer4")
+ROBOT_DISABLE_MOTION = bool(get_nested(
+    ROBOT_CHAT_CFG,
+    ["disable_motion"],
+    ROBOT_NAME.lower() == "clas"
+))
+CONSUMER_MODEL = get_nested(PROJECT_PROFILE, ["runtime", "default_converse_model"], "gesturizer4")
 CONSUMER_INTERLOCUTOR = get_nested(ROBOT_CHAT_CFG, ["consumer_interlocutor"], None)
 CONSUMER_INCLUDE_SEGMENTS = bool(get_nested(ROBOT_CHAT_CFG, ["include_segments"], False))
 CONSUMER_SPECIAL_COMMANDS = get_nested(ROBOT_CHAT_CFG, ["special_commands"], None)
@@ -49,8 +55,14 @@ CONSUMER_REQUIRE_ENTER_FOR_WATCHDOG = get_nested(
 CONSUMER_OPERATOR_REPLY_DELAY_CFG = get_nested(
     ROBOT_CHAT_CFG, ["operator_reply_delay"], {}
 )
+CONSUMER_FIXED_REPLY_DELAY_CFG = get_nested(
+    ROBOT_CHAT_CFG, ["fixed_reply_delay"], {}
+)
 WATCHDOG_CFG = get_nested(PROJECT_PROFILE, ["conversation", "watchdog"], {})
 SESSION_END_CFG = get_nested(PROJECT_PROFILE, ["conversation", "session_end"], {})
+NON_CONTINGENT_FIXED_REPLIES_PATH = get_nested(
+    PROJECT_PROFILE, ["conversation", "non_contingent_fixed_replies_path"], None
+)
 VERBOSE = os.getenv("ROBOT_CHAT_VERBOSE", "0") == "1"
 
 
@@ -65,19 +77,6 @@ def log_diag(message):
 
 def _now_iso_local():
     return time.strftime("%Y-%m-%dT%H:%M:%S")
-
-
-def _write_session_event(session_dir, filename, payload):
-    if not session_dir:
-        return
-    try:
-        event = dict(payload or {})
-        event.setdefault("ts", _now_iso_local())
-        path = os.path.join(session_dir, filename)
-        with open(path, "a") as f:
-            f.write(json.dumps(event, sort_keys=True) + "\n")
-    except Exception as e:
-        log_diag("WARN: failed writing {}: {}".format(filename, e))
 
 
 def _write_robot_status(session_dir, robot_name, health, source_event):
@@ -138,6 +137,48 @@ def _robot_status_loop(robot, session_dir, interval_sec=10.0):
         time.sleep(interval_sec)
 
 
+def _prompt_contingency_condition():
+    project_id = str(PROJECT_PROFILE.get("_project_id") or "").strip().lower()
+    if project_id != "contingency":
+        return None
+
+    while True:
+        choice = raw_input(  # type: ignore
+            "Enter condition [c=contingent, n=non-contingent]: "
+        ).strip().lower()
+        if choice in ("contingent", "c"):
+            return "contingent"
+        if choice in ("non-contingent", "noncontingent", "n"):
+            return "non-contingent"
+        print("Please enter c/contingent or n/non-contingent.")
+
+
+def _load_non_contingent_fixed_replies():
+    rel_path = str(NON_CONTINGENT_FIXED_REPLIES_PATH or "").strip()
+    if not rel_path:
+        return {}
+
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    path = os.path.join(repo_root, "config", rel_path)
+    if not os.path.isfile(path):
+        raise RuntimeError("Fixed replies file not found: {}".format(path))
+
+    with open(path, "r") as f:
+        payload = json.load(f)
+
+    if not isinstance(payload, dict):
+        raise RuntimeError("Fixed replies file must contain a JSON object: {}".format(path))
+
+    fixed_replies = {}
+    for key, value in payload.items():
+        try:
+            turn_num = int(key)
+        except Exception:
+            raise RuntimeError("Invalid fixed reply turn key '{}': {}".format(key, path))
+        fixed_replies[turn_num] = str(value)
+
+    return fixed_replies
+
 def _one_line_text(s):
     txt = (s or "").strip()
     if not txt:
@@ -184,20 +225,12 @@ def _release_turn_gate(convo, reason):
     except Exception as e:
         vprint("WARN: set_ready_mode failed ({}): {}".format(reason, e))
 
-def bumper_loop(robot, convo, consumer, session_dir):
+def bumper_loop(robot, convo, consumer):
     while True:
         log_diag("Awaiting next bumper press")
-        _write_session_event(session_dir, "bumper_events.jsonl", {
-            "event": "awaiting_bumper_press",
-            "turn_in_progress": bool(getattr(convo, "turn_in_progress", False)),
-        })
         robot.tm.wait_for_left_bumper_press()
         hold_started_at = time.time()
         log_diag("Bumper press accepted by worker loop")
-        _write_session_event(session_dir, "bumper_events.jsonl", {
-            "event": "bumper_press",
-            "robot_health": _safe_robot_health(robot),
-        })
 
         # Busy: consume press->release but do nothing
         if not convo.turn_gate.acquire(False):
@@ -208,11 +241,6 @@ def bumper_loop(robot, convo, consumer, session_dir):
                     "WARN: Timed out waiting {:.1f}s for ignored bumper release; "
                     "refreshing touch subscriptions.".format(BUMPER_RELEASE_TIMEOUT_SEC)
                 )
-                _write_session_event(session_dir, "bumper_events.jsonl", {
-                    "event": "ignored_press_release_timeout",
-                    "timeout_sec": BUMPER_RELEASE_TIMEOUT_SEC,
-                    "held_sec": max(0.0, time.time() - hold_started_at),
-                })
                 try:
                     robot.tm.reset_hold_state()
                     robot.tm.refresh_event_subscriptions()
@@ -224,10 +252,6 @@ def bumper_loop(robot, convo, consumer, session_dir):
                         max(0.0, time.time() - hold_started_at)
                     )
                 )
-                _write_session_event(session_dir, "bumper_events.jsonl", {
-                    "event": "ignored_press_released",
-                    "held_sec": max(0.0, time.time() - hold_started_at),
-                })
             time.sleep(0.05)
             continue
 
@@ -244,10 +268,6 @@ def bumper_loop(robot, convo, consumer, session_dir):
             post_json(BRIDGE + "/start", timeout=BRIDGE_START_TIMEOUT_SEC)
             consumer.note_input_attempt_started()
             log_diag("Bridge recording started")
-            _write_session_event(session_dir, "bumper_events.jsonl", {
-                "event": "bridge_recording_started",
-                "bridge_url": BRIDGE,
-            })
 
             released = robot.tm.wait_for_left_bumper_release(BUMPER_RELEASE_TIMEOUT_SEC)
             if not released:
@@ -255,11 +275,6 @@ def bumper_loop(robot, convo, consumer, session_dir):
                     "ERROR: Timed out waiting {:.1f}s for left bumper release. "
                     "Resetting listening state.".format(BUMPER_RELEASE_TIMEOUT_SEC)
                 )
-                _write_session_event(session_dir, "bumper_events.jsonl", {
-                    "event": "bumper_release_timeout",
-                    "timeout_sec": BUMPER_RELEASE_TIMEOUT_SEC,
-                    "held_sec": max(0.0, time.time() - hold_started_at),
-                })
                 try:
                     log_diag("Attempting bridge stop after missing release")
                     stop_resp = post_json(BRIDGE + "/stop", timeout=BRIDGE_STOP_TIMEOUT_SEC)
@@ -311,23 +326,11 @@ def bumper_loop(robot, convo, consumer, session_dir):
                     turn_id, bool(str(raw_transcript or "").strip())
                 )
             )
-            _write_session_event(session_dir, "bumper_events.jsonl", {
-                "event": "bridge_recording_stopped",
-                "bridge_stop_elapsed_sec": max(0.0, time.time() - bridge_stop_started_at),
-                "held_sec": max(0.0, time.time() - hold_started_at),
-                "turn_id": turn_id,
-                "transcript_nonempty": bool(str(raw_transcript or "").strip()),
-                "transcript": raw_transcript or "",
-            })
 
             # If no usable speech was captured, no downstream robot reply may occur.
             # Release the turn gate here to avoid a deadlock waiting for speak_n_gest_next_level().
             if (not turn_id) or (not str(raw_transcript or "").strip()):
                 log_diag("No valid user utterance captured; releasing turn gate.")
-                _write_session_event(session_dir, "bumper_events.jsonl", {
-                    "event": "empty_or_missing_transcript",
-                    "turn_id": turn_id,
-                })
                 _release_turn_gate(convo, "empty_or_missing_transcript")
                 time.sleep(0.05)
                 continue
@@ -340,11 +343,6 @@ def bumper_loop(robot, convo, consumer, session_dir):
         except Exception as e:
             consumer.note_input_attempt_finished()
             log_diag("ERROR in bumper_loop: {}".format(e))
-            _write_session_event(session_dir, "bumper_events.jsonl", {
-                "event": "bumper_loop_error",
-                "error": str(e),
-                "robot_health": _safe_robot_health(robot),
-            })
             _release_turn_gate(convo, "bumper_loop_exception")
             time.sleep(0.2)
             continue
@@ -354,31 +352,28 @@ def bumper_loop(robot, convo, consumer, session_dir):
 def main():
     print("Active project profile: {}".format(PROJECT_PROFILE.get("_project_id")))
     session_dir = wait_for_current_session(SESSIONS_ROOT)
-    _write_session_event(session_dir, "bumper_events.jsonl", {
-        "event": "worker_attached_to_session",
-        "session_dir": session_dir,
-        "bridge_url": BRIDGE,
-    })
+    condition = _prompt_contingency_condition()
+    non_contingent_fixed_replies = {}
+    if condition == "non-contingent":
+        non_contingent_fixed_replies = _load_non_contingent_fixed_replies()
 
     robot = NAORobot(ROBOT_NAME, usrnme=ROBOT_USERNAME, pword=ROBOT_PASSWORD)
+    robot.disable_motion_for_chat = ROBOT_DISABLE_MOTION
     health = _safe_robot_health(robot)
     _write_robot_status(session_dir, ROBOT_NAME, health, "robot_connected")
-    _write_session_event(session_dir, "bumper_events.jsonl", {
-        "event": "robot_connected",
-        "robot_health": health,
-    })
     status_thread = threading.Thread(target=_robot_status_loop, args=(robot, session_dir))
     status_thread.daemon = True
     status_thread.start()
-    robot.mm.sit()
-    time.sleep(3.0)
-    robot.mm.repose(False)
-    time.sleep(3.0)
-    robot.mm.loose()
-    _write_session_event(session_dir, "bumper_events.jsonl", {
-        "event": "robot_initialized_motion_state",
-        "robot_health": _safe_robot_health(robot),
-    })
+
+    if ROBOT_NAME.lower() == "meta" and not ROBOT_DISABLE_MOTION:
+        robot.mm.sit()
+        time.sleep(1)
+        robot.mm.repose(False)
+        time.sleep(1)
+        robot.mm.loose()
+    else:
+        #robot.mm.loose_rarm()
+        dismiss_arm_warning(robot.ip, robot.port)
 
     convo = ConversationManager(robot)
 
@@ -394,9 +389,12 @@ def main():
         require_enter_for_watchdog=CONSUMER_REQUIRE_ENTER_FOR_WATCHDOG,
         operator_reply_delay_cfg=CONSUMER_OPERATOR_REPLY_DELAY_CFG,
         battery_log_path=BATTERY_LOG_PATH,
+        fixed_reply_delay_cfg=CONSUMER_FIXED_REPLY_DELAY_CFG,
+        contingency_condition=condition,
+        non_contingent_fixed_replies=non_contingent_fixed_replies,
     )
 
-    t = threading.Thread(target=bumper_loop, args=(robot, convo, consumer, session_dir))
+    t = threading.Thread(target=bumper_loop, args=(robot, convo, consumer))
     t.daemon = True
     t.start()
 

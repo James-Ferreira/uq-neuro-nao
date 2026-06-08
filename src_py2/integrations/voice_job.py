@@ -1,4 +1,4 @@
-import os, time, json, re, traceback, csv
+import os, time, json, re, shutil, csv
 from datetime import datetime
 import src_py2.api.transcribe as transcribe
 
@@ -56,6 +56,58 @@ BATTERY_LOG_FIELDS = [
     "final_robot_command",
     "updated_at",
 ]
+
+
+def _session_archive_root():
+    env_path = os.environ.get("VOICE_LLM_CHAT_SESSION_ARCHIVE_DIR")
+    if env_path:
+        return os.path.abspath(os.path.expanduser(env_path))
+
+    here = os.path.dirname(os.path.abspath(__file__))
+    repos_root = os.path.abspath(os.path.join(here, "..", "..", ".."))
+    config_path = os.environ.get("VOICE_LLM_CHAT_CONFIG") or os.path.join(
+        repos_root, "voice-llm-chat", "local_config.json"
+    )
+    try:
+        with open(config_path, "r") as f:
+            cfg = json.load(f)
+        configured_path = cfg.get("session_archive_dir")
+    except Exception:
+        configured_path = None
+
+    if not configured_path:
+        return None
+
+    return os.path.abspath(os.path.expanduser(configured_path))
+
+
+def _archive_session_copy_best_effort(session_dir):
+    try:
+        archive_root = _session_archive_root()
+        if not archive_root:
+            return
+
+        destination = os.path.join(archive_root, os.path.basename(os.path.abspath(session_dir)))
+        if not os.path.isdir(archive_root):
+            os.makedirs(archive_root)
+
+        for root, dirs, files in os.walk(session_dir):
+            rel_root = os.path.relpath(root, session_dir)
+            dest_root = destination if rel_root == "." else os.path.join(destination, rel_root)
+            if not os.path.isdir(dest_root):
+                os.makedirs(dest_root)
+            for dirname in dirs:
+                dest_dir = os.path.join(dest_root, dirname)
+                if not os.path.isdir(dest_dir):
+                    os.makedirs(dest_dir)
+            for filename in files:
+                if filename.endswith(".tmp"):
+                    continue
+                shutil.copy2(os.path.join(root, filename), os.path.join(dest_root, filename))
+
+        print("Session copied to Kyra: {}".format(destination))
+    except Exception as e:
+        print("WARN: Failed copying session to Kyra: {}".format(e))
 
 
 def _now_iso_local():
@@ -194,6 +246,7 @@ def _rewrite_session_dialogue(session_dir):
 
         user_text = ""
         ai_text = ""
+        robot_speaker = "robot"
 
         if os.path.isfile(input_path):
             with open(input_path, "r") as f:
@@ -204,12 +257,18 @@ def _rewrite_session_dialogue(session_dir):
             with open(output_path, "r") as f:
                 output_payload = json.load(f)
             ai_text = output_payload.get("ai", "")
+            if output_payload.get("fixed_reply_applied"):
+                fixed_turn = output_payload.get("fixed_reply_turn")
+                if fixed_turn is not None:
+                    robot_speaker = "robot [fixed reply {}]".format(fixed_turn)
+                else:
+                    robot_speaker = "robot [fixed reply]"
 
         if not str(user_text or "").strip() and not str(ai_text or "").strip():
             continue
 
         lines.append(_dialogue_line(turn_id, "user", user_text))
-        lines.append(_dialogue_line(turn_id, "robot", ai_text))
+        lines.append(_dialogue_line(turn_id, robot_speaker, ai_text))
 
         for idx, watchdog_text in enumerate(watchdog_prompts.get(turn_id, []), start=1):
             lines.append(_dialogue_line("{}_{}".format(turn_id, idx), "watchdog", watchdog_text))
@@ -364,6 +423,9 @@ class NaoJobConsumer(object):
         require_enter_for_watchdog=False,
         operator_reply_delay_cfg=None,
         battery_log_path=None,
+        fixed_reply_delay_cfg=None,
+        contingency_condition=None,
+        non_contingent_fixed_replies=None,
     ):
         """
         convo: your NAO-side ConversationManager (or equivalent) defining speak_n_gest_next_level(...)
@@ -427,7 +489,6 @@ class NaoJobConsumer(object):
         self._watchdog_due_mono = None
         self._watchdog_event_path = None
         self._watchdog_summary_path = None
-        self._diagnostics_event_path = None
         self._battery_log_path = None
         self._battery_log_path_cfg = battery_log_path
         self._battery_log_session_dir = None
@@ -478,6 +539,24 @@ class NaoJobConsumer(object):
         self.operator_reply_delay_max_sec = _as_float(
             operator_reply_delay_cfg.get("max_sec", 4.0), 4.0
         )
+        fixed_reply_delay_cfg = fixed_reply_delay_cfg or {}
+        self.fixed_reply_delay_enabled = _as_bool(
+            fixed_reply_delay_cfg.get("enabled", False), False
+        )
+        self.fixed_reply_delay_base_sec = _as_float(
+            fixed_reply_delay_cfg.get("base_sec", 0.0), 0.0
+        )
+        self.fixed_reply_delay_characters_per_minute = _as_float(
+            fixed_reply_delay_cfg.get("characters_per_minute", 0.0), 0.0
+        )
+        self.fixed_reply_delay_min_sec = _as_float(
+            fixed_reply_delay_cfg.get("min_sec", 0.0), 0.0
+        )
+        self.fixed_reply_delay_max_sec = _as_float(
+            fixed_reply_delay_cfg.get("max_sec", 0.0), 0.0
+        )
+        self.contingency_condition = str(contingency_condition or "").strip().lower() or None
+        self.non_contingent_fixed_replies = dict(non_contingent_fixed_replies or {})
 
         env_gate = os.getenv("NAO_REQUIRE_ENTER_BEFORE_SPEAK")
         if env_gate is not None:
@@ -499,178 +578,6 @@ class NaoJobConsumer(object):
         if env_cpm is not None:
             self.operator_reply_delay_cpm = _as_float(env_cpm, self.operator_reply_delay_cpm)
 
-    def _write_diag(self, event, **payload):
-        if not self._diagnostics_event_path:
-            return
-        body = dict(payload or {})
-        body["event"] = event
-        body.setdefault("ts", _now_iso_local())
-        try:
-            with open(self._diagnostics_event_path, "a") as f:
-                f.write(json.dumps(body, sort_keys=True) + "\n")
-        except Exception as e:
-            print("Robot diagnostic log write failed: {}".format(e))
-
-    def _robot_health_snapshot(self):
-        robot = self.robot
-        health = {
-            "robot_available": robot is not None,
-        }
-        if robot is None:
-            return health
-        health["connected"] = bool(getattr(robot, "is_connected", False))
-        health["ip"] = getattr(robot, "ip", None)
-        health["ip_used"] = getattr(robot, "ip_used", None)
-        probes = [
-            ("battery_charge", "battery", "getBatteryCharge", ()),
-            ("life_state", "life", "getState", ()),
-            ("output_volume", "audio_device", "getOutputVolume", ()),
-        ]
-        for key, attr, method, args in probes:
-            try:
-                proxy = getattr(robot, attr, None)
-                if proxy is not None:
-                    value = getattr(proxy, method)(*args)
-                    health[key] = value
-                    if key == "battery_charge":
-                        self._remember_battery_charge(value)
-            except Exception as e:
-                health[key + "_error"] = str(e)
-        try:
-            if getattr(robot, "motion", None) is not None:
-                stiffnesses = robot.motion.getStiffnesses("Body")
-                if stiffnesses:
-                    health["body_stiffness_min"] = min(stiffnesses)
-                    health["body_stiffness_max"] = max(stiffnesses)
-        except Exception as e:
-            health["body_stiffness_error"] = str(e)
-        return health
-
-    def _remember_battery_charge(self, charge):
-        if charge is None:
-            return
-        self._battery_last_charge = charge
-        self._battery_last_charge_at = _now_iso_local()
-
-    def _battery_charge_snapshot(self):
-        if self.robot is None:
-            return None, "robot unavailable"
-        try:
-            battery = getattr(self.robot, "battery", None)
-            if battery is None:
-                return None, "battery proxy unavailable"
-            charge = battery.getBatteryCharge()
-            self._remember_battery_charge(charge)
-            return charge, ""
-        except Exception as e:
-            return None, str(e)
-
-    def _battery_log_base_row(self):
-        session_dir = self._battery_log_session_dir or ""
-        return {
-            "session_id": os.path.basename(session_dir.rstrip(os.sep)) if session_dir else "",
-            "session_dir": session_dir,
-            "robot_name": getattr(self.robot, "name", "") if self.robot is not None else "",
-            "robot_ip": getattr(self.robot, "ip", "") if self.robot is not None else "",
-            "started_at": self._session_started_at,
-            "starting_charge": self._battery_start_charge if self._battery_start_charge is not None else "",
-            "starting_charge_error": self._battery_start_error or "",
-            "final_at": "",
-            "session_duration_sec": "",
-            "final_charge": "",
-            "final_charge_error": "",
-            "final_reason": "",
-            "final_robot_command": "",
-            "updated_at": _now_iso_local(),
-        }
-
-    def _upsert_battery_log_row(self, row):
-        if not self._battery_log_path:
-            return
-        rows = []
-        if os.path.isfile(self._battery_log_path):
-            try:
-                with open(self._battery_log_path, "r") as f:
-                    reader = csv.DictReader(f)
-                    for existing in reader:
-                        if existing.get("session_dir") != row.get("session_dir"):
-                            rows.append(existing)
-            except Exception as e:
-                self._write_diag("battery_log_read_error", path=self._battery_log_path, error=str(e))
-        rows.append(row)
-        tmp_path = self._battery_log_path + ".tmp"
-        try:
-            with open(tmp_path, "w") as f:
-                writer = csv.DictWriter(f, fieldnames=BATTERY_LOG_FIELDS, extrasaction="ignore")
-                writer.writeheader()
-                for existing in rows:
-                    writer.writerow({
-                        key: "" if existing.get(key) is None else existing.get(key)
-                        for key in BATTERY_LOG_FIELDS
-                    })
-            os.rename(tmp_path, self._battery_log_path)
-        except Exception as e:
-            self._write_diag("battery_log_write_error", path=self._battery_log_path, error=str(e))
-            try:
-                if os.path.exists(tmp_path):
-                    os.remove(tmp_path)
-            except Exception:
-                pass
-
-    def _resolve_battery_log_path(self, voice_repo_dir):
-        configured = self._battery_log_path_cfg
-        if configured:
-            if os.path.isabs(configured):
-                return configured
-            return os.path.abspath(os.path.join(voice_repo_dir, configured))
-        return os.path.join(voice_repo_dir, "battery_log.csv")
-
-    def _start_battery_log(self, session_dir):
-        sessions_dir = os.path.dirname(session_dir.rstrip(os.sep))
-        voice_repo_dir = os.path.dirname(sessions_dir)
-        self._battery_log_path = self._resolve_battery_log_path(voice_repo_dir)
-        self._battery_log_session_dir = session_dir
-        self._battery_start_charge, self._battery_start_error = self._battery_charge_snapshot()
-        self._remember_battery_charge(self._battery_start_charge)
-        self._battery_final_written = False
-        row = self._battery_log_base_row()
-        self._upsert_battery_log_row(row)
-        self._write_diag(
-            "battery_log_started",
-            path=self._battery_log_path,
-            starting_charge=self._battery_start_charge,
-            starting_charge_error=self._battery_start_error,
-        )
-
-    def _finalize_battery_log(self, reason, robot_command=None, force=False):
-        if self._battery_final_written and not force:
-            return
-        final_charge, final_error = self._battery_charge_snapshot()
-        if final_charge is None and self._battery_last_charge is not None:
-            final_charge = self._battery_last_charge
-            fallback_msg = "used last successful battery reading"
-            if self._battery_last_charge_at:
-                fallback_msg += " from {}".format(self._battery_last_charge_at)
-            final_error = "{}; {}".format(final_error, fallback_msg) if final_error else fallback_msg
-        row = self._battery_log_base_row()
-        row["final_at"] = _now_iso_local()
-        row["session_duration_sec"] = "{:.3f}".format(self._session_elapsed_sec())
-        row["final_charge"] = final_charge if final_charge is not None else ""
-        row["final_charge_error"] = final_error or ""
-        row["final_reason"] = reason or ""
-        row["final_robot_command"] = robot_command or ""
-        row["updated_at"] = _now_iso_local()
-        self._upsert_battery_log_row(row)
-        self._battery_final_written = True
-        self._write_diag(
-            "battery_log_finalized",
-            path=self._battery_log_path,
-            reason=reason,
-            robot_command=robot_command,
-            final_charge=final_charge,
-            final_charge_error=final_error,
-        )
-
     def _operator_reply_delay_sec(self, text):
         if not self.operator_reply_delay_enabled:
             return -1.0
@@ -687,6 +594,28 @@ class NaoJobConsumer(object):
         if max_sec > 0:
             delay = min(max_sec, delay)
         return max(0.0, delay)
+
+    def _fixed_reply_delay_sec(self, text):
+        if not self.fixed_reply_delay_enabled:
+            return 0.0
+        delay = max(0.0, _as_float(self.fixed_reply_delay_base_sec, 0.0))
+        cpm = _as_float(self.fixed_reply_delay_characters_per_minute, 0.0)
+        if cpm > 0:
+            char_count = len(str(text or "").strip())
+            delay += (float(char_count) / cpm) * 60.0
+        min_sec = _as_float(self.fixed_reply_delay_min_sec, 0.0)
+        max_sec = _as_float(self.fixed_reply_delay_max_sec, 0.0)
+        delay = max(min_sec, delay)
+        if max_sec > 0:
+            delay = min(max_sec, delay)
+        return max(0.0, delay)
+
+    def _wait_for_fixed_reply_delay(self, text):
+        delay_sec = self._fixed_reply_delay_sec(text)
+        if delay_sec <= 0:
+            return
+        print("[fixed_reply_delay] Waiting {:.3f}s before fixed reply.".format(delay_sec))
+        time.sleep(delay_sec)
 
     def _wait_for_operator_enter(self, source_label, reply_text=None):
         if source_label == "watchdog":
@@ -746,26 +675,141 @@ class NaoJobConsumer(object):
         words = [w for w in (text or "").strip().split() if w]
         return max(2.5, 0.45 * len(words))
 
+    def _fixed_reply_for_turn(self, turn_num):
+        if self.contingency_condition != "non-contingent":
+            return None
+        try:
+            turn_num = int(turn_num)
+        except Exception:
+            return None
+        reply = self.non_contingent_fixed_replies.get(turn_num)
+        if reply is None:
+            return None
+        return str(reply).strip() or None
+
+    def _remember_battery_charge(self, charge):
+        if charge is None:
+            return
+        self._battery_last_charge = charge
+        self._battery_last_charge_at = _now_iso_local()
+
+    def _battery_charge_snapshot(self):
+        if self.robot is None:
+            return None, "robot unavailable"
+        try:
+            battery = getattr(self.robot, "battery", None)
+            if battery is None:
+                return None, "battery proxy unavailable"
+            charge = battery.getBatteryCharge()
+            self._remember_battery_charge(charge)
+            return charge, ""
+        except Exception as e:
+            return None, str(e)
+
+    def _battery_log_base_row(self):
+        session_dir = self._battery_log_session_dir or ""
+        return {
+            "session_id": os.path.basename(session_dir.rstrip(os.sep)) if session_dir else "",
+            "session_dir": session_dir,
+            "robot_name": getattr(self.robot, "name", "") if self.robot is not None else "",
+            "robot_ip": getattr(self.robot, "ip", "") if self.robot is not None else "",
+            "started_at": self._session_started_at,
+            "starting_charge": self._battery_start_charge if self._battery_start_charge is not None else "",
+            "starting_charge_error": self._battery_start_error or "",
+            "final_at": "",
+            "session_duration_sec": "",
+            "final_charge": "",
+            "final_charge_error": "",
+            "final_reason": "",
+            "final_robot_command": "",
+            "updated_at": _now_iso_local(),
+        }
+
+    def _upsert_battery_log_row(self, row):
+        if not self._battery_log_path:
+            return
+        rows = []
+        if os.path.isfile(self._battery_log_path):
+            try:
+                with open(self._battery_log_path, "r") as f:
+                    reader = csv.DictReader(f)
+                    for existing in reader:
+                        if existing.get("session_dir") != row.get("session_dir"):
+                            rows.append(existing)
+            except Exception as e:
+                print("Battery log read failed: {}".format(e))
+        rows.append(row)
+        tmp_path = self._battery_log_path + ".tmp"
+        try:
+            with open(tmp_path, "w") as f:
+                writer = csv.DictWriter(f, fieldnames=BATTERY_LOG_FIELDS, extrasaction="ignore")
+                writer.writeheader()
+                for existing in rows:
+                    writer.writerow({
+                        key: "" if existing.get(key) is None else existing.get(key)
+                        for key in BATTERY_LOG_FIELDS
+                    })
+            os.rename(tmp_path, self._battery_log_path)
+        except Exception as e:
+            print("Battery log write failed: {}".format(e))
+            try:
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
+            except Exception:
+                pass
+
+    def _resolve_battery_log_path(self, voice_repo_dir):
+        configured = self._battery_log_path_cfg
+        if configured:
+            if os.path.isabs(configured):
+                return configured
+            return os.path.abspath(os.path.join(voice_repo_dir, configured))
+        return os.path.join(voice_repo_dir, "battery_log.csv")
+
+    def _start_battery_log(self, session_dir):
+        sessions_dir = os.path.dirname(session_dir.rstrip(os.sep))
+        voice_repo_dir = os.path.dirname(sessions_dir)
+        self._battery_log_path = self._resolve_battery_log_path(voice_repo_dir)
+        self._battery_log_session_dir = session_dir
+        self._battery_start_charge, self._battery_start_error = self._battery_charge_snapshot()
+        self._remember_battery_charge(self._battery_start_charge)
+        self._battery_final_written = False
+        self._upsert_battery_log_row(self._battery_log_base_row())
+
+    def _finalize_battery_log(self, reason, robot_command=None, force=False):
+        if self._battery_final_written and not force:
+            return
+        final_charge, final_error = self._battery_charge_snapshot()
+        if final_charge is None and self._battery_last_charge is not None:
+            final_charge = self._battery_last_charge
+            fallback_msg = "used last successful battery reading"
+            if self._battery_last_charge_at:
+                fallback_msg += " from {}".format(self._battery_last_charge_at)
+            final_error = "{}; {}".format(final_error, fallback_msg) if final_error else fallback_msg
+        row = self._battery_log_base_row()
+        row["final_at"] = _now_iso_local()
+        row["session_duration_sec"] = "{:.3f}".format(self._session_elapsed_sec())
+        row["final_charge"] = final_charge if final_charge is not None else ""
+        row["final_charge_error"] = final_error or ""
+        row["final_reason"] = reason or ""
+        row["final_robot_command"] = robot_command or ""
+        row["updated_at"] = _now_iso_local()
+        self._upsert_battery_log_row(row)
+        self._battery_final_written = True
+
     def _ensure_robot_stiff_for_speech(self):
         if self._robot_stiffened_for_speech:
             return
+        if bool(getattr(self.robot, "disable_motion_for_chat", False)):
+            return
         if self.robot is None or getattr(self.robot, "mm", None) is None:
             raise RuntimeError("robot motion manager unavailable")
-        self._write_diag("robot_stiffen_start", robot_health=self._robot_health_snapshot())
         self.robot.mm.stiff()
-        time.sleep(2.0)
         self._robot_stiffened_for_speech = True
-        self._write_diag("robot_stiffen_done", robot_health=self._robot_health_snapshot())
 
     def _speak_segments(self, segments_list, leds=True):
         self._finalize_battery_log("before_robot_speech", robot_command="speech", force=True)
         self._ensure_robot_stiff_for_speech()
-        self._write_diag(
-            "speak_segments_start",
-            segment_count=len(segments_list or []),
-            robot_text=_segments_to_text(segments_list),
-            robot_health=self._robot_health_snapshot(),
-        )
         return self.convo.speak_n_gest_next_level(segments_list, leds=leds)
 
     def _handle_system_say_job(self, job):
@@ -785,34 +829,22 @@ class NaoJobConsumer(object):
             return result
 
         if hasattr(self.convo, "turn_gate") and not self.convo.turn_gate.acquire(False):
-            self._write_diag("system_say_deferred_busy", source=job.get("source"), text=text)
             return None
 
         self.convo.turn_in_progress = True
 
         segments_list = [[text, None, None, self._estimate_script_duration(text)]]
         try:
-            self._write_diag("system_say_start", source=job.get("source"), text=text)
             self._wait_for_operator_enter("system_say")
             self._speak_segments(segments_list, leds=True)
             self._note_robot_utterance_finished()
             result["ok"] = True
             result["robot_finish_at"] = self._last_robot_finish_at
             result["ai_duration_sec"] = _segments_to_duration_sec(segments_list)
-            self._write_diag("system_say_done", source=job.get("source"), text=text)
             return result
         except Exception as e:
             self._release_turn_gate_if_held("system_say_error")
             result["error"] = "system say failed: {}".format(e)
-            result["traceback"] = traceback.format_exc()
-            self._write_diag(
-                "system_say_error",
-                source=job.get("source"),
-                text=text,
-                error=str(e),
-                traceback=result["traceback"],
-                robot_health=self._robot_health_snapshot(),
-            )
             return result
 
     def handle_system_job(self, job):
@@ -856,12 +888,11 @@ class NaoJobConsumer(object):
         self._wait_for_operator_enter("special_command")
         self._speak_segments(scripted_segments, leds=True)
         try:
-            if action:
-                self._finalize_battery_log(
-                    "before_special_command_action",
-                    robot_command=action,
-                    force=True,
-                )
+            self._finalize_battery_log(
+                "before_special_command_action",
+                robot_command=action,
+                force=True,
+            )
             self._perform_robot_action(action)
 
             action_log["ok"] = True
@@ -877,8 +908,6 @@ class NaoJobConsumer(object):
         result["ai_duration_sec"] = elapsed
         result["special_command"] = command_key
         result["special_action"] = action_log
-        if action == "shutdown":
-            result["stop_worker"] = True
         self._note_robot_utterance_finished()
         result["robot_finish_at"] = self._last_robot_finish_at
         return result
@@ -1133,14 +1162,6 @@ class NaoJobConsumer(object):
 
         self.current_turn_id = turn_id
         latency_sec = _seconds_between(self._last_robot_finish_at, recording_started_at)
-        self._write_diag(
-            "input_job_start",
-            turn_id=turn_id,
-            user_text=user_text,
-            recording_started_at=recording_started_at,
-            latency_sec=latency_sec,
-            robot_health=self._robot_health_snapshot(),
-        )
 
         # Base result payload (no "ok" field by design)
         result = {
@@ -1153,6 +1174,8 @@ class NaoJobConsumer(object):
             "ai": "",
             "ai_duration_sec": 0.0,
             "latency_sec": latency_sec,
+            "logical_turn": None,
+            "logical_turn_advanced": False,
         }
         if self.session_end_enabled:
             result["session_elapsed_sec"] = self._session_elapsed_sec()
@@ -1163,6 +1186,9 @@ class NaoJobConsumer(object):
             result["watchdog_total_so_far"] = self._watchdog_total
             result["watchdog_consecutive_without_user"] = self._watchdog_consecutive_without_user
             return result
+
+        logical_turn_num = int(self.turn_count or 0) + 1
+        result["logical_turn"] = logical_turn_num
 
         matched_command = self._match_special_command(user_text)
         if matched_command:
@@ -1187,6 +1213,7 @@ class NaoJobConsumer(object):
             if result.get("ai"):
                 self.history.append({"role": "assistant", "content": result["ai"]})
             self._on_nonempty_user_turn()
+            result["logical_turn_advanced"] = True
             result["watchdog_total_so_far"] = self._watchdog_total
             result["watchdog_consecutive_without_user"] = self._watchdog_consecutive_without_user
             return result
@@ -1207,44 +1234,40 @@ class NaoJobConsumer(object):
             session_end_ephemeral_system = self.session_end_model_closing_instruction
             result["session_end_model_closing_instruction_applied"] = True
 
+        fixed_reply_text = self._fixed_reply_for_turn(logical_turn_num)
+
         # Get gesturized segments list from local Py3 API
-        try:
-            segments_list = transcribe.reply(
-                "",
-                self.model,
-                self.interlocutor,
-                list,
-                int(self.turn_count or 0) + 1,
-                prompt=user_text,
-                history=self.history,
-                ephemeral_system=session_end_ephemeral_system,
-            )
-        except Exception as e:
-            self._release_turn_gate_if_held("transcribe_reply_error")
-            result["error"] = "transcribe.reply raised: {}".format(e)
-            result["traceback"] = traceback.format_exc()
-            self._write_diag(
-                "transcribe_reply_error",
-                turn_id=turn_id,
-                user_text=user_text,
-                error=str(e),
-                traceback=result["traceback"],
-            )
-            return result
+        if fixed_reply_text is not None:
+            segments_list = [[
+                fixed_reply_text,
+                None,
+                None,
+                self._estimate_script_duration(fixed_reply_text),
+            ]]
+            result["fixed_reply_applied"] = True
+            result["fixed_reply_turn"] = logical_turn_num
+            self._wait_for_fixed_reply_delay(fixed_reply_text)
+        else:
+            try:
+                segments_list = transcribe.reply(
+                    "",
+                    self.model,
+                    self.interlocutor,
+                    list,
+                    logical_turn_num,
+                    prompt=user_text,
+                    history=self.history,
+                    ephemeral_system=session_end_ephemeral_system,
+                )
+            except Exception as e:
+                self._release_turn_gate_if_held("transcribe_reply_error")
+                result["error"] = "transcribe.reply raised: {}".format(e)
+                return result
 
         if not segments_list:
             self._release_turn_gate_if_held("empty_segments_list")
             result["error"] = "No segments_list returned"
-            self._write_diag("empty_segments_list", turn_id=turn_id, user_text=user_text)
             return result
-
-        self._write_diag(
-            "transcribe_reply_ok",
-            turn_id=turn_id,
-            user_text=user_text,
-            segment_count=len(segments_list or []),
-            robot_text=_segments_to_text(segments_list),
-        )
 
         if (not session_end_due) and self._is_session_end_due():
             if not self._session_end_armed:
@@ -1262,16 +1285,6 @@ class NaoJobConsumer(object):
         except Exception as e:
             self._release_turn_gate_if_held("speak_n_gest_error")
             result["error"] = "speak_n_gest_next_level raised: {}".format(e)
-            result["traceback"] = traceback.format_exc()
-            self._write_diag(
-                "speak_n_gest_error",
-                turn_id=turn_id,
-                user_text=user_text,
-                robot_text=_segments_to_text(segments_list),
-                error=str(e),
-                traceback=result["traceback"],
-                robot_health=self._robot_health_snapshot(),
-            )
             return result
 
         # Produce trimmed logging outputs
@@ -1286,17 +1299,9 @@ class NaoJobConsumer(object):
         if robot_text:
             self.history.append({"role": "assistant", "content": robot_text})
         self._on_nonempty_user_turn()
+        result["logical_turn_advanced"] = True
         self._note_robot_utterance_finished()
         result["robot_finish_at"] = self._last_robot_finish_at
-        self._write_diag(
-            "input_job_done",
-            turn_id=turn_id,
-            user_text=user_text,
-            robot_text=robot_text,
-            ai_duration_sec=dur_sec,
-            robot_finish_at=self._last_robot_finish_at,
-            robot_health=self._robot_health_snapshot(),
-        )
         result["watchdog_total_so_far"] = self._watchdog_total
         result["watchdog_consecutive_without_user"] = self._watchdog_consecutive_without_user
         if self.session_end_enabled:
@@ -1354,21 +1359,11 @@ class NaoJobConsumer(object):
         self._watchdog_event_path = os.path.join(session_dir, "watchdog_events.jsonl")
         self._watchdog_summary_path = os.path.join(session_dir, "watchdog_summary.json")
         self._session_end_summary_path = os.path.join(session_dir, "session_end_summary.json")
-        self._diagnostics_event_path = os.path.join(session_dir, "robot_diagnostics.jsonl")
         self._write_watchdog_summary()
         self._write_session_end_summary()
         _write_language_metrics_summary(session_dir)
         self._start_battery_log(session_dir)
-        self._write_diag(
-            "job_worker_started",
-            session_dir=session_dir,
-            inbox_dir=inbox_dir,
-            outbox_dir=outbox_dir,
-            system_inbox_dir=system_inbox_dir,
-            watchdog_enabled=self.watchdog_enabled,
-            session_end_enabled=self.session_end_enabled,
-            robot_health=self._robot_health_snapshot(),
-        )
+        _archive_session_copy_best_effort(session_dir)
 
         print("NAO job worker started")
 
@@ -1377,13 +1372,11 @@ class NaoJobConsumer(object):
                 system_jobs = _list_system_jobs(system_inbox_dir)
                 for name in system_jobs:
                     job_path = os.path.join(system_inbox_dir, name)
-                    self._write_diag("system_job_seen", name=name, path=job_path)
                     try:
                         with open(job_path, "r") as f:
                             job = json.load(f)
                     except Exception as e:
                         print("System job read failed ({}): {}".format(name, e))
-                        self._write_diag("system_job_read_error", name=name, path=job_path, error=str(e))
                         continue
 
                     result = self.handle_system_job(job)
@@ -1392,14 +1385,6 @@ class NaoJobConsumer(object):
 
                     done_path = os.path.join(system_done_dir, name)
                     _write_json_atomic(done_path, result)
-                    self._write_diag(
-                        "system_job_done",
-                        name=name,
-                        ok=bool(result.get("ok")),
-                        skipped=bool(result.get("skipped")),
-                        error=result.get("error"),
-                        done_path=done_path,
-                    )
                     try:
                         os.remove(job_path)
                     except Exception as e:
@@ -1411,7 +1396,6 @@ class NaoJobConsumer(object):
                         continue
                     known_inputs.add(name)
                     self._note_input_job_seen()
-                    self._write_diag("input_job_seen", name=name, path=os.path.join(inbox_dir, name))
                 for name in jobs:
                     if name in processed:
                         continue
@@ -1427,57 +1411,40 @@ class NaoJobConsumer(object):
                     # Skip if already processed in a previous run
                     if os.path.isfile(done_path):
                         processed.add(name)
-                        self._write_diag("input_job_skip_existing_output", name=name, done_path=done_path)
                         continue
 
                     result = self.handle_input_job(job)
 
                     _write_json_atomic(done_path, result)
-                    self._write_diag(
-                        "input_job_output_written",
-                        name=name,
-                        turn_id=turn_id,
-                        done_path=done_path,
-                        has_error=bool(result.get("error")),
-                        error=result.get("error"),
-                    )
                     _rewrite_session_dialogue(session_dir)
                     _write_language_metrics_summary(session_dir)
+                    _archive_session_copy_best_effort(session_dir)
 
                     user_text = _single_line(job.get("user", ""))
                     ai_text = _single_line(result.get("ai", ""))
-                    print("Turn {} | Participant: {} | Robot: {}".format(turn_id, user_text, ai_text))
+                    logical_turn = result.get("logical_turn")
+                    turn_label = "Turn {}".format(turn_id)
+                    if logical_turn is not None:
+                        turn_label += " | Logical turn {}".format(logical_turn)
+                    if result.get("fixed_reply_applied"):
+                        turn_label += " | fixed reply {}".format(result.get("fixed_reply_turn"))
+                    print("{} | Participant: {} | Robot: {}".format(turn_label, user_text, ai_text))
 
                     processed.add(name)
-                    if result.get("stop_worker"):
-                        print("Stop-worker command completed at turn {}. Exiting worker.".format(turn_id))
-                        self.watchdog_enabled = False
-                        self._finalize_battery_log(
-                            "special_command_worker_stop",
-                            robot_command=result.get("special_action", {}).get("action"),
-                        )
-                        return
                     if result.get("session_end_triggered") and self._session_should_stop_worker:
                         print("Session end condition met at turn {}. Exiting worker.".format(turn_id))
                         self._finalize_battery_log("session_end_worker_stop")
                         return
 
                 if self._maybe_fire_watchdog():
-                    self._write_diag("watchdog_fired", watchdog_total=self._watchdog_total)
                     _write_language_metrics_summary(session_dir)
+                    _archive_session_copy_best_effort(session_dir)
                 time.sleep(poll_sec)
 
             except KeyboardInterrupt:
                 self._finalize_battery_log("keyboard_interrupt")
-                self._write_diag("job_worker_keyboard_interrupt")
                 print("Worker exiting (KeyboardInterrupt).")
                 break
             except Exception as e:
                 print("Worker loop error: {}".format(e))
-                self._write_diag(
-                    "job_worker_loop_error",
-                    error=str(e),
-                    traceback=traceback.format_exc(),
-                    robot_health=self._robot_health_snapshot(),
-                )
                 time.sleep(0.5)

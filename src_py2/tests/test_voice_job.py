@@ -26,7 +26,7 @@ class _DummyConvo(object):
         self.turn_gate = _DummyGate()
         self.turn_in_progress = False
         self.spoken_segments = []
-        self.robot = None
+        self.robot = type("DummyRobot", (object,), {"disable_motion_for_chat": True})()
 
     def set_ready_mode(self):
         return None
