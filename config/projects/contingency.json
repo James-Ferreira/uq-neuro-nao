@@ -46,7 +46,7 @@
   "robot_chat": {
     "bridge_url": "http://127.0.0.1:5055",
     "battery_log_path": "battery_log.csv",
-    "robot_name": "clas",
+    "robot_name": "pady",
     "robot_username": "nao",
     "robot_password": "nao",
     "disable_motion": true,
