@@ -16,10 +16,16 @@
     "non_contingent_fixed_replies_path": "fixed_replies/non_contingent.json",
     "turn_injections": [
       {
-        "id": "turn_1_dark_experience",
+        "id": "turn_1",
         "mode": "temporary",
         "at_turn": 1,
-        "text": "Introduce yourself, ask the participant their name, and ask them about their hobbies or interests."
+        "text": "For this first reply, briefly introduce yourself as Zork. Your priority is to learn the participant's name. If they have already given their name, use it and ask one simple question about their hobbies or interests. Otherwise, ask one simple question for their name. Ask only one question total."
+      },
+      {
+        "id": "turn_2",
+        "mode": "temporary",
+        "at_turn": 2,
+        "text": "For this second reply, continue the opening sequence naturally. If the participant has just given their name, warmly acknowledge it and ask one simple question about their hobbies or interests. If the participant's name is still unknown, briefly and lightly ask for their name again. If they have already shared a hobby or interest, respond to that content and ask one natural follow-up. Ask only one question total."
       }
     ],
     "watchdog": {

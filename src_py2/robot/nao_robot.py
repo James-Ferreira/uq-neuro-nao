@@ -166,7 +166,7 @@ class NAORobot(object):
 
         # Example audio defaults
         try:
-            self.audio_device.setOutputVolume(50)
+            self.audio_device.setOutputVolume(45)
         except Exception:
             pass
         try:
